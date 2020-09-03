@@ -60,6 +60,10 @@ if(Cabana_ENABLE_MPI)
   target_link_libraries(cabanacore MPI::MPI_CXX)
 endif()
 
+if(Cabana_ENABLE_CAJITA)
+  target_link_libraries(cabanacore Cajita)
+endif()
+
 target_include_directories(cabanacore
   PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>

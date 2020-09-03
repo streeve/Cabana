@@ -69,9 +69,6 @@ macro(Cabana_add_tests)
       target_include_directories(${_target} PRIVATE ${_dir}
         ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
       target_link_libraries(${_target} cabanacore cabana_core_gtest)
-      if(_test STREQUAL ParticleGridCommunication)
-        target_link_libraries(${_target} Cajita)
-      endif()
       if(CABANA_UNIT_TEST_MPI)
         foreach(_np ${CABANA_UNIT_TEST_MPIEXEC_NUMPROCS})
           # NOTE: When moving to CMake 3.10+ make sure to use MPIEXEC_EXECUTABLE instead
