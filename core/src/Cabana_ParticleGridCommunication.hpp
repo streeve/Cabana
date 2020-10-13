@@ -502,7 +502,7 @@ void getHaloIds( const LocalGridType &local_grid, CountView &send_count,
 
                         auto halo_ids_func = KOKKOS_LAMBDA( const int p )
                         {
-                            Kokkos::Array<double, 3> pos = {
+                            const std::array<double, 3> pos = {
                                 positions( p, Cajita::Dim::I ),
                                 positions( p, Cajita::Dim::J ),
                                 positions( p, Cajita::Dim::K ) };
@@ -536,8 +536,7 @@ void getHaloIds( const LocalGridType &local_grid, CountView &send_count,
 
                                     // Determine if this ghost particle needs to
                                     // be shifted through the periodic boundary.
-                                    const Kokkos::Array<int, 3> ijk = { i, j,
-                                                                        k };
+                                    const std::array<int, 3> ijk = { i, j, k };
                                     for ( int d = 0; d < 3; ++d )
                                     {
                                         shifts( sc, d ) = 0.0;
@@ -581,7 +580,7 @@ void getHaloIds( const LocalGridType &local_grid, CountView &send_count,
 
   \param min_halo_width Number of halo mesh widths to include for ghosting.
 
-  \param max_export_guess The allocation size for halo export ranks, IDs, and
+  \param max_halo_guess The allocation size for halo export ranks, IDs, and
   periodic shifts
 
   \return pair A std::pair containing the Halo and periodic shift array for
@@ -589,7 +588,7 @@ void getHaloIds( const LocalGridType &local_grid, CountView &send_count,
 */
 template <class LocalGridType, class PositionSliceType>
 auto gridHalo( const LocalGridType &local_grid, PositionSliceType &positions,
-               const int min_halo_width, const int max_export_guess = 0 )
+               const int min_halo_width, const int max_halo_guess = 0 )
 {
     using device_type = typename PositionSliceType::device_type;
     using pos_value = typename PositionSliceType::value_type;
@@ -599,13 +598,13 @@ auto gridHalo( const LocalGridType &local_grid, PositionSliceType &positions,
 
     Kokkos::View<int *, device_type> destinations(
         Kokkos::ViewAllocateWithoutInitializing( "destinations" ),
-        max_export_guess );
+        max_halo_guess );
     Kokkos::View<int *, device_type> ids(
-        Kokkos::ViewAllocateWithoutInitializing( "ids" ), max_export_guess );
+        Kokkos::ViewAllocateWithoutInitializing( "ids" ), max_halo_guess );
     Kokkos::View<pos_value **, device_type> shifts(
-        Kokkos::ViewAllocateWithoutInitializing( "shifts" ), max_export_guess,
+        Kokkos::ViewAllocateWithoutInitializing( "shifts" ), max_halo_guess,
         3 );
-    Kokkos::View<int, Kokkos::LayoutRight, device_type,
+    Kokkos::View<std::size_t, Kokkos::LayoutRight, device_type,
                  Kokkos::MemoryTraits<Kokkos::Atomic>>
         send_count( "halo_send_count" );
 
@@ -614,8 +613,8 @@ auto gridHalo( const LocalGridType &local_grid, PositionSliceType &positions,
                       positions, min_halo_width );
 
     // Resize views to actual send sizes.
-    int dest_size = destinations.extent( 0 );
-    int dest_count = 0;
+    std::size_t dest_size = destinations.extent( 0 );
+    std::size_t dest_count = 0;
     Kokkos::deep_copy( dest_count, send_count );
     if ( dest_count != dest_size )
     {
@@ -657,6 +656,7 @@ struct PeriodicHalo
 
     const HaloType _halo;
     const ShiftViewType _shifts;
+    const int _dim;
 
     /*!
       \brief Constructor.
@@ -669,6 +669,7 @@ struct PeriodicHalo
     PeriodicHalo( std::pair<HaloType, ShiftViewType> pair )
         : _halo( pair.first )
         , _shifts( pair.second )
+        , _dim( _shifts.extent( 1 ) )
     {
     }
     ~PeriodicHalo() {}
@@ -679,8 +680,15 @@ struct PeriodicHalo
     KOKKOS_INLINE_FUNCTION void modify_buffer( ViewType &send_buffer,
                                                const int i ) const
     {
-        for ( int d = 0; d < 3; ++d )
+        for ( int d = 0; d < _dim; ++d )
             get<PositionIndex>( send_buffer( i ), d ) += _shifts( i, d );
+    }
+
+    template <class ViewType>
+    KOKKOS_INLINE_FUNCTION void modify_buffer( ViewType &send_buffer,
+                                               const int i, const int d ) const
+    {
+        send_buffer( i, d ) += _shifts( i, d );
     }
 };
 
@@ -696,7 +704,7 @@ struct PeriodicHalo
 
   \param min_halo_width Number of halo mesh widths to include for ghosting.
 
-  \param max_export_guess The allocation size for halo export ranks, IDs, and
+  \param max_halo_guess The allocation size for halo export ranks, IDs, and
   periodic shifts.
 
   \return pair A std::pair containing the Halo and periodic shift array.
@@ -707,7 +715,7 @@ auto createPeriodicHalo( const LocalGridType &local_grid,
                          const ParticleContainer &particles,
                          std::integral_constant<std::size_t, PositionIndex>,
                          const int min_halo_width,
-                         const int max_export_guess = 0 )
+                         const int max_halo_guess = 0 )
 {
     using view_type =
         Kokkos::View<double **, typename ParticleContainer::device_type>;
@@ -715,7 +723,7 @@ auto createPeriodicHalo( const LocalGridType &local_grid,
 
     auto positions = slice<PositionIndex>( particles );
     std::pair<halo_type, view_type> pair =
-        gridHalo( local_grid, positions, min_halo_width, max_export_guess );
+        gridHalo( local_grid, positions, min_halo_width, max_halo_guess );
 
     using phalo_type =
         PeriodicHalo<halo_type, view_type, ParticleContainer, PositionIndex>;

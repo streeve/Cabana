@@ -213,7 +213,6 @@ void checkSize( const Halo_t &halo, Container_t &container )
 template <class Halo_t, class AoSoA_t, class View_t>
 void sendBuffer( const Halo_t &halo, AoSoA_t &aosoa, View_t &send_buffer )
 {
-
     // Get the steering vector for the sends.
     auto steering = halo.getExportSteering();
 
@@ -384,54 +383,15 @@ void gather( const Halo_t &halo, AoSoA_t &aosoa,
 }
 
 //---------------------------------------------------------------------------//
-/*!
-  \brief Synchronously gather data from the local decomposition to the ghosts
-  using the halo forward communication plan. Slice version. This is a
-  uniquely-owned to multiply-owned communication.
+// Slice gather.
+//---------------------------------------------------------------------------//
 
-  A gather sends data from a locally owned elements to one or many ranks on
-  which they exist as ghosts. A locally owned element may be sent to as many
-  ranks as desired to be used as a ghost on those ranks. The value of the
-  element in the locally owned decomposition will be the value assigned to the
-  element in the ghosted decomposition.
-
-  \tparam Halo_t Halo type - must be a Halo.
-
-  \tparam Slice_t Slice type - must be a Slice.
-
-  \param halo The halo to use for the gather.
-
-  \param slice The Slice on which to perform the gather. The Slice should have
-  a size equivalent to halo.numGhost() + halo.numLocal(). The locally owned
-  elements are expected to appear first (i.e. in the first halo.numLocal()
-  elements) and the ghosted elements are expected to appear second (i.e. in
-  the next halo.numGhost() elements()).
-*/
-template <class Halo_t, class Slice_t>
-void gather( const Halo_t &halo, Slice_t &slice,
-             typename std::enable_if<( is_halo<Halo_t>::value &&
-                                       is_slice<Slice_t>::value ),
-                                     int>::type * = 0 )
+namespace Impl
 {
-    // Check that the Slice is the right size.
-    Impl::checkSize( halo, slice );
 
-    // Get the number of components in the slice.
-    std::size_t num_comp = 1;
-    for ( std::size_t d = 2; d < slice.rank(); ++d )
-        num_comp *= slice.extent( d );
-
-    // Get the raw slice data.
-    auto slice_data = slice.data();
-
-    // Allocate a send buffer. Note this one is layout right so the components
-    // are consecutive.
-    Kokkos::View<typename Slice_t::value_type **, Kokkos::LayoutRight,
-                 typename Halo_t::memory_space>
-        send_buffer(
-            Kokkos::ViewAllocateWithoutInitializing( "halo_send_buffer" ),
-            halo.totalNumExport(), num_comp );
-
+template <class Halo_t, class Slice_t, class View_t>
+void sendBuffer( const Halo_t &halo, Slice_t &slice, View_t &send_buffer )
+{
     // Get the steering vector for the sends.
     auto steering = halo.getExportSteering();
 
@@ -450,7 +410,37 @@ void gather( const Halo_t &halo, Slice_t &slice,
     Kokkos::parallel_for( "Cabana::gather::gather_send_buffer",
                           gather_send_buffer_policy, gather_send_buffer_func );
     Kokkos::fence();
+}
 
+template <class Halo_t, class Slice_t, class View_t, class Periodic_t>
+void sendBuffer( const Halo_t &halo, Slice_t &slice, View_t &send_buffer,
+                 const Periodic_t &periodic )
+{
+    // Get the steering vector for the sends.
+    auto steering = halo.getExportSteering();
+
+    // Gather from the local data into a tuple-contiguous send buffer.
+    auto gather_send_buffer_func = KOKKOS_LAMBDA( const std::size_t i )
+    {
+        auto s = Slice_t::index_type::s( steering( i ) );
+        auto a = Slice_t::index_type::a( steering( i ) );
+        std::size_t slice_offset = s * slice.stride( 0 ) + a;
+        for ( std::size_t n = 0; n < num_comp; ++n )
+        {
+            send_buffer( i, n ) =
+                slice_data[slice_offset + n * Slice_t::vector_length];
+            periodic.modify_buffer( send_buffer, i, n );
+        }
+    };
+    Kokkos::RangePolicy<typename Halo_t::execution_space>
+        gather_send_buffer_policy( 0, halo.totalNumExport() );
+    Kokkos::parallel_for( "Cabana::gather::gather_send_buffer",
+                          gather_send_buffer_policy, gather_send_buffer_func );
+    Kokkos::fence();
+}
+template <class Halo_t, class Slice_t, class View_t>
+void recvBuffer( const Halo_t &halo, Slice_t &slice, const View_t &send_buffer )
+{
     // Allocate a receive buffer. Note this one is layout right so the
     // components are consecutive.
     Kokkos::View<typename Slice_t::value_type **, Kokkos::LayoutRight,
@@ -525,6 +515,89 @@ void gather( const Halo_t &halo, Slice_t &slice,
 
     // Barrier before completing to ensure synchronization.
     MPI_Barrier( halo.comm() );
+}
+
+} // namespace Impl
+
+//---------------------------------------------------------------------------//
+/*!
+  \brief Synchronously gather data from the local decomposition to the ghosts
+  using the halo forward communication plan. Slice version. This is a
+  uniquely-owned to multiply-owned communication.
+
+  A gather sends data from a locally owned elements to one or many ranks on
+  which they exist as ghosts. A locally owned element may be sent to as many
+  ranks as desired to be used as a ghost on those ranks. The value of the
+  element in the locally owned decomposition will be the value assigned to the
+  element in the ghosted decomposition.
+
+  \tparam Halo_t Halo type - must be a Halo.
+
+  \tparam Slice_t Slice type - must be a Slice.
+
+  \param halo The halo to use for the gather.
+
+  \param slice The Slice on which to perform the gather. The Slice should have
+  a size equivalent to halo.numGhost() + halo.numLocal(). The locally owned
+  elements are expected to appear first (i.e. in the first halo.numLocal()
+  elements) and the ghosted elements are expected to appear second (i.e. in
+  the next halo.numGhost() elements()).
+*/
+template <class Halo_t, class Slice_t, class Periodic_t>
+void gather( const Halo_t &halo, Slice_t &slice, const Periodic_t &periodic,
+             typename std::enable_if<( is_halo<Halo_t>::value &&
+                                       is_slice<Slice_t>::value ),
+                                     int>::type * = 0 )
+{
+    Impl::checkSize( halo, slice );
+
+    // Get the number of components in the slice.
+    std::size_t num_comp = 1;
+    for ( std::size_t d = 2; d < slice.rank(); ++d )
+        num_comp *= slice.extent( d );
+
+    // Get the raw slice data.
+    auto slice_data = slice.data();
+
+    // Allocate a send buffer. Note this one is layout right so the components
+    // are consecutive.
+    Kokkos::View<typename Slice_t::value_type **, Kokkos::LayoutRight,
+                 typename Halo_t::memory_space>
+        send_buffer(
+            Kokkos::ViewAllocateWithoutInitializing( "halo_send_buffer" ),
+            halo.totalNumExport(), num_comp );
+
+    Impl::sendBuffer( halo, slice, send_buffer, periodic );
+    Impl::recvBuffer( halo, slice, send_buffer );
+}
+
+template <class Halo_t, class Slice_t>
+void gather( const Halo_t &halo, Slice_t &slice,
+             typename std::enable_if<( is_halo<Halo_t>::value &&
+                                       is_slice<Slice_t>::value ),
+                                     int>::type * = 0 )
+{
+    // Check that the Slice is the right size.
+    Impl::checkSize( halo, slice );
+
+    // Get the number of components in the slice.
+    std::size_t num_comp = 1;
+    for ( std::size_t d = 2; d < slice.rank(); ++d )
+        num_comp *= slice.extent( d );
+
+    // Get the raw slice data.
+    auto slice_data = slice.data();
+
+    // Allocate a send buffer. Note this one is layout right so the components
+    // are consecutive.
+    Kokkos::View<typename Slice_t::value_type **, Kokkos::LayoutRight,
+                 typename Halo_t::memory_space>
+        send_buffer(
+            Kokkos::ViewAllocateWithoutInitializing( "halo_send_buffer" ),
+            halo.totalNumExport(), num_comp );
+
+    Impl::sendBuffer( halo, slice, send_buffer );
+    Impl::recvBuffer( halo, slice, send_buffer );
 }
 
 //---------------------------------------------------------------------------//
