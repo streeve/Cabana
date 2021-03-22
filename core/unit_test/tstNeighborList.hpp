@@ -266,6 +266,7 @@ TEST( TEST_CATEGORY, linked_cell_stencil_test ) { testLinkedCellStencil(); }
 //---------------------------------------------------------------------------//
 TEST( TEST_CATEGORY, verlet_list_full_test )
 {
+    testVerletListFull<Cabana::VerletLayout2D, Cabana::SerialOpTag>();
 #ifndef KOKKOS_ENABLE_OPENMPTARGET // FIXME_OPENMPTARGET
     testVerletListFull<Cabana::VerletLayoutCSR, Cabana::TeamOpTag>();
 #endif

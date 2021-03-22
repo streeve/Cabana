@@ -217,8 +217,8 @@ struct VerletListBuilder
     LinkedCellStencil<PositionValueType> cell_stencil;
 
     // Check to count or refill.
-    bool refill;
-    bool count;
+    bool refill_neigh;
+    bool count_neigh;
 
     // Maximum neighbors per particle
     std::size_t max_n;
@@ -237,8 +237,8 @@ struct VerletListBuilder
                         grid_max )
         , max_n( max_neigh )
     {
-        count = true;
-        refill = false;
+        count_neigh = true;
+        refill_neigh = false;
 
         // Create the count view.
         _data.counts =
@@ -264,10 +264,67 @@ struct VerletListBuilder
         rsqr = neighborhood_radius * neighborhood_radius;
     }
 
-    // Neighbor count team operator (only used for CSR lists).
+    // Neighbor count serial (only used for CSR lists).
+    KOKKOS_INLINE_FUNCTION
+    void count( const int cell ) const
+    {
+        // Get the stencil for this cell.
+        int imin, imax, jmin, jmax, kmin, kmax;
+        cell_stencil.getCells( cell, imin, imax, jmin, jmax, kmin, kmax );
+
+        // Operate on the particles in the bin.
+        std::size_t b_offset = bin_data_1d.binOffset( cell );
+        Kokkos::parallel_for(
+            Kokkos::RangePolicy<execution_space>( 0,
+                                                  bin_data_1d.binSize( cell ) ),
+            [&]( const int bi ) {
+                // Get the true particle id. The binned particle index is the
+                // league rank of the team.
+                std::size_t pid = linked_cell_list.permutation( bi + b_offset );
+
+                if ( ( pid >= pid_begin ) && ( pid < pid_end ) )
+                {
+                    // Cache the particle coordinates.
+                    double x_p = position( pid, 0 );
+                    double y_p = position( pid, 1 );
+                    double z_p = position( pid, 2 );
+
+                    // Loop over the cell stencil.
+                    int stencil_count = 0;
+                    for ( int i = imin; i < imax; ++i )
+                        for ( int j = jmin; j < jmax; ++j )
+                            for ( int k = kmin; k < kmax; ++k )
+                            {
+                                // See if we should actually check this box for
+                                // neighbors.
+                                if ( cell_stencil.grid.minDistanceToPoint(
+                                         x_p, y_p, z_p, i, j, k ) <= rsqr )
+                                {
+                                    std::size_t n_offset =
+                                        linked_cell_list.binOffset( i, j, k );
+                                    std::size_t num_n =
+                                        linked_cell_list.binSize( i, j, k );
+
+                                    // Check the particles in this bin to see if
+                                    // they are neighbors. If they are add to
+                                    // the count for this bin.
+                                    int cell_count = 0;
+                                    neighbor_reduce( cell, pid, x_p, y_p, z_p,
+                                                     n_offset, num_n,
+                                                     cell_count, BuildOpTag() );
+                                    stencil_count += cell_count;
+                                }
+                            }
+                    _data.counts( pid ) = stencil_count;
+                }
+            } );
+    }
+
     struct CountNeighborsTag
     {
     };
+
+    // Neighbor count team operator (only used for CSR lists).
     using CountNeighborsPolicy =
         Kokkos::TeamPolicy<execution_space, CountNeighborsTag,
                            Kokkos::IndexType<int>,
@@ -350,13 +407,25 @@ struct VerletListBuilder
             cell_count );
     }
 
+    // Neighbor count team loop (only used for CSR lists).
+    KOKKOS_INLINE_FUNCTION
+    void neighbor_reduce( const typename CountNeighborsPolicy::member_type team,
+                          const std::size_t pid, const double x_p,
+                          const double y_p, const double z_p,
+                          const int n_offset, const int num_n, int& cell_count,
+                          TeamOpTag ) const
+    {
+        neighbor_reduce( team, pid, x_p, y_p, z_p, n_offset, num_n, cell_count,
+                         SerialOpTag() );
+    }
+
     // Neighbor count serial loop (only used for CSR lists).
     KOKKOS_INLINE_FUNCTION
     void neighbor_reduce( const typename CountNeighborsPolicy::member_type,
                           const std::size_t pid, const double x_p,
                           const double y_p, const double z_p,
                           const int n_offset, const int num_n, int& cell_count,
-                          TeamOpTag ) const
+                          SerialOpTag ) const
     {
         for ( int n = 0; n < num_n; n++ )
             neighbor_kernel( pid, x_p, y_p, z_p, n_offset, n, cell_count );
@@ -416,7 +485,7 @@ struct VerletListBuilder
     {
         if ( max_n > 0 )
         {
-            count = false;
+            count_neigh = false;
 
             _data.neighbors = Kokkos::View<int**, memory_space>(
                 Kokkos::ViewAllocateWithoutInitializing( "neighbors" ),
@@ -470,10 +539,10 @@ struct VerletListBuilder
         Kokkos::fence();
 
         // Reallocate the neighbor list if previous size is exceeded.
-        if ( count or ( std::size_t )
-                              max_num_neighbor > _data.neighbors.extent( 1 ) )
+        if ( count_neigh or
+             ( std::size_t ) max_num_neighbor > _data.neighbors.extent( 1 ) )
         {
-            refill = true;
+            refill_neigh = true;
             Kokkos::deep_copy( _data.counts, 0 );
             _data.neighbors = Kokkos::View<int**, memory_space>(
                 Kokkos::ViewAllocateWithoutInitializing( "neighbors" ),
@@ -481,10 +550,60 @@ struct VerletListBuilder
         }
     }
 
-    // Neighbor count team operator.
     struct FillNeighborsTag
     {
     };
+
+    // Neighbor fill serial.
+    KOKKOS_INLINE_FUNCTION
+    void fill( const int cell ) const
+    {
+        // Get the stencil for this cell.
+        int imin, imax, jmin, jmax, kmin, kmax;
+        cell_stencil.getCells( cell, imin, imax, jmin, jmax, kmin, kmax );
+
+        // Operate on the particles in the bin.
+        std::size_t b_offset = bin_data_1d.binOffset( cell );
+        Kokkos::parallel_for(
+            Kokkos::RangePolicy<execution_space>( 0,
+                                                  bin_data_1d.binSize( cell ) ),
+            KOKKOS_LAMBDA( const int bi ) {
+                // Get the true particle id. The binned particle index is the
+                // league rank of the team.
+                std::size_t pid = linked_cell_list.permutation( bi + b_offset );
+
+                if ( ( pid >= pid_begin ) && ( pid < pid_end ) )
+                {
+                    // Cache the particle coordinates.
+                    double x_p = position( pid, 0 );
+                    double y_p = position( pid, 1 );
+                    double z_p = position( pid, 2 );
+
+                    // Loop over the cell stencil.
+                    for ( int i = imin; i < imax; ++i )
+                        for ( int j = jmin; j < jmax; ++j )
+                            for ( int k = kmin; k < kmax; ++k )
+                            {
+                                // See if we should actually check this box for
+                                // neighbors.
+                                if ( cell_stencil.grid.minDistanceToPoint(
+                                         x_p, y_p, z_p, i, j, k ) <= rsqr )
+                                {
+                                    // Check the particles in this bin to see if
+                                    // they are neighbors.
+                                    std::size_t n_offset =
+                                        linked_cell_list.binOffset( i, j, k );
+                                    int num_n =
+                                        linked_cell_list.binSize( i, j, k );
+                                    neighbor_for( pid, x_p, y_p, z_p, n_offset,
+                                                  num_n, BuildOpTag() );
+                                }
+                            }
+                }
+            } );
+    }
+
+    // Neighbor fill team operator.
     using FillNeighborsPolicy =
         Kokkos::TeamPolicy<execution_space, FillNeighborsTag,
                            Kokkos::IndexType<int>,
@@ -556,7 +675,7 @@ struct VerletListBuilder
             } );
     }
 
-    // Neighbor fill serial loop.
+    // Neighbor fill team loop.
     KOKKOS_INLINE_FUNCTION
     void neighbor_for( const typename FillNeighborsPolicy::member_type team,
                        const std::size_t pid, const double x_p,
@@ -567,6 +686,20 @@ struct VerletListBuilder
             Kokkos::single( Kokkos::PerThread( team ), [&]() {
                 neighbor_kernel( pid, x_p, y_p, z_p, n_offset, n );
             } );
+    }
+
+    // Neighbor fill serial loop.
+    KOKKOS_INLINE_FUNCTION
+    void neighbor_for( const std::size_t pid, const double x_p,
+                       const double y_p, const double z_p, const int n_offset,
+                       const int num_n, SerialOpTag ) const
+    {
+        // Kokkos::parallel_for(
+        //    Kokkos::RangePolicy<execution_space>( 0, num_n ),
+        //    KOKKOS_LAMBDA( const int n ) {
+        for ( int n = 0; n < num_n; n++ )
+            neighbor_kernel( pid, x_p, y_p, z_p, n_offset, n );
+        //    } );
     }
 
     // Neighbor fill kernel.
@@ -622,8 +755,8 @@ struct VerletListBuilder
 
   \tparam LayoutTag Tag indicating whether to use a CSR or 2D data layout.
 
-  \tparam BuildTag Tag indicating whether to use hierarchical team or team
-  vector parallelism when building neighbor lists.
+  \tparam BuildTag Tag indicating whether to use serial, hierarchical team, or
+  team vector parallelism when building neighbor lists.
 
   Neighbor list implementation most appropriate for somewhat regularly
   distributed particles due to the use of a Cartesian grid.
@@ -708,20 +841,13 @@ class VerletList
         // For CSR lists, we count, then fill neighbors. For 2D lists, we
         // count and fill at the same time, unless the array size is exceeded,
         // at which point only counting is continued to reallocate and refill.
-        typename builder_type::FillNeighborsPolicy fill_policy(
-            builder.bin_data_1d.numBin(), Kokkos::AUTO, 4 );
-        if ( builder.count )
+        if ( builder.count_neigh )
         {
-            typename builder_type::CountNeighborsPolicy count_policy(
-                builder.bin_data_1d.numBin(), Kokkos::AUTO, 4 );
-            Kokkos::parallel_for( "Cabana::VerletList::count_neighbors",
-                                  count_policy, builder );
         }
         else
         {
             builder.processCounts( LayoutTag() );
-            Kokkos::parallel_for( "Cabana::VerletList::fill_neighbors",
-                                  fill_policy, builder );
+            fill( builder, BuildTag() );
         }
         Kokkos::fence();
 
@@ -731,15 +857,70 @@ class VerletList
 
         // For each particle in the range fill (or refill) its part of the
         // neighbor list.
-        if ( builder.count or builder.refill )
+        if ( builder.count_neigh or builder.refill_neigh )
         {
-            Kokkos::parallel_for( "Cabana::VerletList::fill_neighbors",
-                                  fill_policy, builder );
+            fill( builder, BuildTag() );
             Kokkos::fence();
         }
 
         // Get the data from the builder.
         _data = builder._data;
+    }
+
+    template <class BuilderType>
+    void count( BuilderType builder, SerialOpTag )
+    {
+        for ( int b = 0; b < builder.bin_data_1d.numBin(); ++b )
+            builder.count( b );
+    }
+
+    template <class BuilderType>
+    void count( BuilderType builder, TeamOpTag )
+    {
+        countImpl( builder );
+    }
+
+    template <class BuilderType>
+    void count( BuilderType builder, TeamVectorOpTag )
+    {
+        countImpl( builder );
+    };
+
+    template <class BuilderType>
+    void countImpl( BuilderType builder )
+    {
+        typename BuilderType::CountNeighborsPolicy count_policy(
+            builder.bin_data_1d.numBin(), Kokkos::AUTO, 4 );
+        Kokkos::parallel_for( "Cabana::VerletList::count_neighbors",
+                              count_policy, builder );
+    }
+
+    template <class BuilderType>
+    void fill( BuilderType builder, SerialOpTag )
+    {
+        for ( int b = 0; b < builder.bin_data_1d.numBin(); ++b )
+            builder.fill( b );
+    }
+
+    template <class BuilderType>
+    void fill( BuilderType builder, TeamOpTag )
+    {
+        fillImpl( builder );
+    }
+
+    template <class BuilderType>
+    void fill( BuilderType builder, TeamVectorOpTag )
+    {
+        fillImpl( builder );
+    };
+
+    template <class BuilderType>
+    void fillImpl( BuilderType builder )
+    {
+        typename BuilderType::FillNeighborsPolicy fill_policy(
+            builder.bin_data_1d.numBin(), Kokkos::AUTO, 4 );
+        Kokkos::parallel_for( "Cabana::VerletList::fill_neighbors", fill_policy,
+                              builder );
     }
 };
 
