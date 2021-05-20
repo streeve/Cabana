@@ -41,6 +41,7 @@ set(MPI_TESTS
   CommunicationPlan
   Distributor
   Halo
+  XyzWriter
   )
 
 if(Cabana_ENABLE_HDF5)

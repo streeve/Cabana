@@ -37,6 +37,7 @@
 #include <Cabana_Utils.hpp>
 #include <Cabana_VerletList.hpp>
 #include <Cabana_Version.hpp>
+#include <Cabana_XyzWriter.hpp>
 
 #ifdef Cabana_ENABLE_MPI
 #include <Cabana_Distributor.hpp>
