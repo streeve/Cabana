@@ -1,7 +1,8 @@
 var searchData=
 [
-  ['teamneighboroptag',['TeamNeighborOpTag',['../classCabana_1_1TeamNeighborOpTag.html',1,'Cabana']]],
-  ['testneighborlist',['TestNeighborList',['../structTest_1_1TestNeighborList.html',1,'Test']]],
-  ['tuple',['Tuple',['../structCabana_1_1Tuple.html',1,'Cabana']]],
-  ['tuple_3c_20membertypes_3c_20types_2e_2e_2e_3e_20_3e',['Tuple&lt; MemberTypes&lt; Types...&gt; &gt;',['../structCabana_1_1Tuple_3_01MemberTypes_3_01Types_8_8_8_4_01_4.html',1,'Cabana']]]
+  ['randomaccessmemory_755',['RandomAccessMemory',['../structCabana_1_1RandomAccessMemory.html',1,'Cabana']]],
+  ['referenceconjugategradient_756',['ReferenceConjugateGradient',['../classCajita_1_1ReferenceConjugateGradient.html',1,'Cajita']]],
+  ['referencestructuredsolver_757',['ReferenceStructuredSolver',['../classCajita_1_1ReferenceStructuredSolver.html',1,'Cajita']]],
+  ['remove_5fcvref_758',['remove_cvref',['../structCabana_1_1Experimental_1_1stdcxx20_1_1remove__cvref.html',1,'Cabana::Experimental::stdcxx20']]],
+  ['replace_759',['Replace',['../structCajita_1_1ScatterReduce_1_1Replace.html',1,'Cajita::ScatterReduce']]]
 ];

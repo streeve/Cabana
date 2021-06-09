@@ -1,6 +1,7 @@
 var searchData=
 [
-  ['fillneighborstag',['FillNeighborsTag',['../structCabana_1_1Impl_1_1VerletListBuilder_1_1FillNeighborsTag.html',1,'Cabana::Impl::VerletListBuilder']]],
-  ['foodata',['FooData',['../structTest_1_1FooData.html',1,'Test']]],
-  ['fullneighbortag',['FullNeighborTag',['../classCabana_1_1FullNeighborTag.html',1,'Cabana']]]
+  ['edge_540',['Edge',['../structCajita_1_1Edge.html',1,'Cajita']]],
+  ['edge_3c_20dim_3a_3ai_20_3e_541',['Edge&lt; Dim::I &gt;',['../structCajita_1_1Edge_3_01Dim_1_1I_01_4.html',1,'Cajita']]],
+  ['edge_3c_20dim_3a_3aj_20_3e_542',['Edge&lt; Dim::J &gt;',['../structCajita_1_1Edge_3_01Dim_1_1J_01_4.html',1,'Cajita']]],
+  ['edge_3c_20dim_3a_3ak_20_3e_543',['Edge&lt; Dim::K &gt;',['../structCajita_1_1Edge_3_01Dim_1_1K_01_4.html',1,'Cajita']]]
 ];

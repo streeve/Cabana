@@ -1,10 +1,12 @@
 var searchData=
 [
-  ['makeindexsequence',['MakeIndexSequence',['../structCabana_1_1Impl_1_1MakeIndexSequence.html',1,'Cabana::Impl']]],
-  ['makeindexsequence_3c_201_20_3e',['MakeIndexSequence&lt; 1 &gt;',['../structCabana_1_1Impl_1_1MakeIndexSequence_3_011_01_4.html',1,'Cabana::Impl']]],
-  ['membertypeatindex',['MemberTypeAtIndex',['../structCabana_1_1MemberTypeAtIndex.html',1,'Cabana']]],
-  ['membertypeatindex_3c_20i_2c_20membertypes_3c_20types_2e_2e_2e_3e_20_3e',['MemberTypeAtIndex&lt; I, MemberTypes&lt; Types...&gt; &gt;',['../structCabana_1_1MemberTypeAtIndex_3_01I_00_01MemberTypes_3_01Types_8_8_8_4_01_4.html',1,'Cabana']]],
-  ['membertypeatindeximpl',['MemberTypeAtIndexImpl',['../structCabana_1_1MemberTypeAtIndexImpl.html',1,'Cabana']]],
-  ['membertypeatindeximpl_3c_200_2c_20t_2c_20types_2e_2e_2e_3e',['MemberTypeAtIndexImpl&lt; 0, T, Types...&gt;',['../structCabana_1_1MemberTypeAtIndexImpl_3_010_00_01T_00_01Types_8_8_8_4.html',1,'Cabana']]],
-  ['membertypes',['MemberTypes',['../structCabana_1_1MemberTypes.html',1,'Cabana']]]
+  ['kernel1_683',['Kernel1',['../structCajita_1_1ReferenceConjugateGradient_1_1Kernel1.html',1,'Cajita::ReferenceConjugateGradient']]],
+  ['kernel2_684',['Kernel2',['../structCajita_1_1ReferenceConjugateGradient_1_1Kernel2.html',1,'Cajita::ReferenceConjugateGradient']]],
+  ['kokkosdatatype_685',['KokkosDataType',['../structCabana_1_1Impl_1_1KokkosDataType.html',1,'Cabana::Impl']]],
+  ['kokkosdatatypeimpl_686',['KokkosDataTypeImpl',['../structCabana_1_1Impl_1_1KokkosDataTypeImpl.html',1,'Cabana::Impl']]],
+  ['kokkosdatatypeimpl_3c_20t_2c_200_2c_20vectorlength_2c_20stride_20_3e_687',['KokkosDataTypeImpl&lt; T, 0, VectorLength, Stride &gt;',['../structCabana_1_1Impl_1_1KokkosDataTypeImpl_3_01T_00_010_00_01VectorLength_00_01Stride_01_4.html',1,'Cabana::Impl']]],
+  ['kokkosdatatypeimpl_3c_20t_2c_201_2c_20vectorlength_2c_20stride_20_3e_688',['KokkosDataTypeImpl&lt; T, 1, VectorLength, Stride &gt;',['../structCabana_1_1Impl_1_1KokkosDataTypeImpl_3_01T_00_011_00_01VectorLength_00_01Stride_01_4.html',1,'Cabana::Impl']]],
+  ['kokkosdatatypeimpl_3c_20t_2c_202_2c_20vectorlength_2c_20stride_20_3e_689',['KokkosDataTypeImpl&lt; T, 2, VectorLength, Stride &gt;',['../structCabana_1_1Impl_1_1KokkosDataTypeImpl_3_01T_00_012_00_01VectorLength_00_01Stride_01_4.html',1,'Cabana::Impl']]],
+  ['kokkosdatatypeimpl_3c_20t_2c_203_2c_20vectorlength_2c_20stride_20_3e_690',['KokkosDataTypeImpl&lt; T, 3, VectorLength, Stride &gt;',['../structCabana_1_1Impl_1_1KokkosDataTypeImpl_3_01T_00_013_00_01VectorLength_00_01Stride_01_4.html',1,'Cabana::Impl']]],
+  ['kokkosviewwrapper_691',['KokkosViewWrapper',['../structCabana_1_1Impl_1_1KokkosViewWrapper.html',1,'Cabana::Impl']]]
 ];
