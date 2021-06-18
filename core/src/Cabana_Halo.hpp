@@ -205,6 +205,7 @@ struct is_halo : public is_halo_impl<typename std::remove_cv<T>::type>::type
 
 namespace Impl
 {
+//! \cond Impl
 
 //---------------------------------------------------------------------------//
 // Check that the AoSoA/slice is the right size.
@@ -471,6 +472,7 @@ void sendReceiveExtract( const Halo_t& halo, Slice_t& slice,
     MPI_Barrier( halo.comm() );
 }
 
+//! \endcond
 } // namespace Impl
 
 //---------------------------------------------------------------------------//
