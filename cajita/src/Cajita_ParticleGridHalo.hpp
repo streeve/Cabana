@@ -432,25 +432,24 @@ class ParticleGridHalo
   \tparam ParticleContainer AoSoA type.
 
   \param local_grid The local grid for creating halo and periodicity.
-  \param particles The particle AoSoA, containing positions.
+  \param positions Particle positions.
+  \param particles The particle AoSoA.
   \param min_halo_width Number of halo mesh widths to include for ghosting.
   \param max_export_guess The allocation size for halo export ranks, IDs, and
   periodic shifts.
 
   \return ParticleGridHalo containing Halo and PeriodicModify.
 */
-template <class LocalGridType, class ParticleContainer,
-          std::size_t PositionIndex>
+template <int PositionIndex, class LocalGridType, class ParticleContainer,
+          class PositionSliceType>
 auto createParticleGridHalo(
-    const LocalGridType& local_grid, const ParticleContainer& particles,
-    std::integral_constant<std::size_t, PositionIndex>,
+    const LocalGridType& local_grid, const PositionSliceType positions,
     const int min_halo_width, const int max_export_guess = 0,
     typename std::enable_if<Cabana::is_aosoa<ParticleContainer>::value,
                             int>::type* = 0 )
 {
     using device_type = typename ParticleContainer::device_type;
 
-    auto positions = Cabana::slice<PositionIndex>( particles );
     auto pair = Impl::getHaloIDs( local_grid, positions, min_halo_width,
                                   max_export_guess );
     using halo_type = Cabana::Halo<device_type>;

@@ -481,6 +481,40 @@ createLocalGrid( const std::shared_ptr<GlobalGrid<MeshType>>& global_grid,
 
 //---------------------------------------------------------------------------//
 
+namespace Impl
+{ //! \cond Impl
+
+// Build neighbor topology of 27 nearest 3D neighbors. Some of the ranks in
+// this list may be invalid.
+template <class LocalGridType, std::size_t NSD = LocalGridType::num_space_dim>
+std::enable_if_t<3 == NSD, std::vector<int>>
+getTopology( const LocalGridType& local_grid )
+{
+    std::vector<int> topology( 27, -1 );
+    int nr = 0;
+    for ( int k = -1; k < 2; ++k )
+        for ( int j = -1; j < 2; ++j )
+            for ( int i = -1; i < 2; ++i, ++nr )
+                topology[nr] = local_grid.neighborRank( i, j, k );
+    return topology;
+}
+
+// Build neighbor topology of 8 nearest 2D neighbors. Some of the ranks in
+// this list may be invalid.
+template <class LocalGridType, std::size_t NSD = LocalGridType::num_space_dim>
+std::enable_if_t<2 == NSD, std::vector<int>>
+getTopology( const LocalGridType& local_grid )
+{
+    std::vector<int> topology( 9, -1 );
+    int nr = 0;
+    for ( int j = -1; j < 2; ++j )
+        for ( int i = -1; i < 2; ++i, ++nr )
+            topology[nr] = local_grid.neighborRank( i, j );
+    return topology;
+}
+//! \endcond
+} // namespace Impl
+
 } // end namespace Cajita
 
 //---------------------------------------------------------------------------//

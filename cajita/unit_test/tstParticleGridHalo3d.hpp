@@ -9,6 +9,28 @@
  * SPDX-License-Identifier: BSD-3-Clause                                    *
  ****************************************************************************/
 
+#include <Cabana_AoSoA.hpp>
+#include <Cabana_DeepCopy.hpp>
+#include <Cabana_Halo.hpp>
+
+#include <Cajita_GlobalGrid.hpp>
+#include <Cajita_GlobalMesh.hpp>
+#include <Cajita_LocalGrid.hpp>
+#include <Cajita_LocalMesh.hpp>
+#include <Cajita_ManualPartitioner.hpp>
+#include <Cajita_ParticleGridHalo.hpp>
+#include <Cajita_Types.hpp>
+
+#include <Kokkos_Core.hpp>
+
+#include <gtest/gtest.h>
+
+#include <mpi.h>
+
+#include <algorithm>
+#include <memory>
+#include <vector>
+
 //---------------------------------------------------------------------------//
 void testGather( const int halo_width, const int test_halo_width,
                  const int test_type )
@@ -20,19 +42,17 @@ void testGather( const int halo_width, const int test_halo_width,
 
     using DataTypes = Cabana::MemberTypes<int, double[3]>;
     Cabana::AoSoA<DataTypes, Kokkos::HostSpace> initial( "initial", num_data );
-    Cabana::deep_copy( initial, data_host );
-    auto pos_initial = Cabana::slice<1>( initial );
-
     // Copy to the device.
     Cabana::AoSoA<DataTypes, TEST_MEMSPACE> data_src( "data_src", num_data );
     Cabana::deep_copy( data_src, data_host );
+    Cabana::deep_copy( initial, data_host );
+    auto pos_src = Cabana::slice<1>( data_src );
 
     if ( test_type == 0 )
     {
         // Do the gather with an AoAoA.
-        auto grid_halo = Cabana::createGridHalo(
-            local_grid, data_src, std::integral_constant<std::size_t, 1>(),
-            test_halo_width );
+        auto grid_halo = Cajita::createParticleGridHalo<1>(
+            local_grid, pos_src, data_src, test_halo_width );
         gridGather( grid_halo, data_src );
 
         data_host.resize( data_src.size() );
@@ -41,9 +61,8 @@ void testGather( const int halo_width, const int test_halo_width,
     else if ( test_type == 1 )
     {
         // Create the halo with a slice.
-        auto pos_src = Cabana::slice<1>( data_src );
-        auto grid_halo =
-            Cabana::createGridHalo( local_grid, pos_src, test_halo_width );
+        auto grid_halo = Cajita::createParticleGridHalo( local_grid, pos_src,
+                                                         test_halo_width );
 
         // Resize (cannot resize slice).
         auto halo = grid_halo.getHalo();
@@ -58,6 +77,7 @@ void testGather( const int halo_width, const int test_halo_width,
     }
 
     // Check the results.
+    auto pos_initial = Cabana::slice<1>( initial );
     int new_num_data = data_host.size();
     auto pos_host = Cabana::slice<1>( data_host );
     std::cout << num_data << " " << new_num_data << std::endl;
