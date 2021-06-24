@@ -23,6 +23,8 @@
 
 #include <Kokkos_Core.hpp>
 
+#include <grid_unit_test.hpp>
+
 #include <gtest/gtest.h>
 
 #include <mpi.h>
@@ -175,7 +177,7 @@ void migrateTest( const GridType global_grid, const double cell_size,
                 EXPECT_DOUBLE_EQ( coords( p, d ), coords_initial( p, d ) );
         }
     }
-} // namespace Test
+}
 
 //---------------------------------------------------------------------------//
 // The objective of this test is to check how the redistribution works when we
@@ -260,24 +262,6 @@ void localOnlyTest( const GridType global_grid, const double cell_size )
             EXPECT_GE( coords( p, d ), local_low[d] );
             EXPECT_LE( coords( p, d ), local_high[d] );
         }
-}
-
-auto createGrid( const Cajita::ManualBlockPartitioner<3>& partitioner,
-                 const std::array<bool, 3>& is_periodic,
-                 const double cell_size )
-{
-    // Create the global grid.
-    std::array<int, 3> global_num_cell = { 18, 15, 9 };
-    std::array<double, 3> global_low_corner = { 1.2, 3.3, -2.8 };
-    std::array<double, 3> global_high_corner = {
-        global_low_corner[0] + cell_size * global_num_cell[0],
-        global_low_corner[1] + cell_size * global_num_cell[1],
-        global_low_corner[2] + cell_size * global_num_cell[2] };
-    auto global_mesh = Cajita::createUniformGlobalMesh(
-        global_low_corner, global_high_corner, global_num_cell );
-    auto global_grid = Cajita::createGlobalGrid( MPI_COMM_WORLD, global_mesh,
-                                                 is_periodic, partitioner );
-    return global_grid;
 }
 
 void testParticleGridMigrate( const bool periodic )

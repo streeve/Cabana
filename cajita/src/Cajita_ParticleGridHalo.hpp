@@ -428,27 +428,25 @@ class ParticleGridHalo
   bounds of a Cajita grid and taking periodic boundaries into account. AoSoA
   variant.
 
+  \tparam PositionIndex Particle position index within the AoSoA.
   \tparam LocalGridType Cajita LocalGrid type.
   \tparam ParticleContainer AoSoA type.
 
   \param local_grid The local grid for creating halo and periodicity.
   \param positions Particle positions.
-  \param particles The particle AoSoA.
   \param min_halo_width Number of halo mesh widths to include for ghosting.
   \param max_export_guess The allocation size for halo export ranks, IDs, and
   periodic shifts.
 
   \return ParticleGridHalo containing Halo and PeriodicModify.
 */
-template <int PositionIndex, class LocalGridType, class ParticleContainer,
-          class PositionSliceType>
-auto createParticleGridHalo(
-    const LocalGridType& local_grid, const PositionSliceType positions,
-    const int min_halo_width, const int max_export_guess = 0,
-    typename std::enable_if<Cabana::is_aosoa<ParticleContainer>::value,
-                            int>::type* = 0 )
+template <int PositionIndex, class LocalGridType, class PositionSliceType>
+auto createParticleGridHalo( const LocalGridType& local_grid,
+                             const PositionSliceType positions,
+                             const int min_halo_width,
+                             const int max_export_guess = 0 )
 {
-    using device_type = typename ParticleContainer::device_type;
+    using device_type = typename PositionSliceType::device_type;
 
     auto pair = Impl::getHaloIDs( local_grid, positions, min_halo_width,
                                   max_export_guess );
