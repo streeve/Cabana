@@ -109,17 +109,18 @@ void testVerletListFull()
     // Create the AoSoA and fill with random particle positions.
     NeighborListTestData test_data;
     auto position = Cabana::slice<0>( test_data.aosoa );
+    using slice_type = typename aosoa_type::template member_slice_type<0>;
 
     // Create the neighbor list.
     {
-        Cabana::VerletList<TEST_MEMSPACE, Cabana::FullNeighborTag, LayoutTag,
-                           BuildTag>
+        Cabana::VerletList<TEST_MEMSPACE, slice_type, Cabana::FullNeighborTag,
+                           LayoutTag, BuildTag>
             nlist_full( position, 0, position.size(), test_data.test_radius,
                         test_data.cell_size_ratio, test_data.grid_min,
                         test_data.grid_max );
         // Test default construction.
-        Cabana::VerletList<TEST_MEMSPACE, Cabana::FullNeighborTag, LayoutTag,
-                           BuildTag>
+        Cabana::VerletList<TEST_MEMSPACE, slice_type, Cabana::FullNeighborTag,
+                           LayoutTag, BuildTag>
             nlist;
 
         nlist = nlist_full;
@@ -136,8 +137,8 @@ void testVerletListFull()
     }
     // Check again, building with a large array allocation size
     {
-        Cabana::VerletList<TEST_MEMSPACE, Cabana::FullNeighborTag, LayoutTag,
-                           BuildTag>
+        Cabana::VerletList<TEST_MEMSPACE, slice_type, Cabana::FullNeighborTag,
+                           LayoutTag, BuildTag>
             nlist_max( position, 0, position.size(), test_data.test_radius,
                        test_data.cell_size_ratio, test_data.grid_min,
                        test_data.grid_max, 100 );
@@ -146,8 +147,8 @@ void testVerletListFull()
     }
     // Check again, building with a small array allocation size (refill)
     {
-        Cabana::VerletList<TEST_MEMSPACE, Cabana::FullNeighborTag, LayoutTag,
-                           BuildTag>
+        Cabana::VerletList<TEST_MEMSPACE, slice_type, Cabana::FullNeighborTag,
+                           LayoutTag, BuildTag>
             nlist_max2( position, 0, position.size(), test_data.test_radius,
                         test_data.cell_size_ratio, test_data.grid_min,
                         test_data.grid_max, 2 );
@@ -163,11 +164,12 @@ void testVerletListHalf()
     // Create the AoSoA and fill with random particle positions.
     NeighborListTestData test_data;
     auto position = Cabana::slice<0>( test_data.aosoa );
+    using slice_type = typename aosoa_type::template member_slice_type<0>;
 
     // Create the neighbor list.
     {
-        Cabana::VerletList<TEST_MEMSPACE, Cabana::HalfNeighborTag, LayoutTag,
-                           BuildTag>
+        Cabana::VerletList<TEST_MEMSPACE, slice_type, Cabana::HalfNeighborTag,
+                           LayoutTag, BuildTag>
             nlist( position, 0, position.size(), test_data.test_radius,
                    test_data.cell_size_ratio, test_data.grid_min,
                    test_data.grid_max );
@@ -178,8 +180,8 @@ void testVerletListHalf()
     }
     // Check again, building with a large array allocation size
     {
-        Cabana::VerletList<TEST_MEMSPACE, Cabana::HalfNeighborTag, LayoutTag,
-                           BuildTag>
+        Cabana::VerletList<TEST_MEMSPACE, slice_type, Cabana::HalfNeighborTag,
+                           LayoutTag, BuildTag>
             nlist_max( position, 0, position.size(), test_data.test_radius,
                        test_data.cell_size_ratio, test_data.grid_min,
                        test_data.grid_max, 100 );
@@ -188,8 +190,8 @@ void testVerletListHalf()
     }
     // Check again, building with a small array allocation size (refill)
     {
-        Cabana::VerletList<TEST_MEMSPACE, Cabana::HalfNeighborTag, LayoutTag,
-                           BuildTag>
+        Cabana::VerletList<TEST_MEMSPACE, slice_type, Cabana::HalfNeighborTag,
+                           LayoutTag, BuildTag>
             nlist_max2( position, 0, position.size(), test_data.test_radius,
                         test_data.cell_size_ratio, test_data.grid_min,
                         test_data.grid_max, 2 );
@@ -205,10 +207,11 @@ void testVerletListFullPartialRange()
     // Create the AoSoA and fill with random particle positions.
     NeighborListTestData test_data;
     auto position = Cabana::slice<0>( test_data.aosoa );
+    using slice_type = typename aosoa_type::template member_slice_type<0>;
 
     // Create the neighbor list.
-    Cabana::VerletList<TEST_MEMSPACE, Cabana::FullNeighborTag, LayoutTag,
-                       BuildTag>
+    Cabana::VerletList<TEST_MEMSPACE, slice_type, Cabana::FullNeighborTag,
+                       LayoutTag, BuildTag>
         nlist( position, 0, test_data.num_ignore, test_data.test_radius,
                test_data.cell_size_ratio, test_data.grid_min,
                test_data.grid_max );
@@ -226,10 +229,12 @@ void testNeighborParallelFor()
     // Create the AoSoA and fill with random particle positions.
     NeighborListTestData test_data;
     auto position = Cabana::slice<0>( test_data.aosoa );
+    using slice_type = typename aosoa_type::template member_slice_type<0>;
 
     // Create the neighbor list.
-    using ListType = Cabana::VerletList<TEST_MEMSPACE, Cabana::FullNeighborTag,
-                                        LayoutTag, Cabana::TeamOpTag>;
+    using ListType =
+        Cabana::VerletList<TEST_MEMSPACE, slice_type, Cabana::FullNeighborTag,
+                           LayoutTag, Cabana::TeamOpTag>;
     ListType nlist( position, 0, position.size(), test_data.test_radius,
                     test_data.cell_size_ratio, test_data.grid_min,
                     test_data.grid_max );
@@ -261,10 +266,12 @@ void testNeighborParallelReduce()
     // Create the AoSoA and fill with random particle positions.
     NeighborListTestData test_data;
     auto position = Cabana::slice<0>( test_data.aosoa );
+    using slice_type = typename aosoa_type::template member_slice_type<0>;
 
     // Create the neighbor list.
-    using ListType = Cabana::VerletList<TEST_MEMSPACE, Cabana::FullNeighborTag,
-                                        LayoutTag, Cabana::TeamOpTag>;
+    using ListType =
+        Cabana::VerletList<TEST_MEMSPACE, slice_type, Cabana::FullNeighborTag,
+                           LayoutTag, Cabana::TeamOpTag>;
     ListType nlist( position, 0, position.size(), test_data.test_radius,
                     test_data.cell_size_ratio, test_data.grid_min,
                     test_data.grid_max );
