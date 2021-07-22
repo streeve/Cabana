@@ -156,6 +156,120 @@ simulations with the `heFFTe` library [@heffte:2019]) and preconditioners and
 solvers are provided for various flavors of PIC through the `HYPRE` library
 [@hypre:2002].
 
+## Exascale design patterns
+
+`Cabana` has been designed for performance across both multi and many-core
+systems (CPU and GPU). Often a focus on GPU performance also results in
+relatively good CPU performance (while the reverse is often not true); however,
+one notable exception is the relative efficiency of threaded atomic operations
+(hardware support for avoiding data race conditions) on each type of device.
+`Kokkos` provides support for this discrepancy through the
+`Kokkos::ScatterView`, where by default the GPU uses atomic memory and the CPU
+uses data duplication, which is being increasingly relied upon throughout
+`Cabana`. `Cabana` also primarily encourages a GPU-resident strategy: data is
+created and computed on the device without intermittent copies to the host (to
+whatever degree possible). This is in contrast to an GPU-offload approach (which
+is still possible through the library).
+
+### Separating memory and execution
+
+In creating `Cabana`, optimal design patterns have emerged build application
+functionality. The first such pattern is the separation of memory and execution
+spaces, which are general `Kokkos` concepts for where data resides and where
+parallel execution takes place (host or device). The `Kokkos` `Device` combines
+both in one object, leading to one design strategy in the following code:
+
+    template<Device>
+    struct Foo
+    {
+        View<typename Device::memory_space> _device_data;
+
+        void bar()
+        {
+            parallel_for<typename Device::execution_space>( _device_data );
+        }
+    };
+
+The class is created such that the same memory and execution space must always
+be used to store and operate on the data. In contrast, `Cabana` has moved to the
+following design:
+
+    template<MemorySpace>
+    struct Foo
+    {
+        View<MemorySpace> _device_data;
+
+        template<class ExecutionSpace>
+        void bar( const ExecutionSpace& exec_space )
+        {
+            static_assert( is_accessible_from<MemorySpace, ExecutionSpace>{}, "" );
+
+            parallel_for( exec_space, _device_data );
+        }
+    };
+
+Here, the data in the class is stored in a specific memory space and,
+separately, when the user chooses to operate on the data in parallel, can choose
+any execution space that is compatible with that memory. This greatly increases
+the flexibility of the class, first for easily using varying parallel threading
+backends on a given device, e.g. both `OpenMP-Target` and vendor-specific
+backends. This also extends to easier adoption of newer execution options, such
+as `CUDA` streams. In addition, this makes the class amenable to both separate
+host or device computation, as well as an offload model, where a new overload
+for copying the data to the class memory space is all that is required.
+
+<!--- ### Coalesced communication
+
+Overall, `Cabana` attempts to minimize the number of separate kernel launches
+and maximize the work done in a given kernel in order to optimize GPU
+performance. This is particularly relevant for GPU-aware MPI communication.
+-->
+
+### Enabling kernel fusion
+
+A more specific design pattern that enables not only flexibility, but also
+significant performance improvements in some cases, is support for kernel
+fusion. As an example, below is a straightforward implementation for a
+simulation that needs particle-grid interpolation for multiple physical
+entities:
+
+    // Create halo exchange pattern for an individual array.
+    auto halo = Cajita::createHalo( field, ... );
+
+    // Interpolate scalar point gradient value to the grid in a kernel and MPI scatter.
+    auto val_1 = Cajita::createScalarGradientP2G( ... );
+    Cajita::p2g( val_1, ..., halo, ...);
+
+    // Interpolate tensor point divergence value to the grid in a kernel and MPI scatter.
+    auto val_2 = Cajita::createTensorDivergenceP2G( ... );
+    Cajita::p2g( val_2, ..., halo, ... );
+
+Often, the time to launch each kernel and communicate the data (in a distributed
+computing setting) is significant as compared to the time for the parallel
+kernel itself. In the above case, each function call requires a separate
+parallel kernel and scatter communication kernel. The following reimplementation
+can, in some cases, improve performance considerably:
+
+    // Create fused halo exchange pattern.
+    auto fused_halo = Cajita::createHalo( ..., *field_1, *field_2 );
+
+    // Fused local interpolation of both properties.
+    parallel_for( exec_space, num_point, points, 
+                  LAMBDA( const Particle& p ){
+            Cajita::SplineData<float,3,Cajita::Node> sd;
+            Cajita::evaluateSpline( p.x );
+            Cajita::P2G::gradient( sd, p.scalar_field, field_1 );
+            Cajita::P2G::divergence( sd, p.tensor_field, field_2 ); });
+
+    // Fused MPI scatter.
+    fused_halo.scatter( exec_space, Cajita::ScatterReduce::Sum, field_1, field_2 );
+
+This requires that `Cabana` have the ability to combine multiple grid properties
+within a single communication pattern through a variadic list. With that
+ability, the code is inverted and while the application developor must handle
+the fused interpolation kernel details directly, this enables only one parallel
+kernel and one scatter kernel.
+
 ## Tutorial, proxy applications, and Fortran support
 
 An extensive set of documentation, testings, and examples are available for
