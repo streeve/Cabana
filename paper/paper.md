@@ -209,7 +209,8 @@ following design:
         template<class ExecutionSpace>
         void bar( const ExecutionSpace& exec_space )
         {
-            static_assert( is_accessible_from<MemorySpace, ExecutionSpace>{}, "" );
+            static_assert( is_accessible_from<MemorySpace,
+                                              ExecutionSpace>{}, "" );
 
             parallel_for( exec_space, _device_data );
         }
@@ -247,11 +248,13 @@ entities using `Cajita`:
     // Create halo exchange pattern for an individual array.
     auto halo = Cajita::createHalo( field, ... );
 
-    // Interpolate scalar point gradient value to the grid in a kernel and MPI scatter.
+    // Interpolate scalar point gradient value to the grid in a kernel
+    // and MPI scatter.
     auto val_1 = Cajita::createScalarGradientP2G( ... );
     Cajita::p2g( val_1, ..., halo, ...);
 
-    // Interpolate tensor point divergence value to the grid in a kernel and MPI scatter.
+    // Interpolate tensor point divergence value to the grid in a kernel
+    // and MPI scatter.
     auto val_2 = Cajita::createTensorDivergenceP2G( ... );
     Cajita::p2g( val_2, ..., halo, ... );
 
@@ -274,7 +277,8 @@ cases, improve performance considerably:
             Cajita::P2G::divergence( sd, p.tensor_field, field_2 ); });
 
     // Fused MPI scatter.
-    fused_halo.scatter( exec_space, Cajita::ScatterReduce::Sum, field_1, field_2 );
+    fused_halo.scatter( exec_space, Cajita::ScatterReduce::Sum,
+                        field_1, field_2 );
 
 There are a number of benefits to this approach. First, the number of kernel
 launches in an accelerated setting and MPI communication calls have been
@@ -293,15 +297,18 @@ multiple kernels.
 ## Tutorial, proxy applications, and Fortran support
 
 An extensive set of documentation, tests, and examples are available for
-`Cabana` including unit tests, tutorial examples, and performance testing
-across library functionality along with the GitHub wiki and `doxygen` API
-documentation. In addition, a separate repository exemplifies using `Cabana`
-with Fortran application codes [@copa]. Many proxy applications have also been
-developed using `Cabana`: `CabanaMD` for MD, `CabanaPIC` for plasma PIC, and
-`ExaMPM` for the material point method (MPM) [@copa]. Proxy apps are
-relatively simple representations of the main physics in production
-applications and have proven useful within the `Cabana` development process
-for demonstrating library needs, capability, and performance.
+`Cabana` including unit tests, tutorial examples, and performance testing across
+library functionality along with the GitHub wiki and `doxygen` API
+documentation. Continuous integration is used to ensure software quality, with
+testing across `Kokkos` backends and corresponding architectures. In addition, a
+`Cabana` Docker container is deployed and a `spack` installation is available to
+enable easy testing. For Fortran integration, a separate repository exemplifies
+using `Cabana` with Fortran application codes [@copa]. Many proxy applications
+have also been developed using `Cabana`: `CabanaMD` for MD, `CabanaPIC` for
+plasma PIC, and `ExaMPM` for the material point method (MPM) [@copa]. Proxy apps
+are relatively simple representations of the main physics in production
+applications and have proven useful within the `Cabana` development process for
+demonstrating library needs, capability, and performance.
 
 ## Application adoption and future work
 
@@ -334,7 +341,7 @@ Government retains a non-exclusive, paid-up, irrevocable, world-wide license
 to publish or reproduce the published form of this manuscript, or allow others
 to do so, for United States Government purposes. The DOE will provide public
 access to these results of federally sponsored research in accordance with the
-DOE Public Access Plan∗.
+DOE Public Access Plan.
 
 This work was performed at Lawrence Livermore National Laboratory under U.S.
 Government Contract DE-AC52-07NA27344, Oak Ridge National Laboratory under U.S.
