@@ -38,10 +38,11 @@ namespace Impl
 template <class LocalGridType, class PositionSliceType>
 struct HaloIds
 {
-    Kokkos::Array<bool, 3> _periodic;
-    Kokkos::Array<double, 3> _global_low;
-    Kokkos::Array<double, 3> _global_high;
-    Kokkos::Array<double, 3> _global_extent;
+    static constexpr std::size_t num_space_dim = LocalGridType::num_space_dim;
+    Kokkos::Array<bool, num_space_dim> _periodic;
+    Kokkos::Array<double, num_space_dim> _global_low;
+    Kokkos::Array<double, num_space_dim> _global_high;
+    Kokkos::Array<double, num_space_dim> _global_extent;
 
     int _min_halo;
     int _neighbor_rank;
@@ -60,9 +61,9 @@ struct HaloIds
     ShiftViewType _shifts;
     PositionSliceType _positions;
 
-    Kokkos::Array<int, 3> _ijk;
-    Kokkos::Array<double, 3> _min_coord;
-    Kokkos::Array<double, 3> _max_coord;
+    Kokkos::Array<int, num_space_dim> _ijk;
+    Kokkos::Array<double, num_space_dim> _min_coord;
+    Kokkos::Array<double, num_space_dim> _max_coord;
 
     HaloIds( const LocalGridType& local_grid,
              const PositionSliceType& positions, const int minimum_halo_width,
@@ -82,29 +83,17 @@ struct HaloIds
 
         // Check within the halo width, within the local domain.
         const auto& global_grid = local_grid.globalGrid();
-        _periodic = { global_grid.isPeriodic( Cajita::Dim::I ),
-                      global_grid.isPeriodic( Cajita::Dim::J ),
-                      global_grid.isPeriodic( Cajita::Dim::K ) };
-        auto dx =
-            local_grid.globalGrid().globalMesh().cellSize( Cajita::Dim::I );
-        auto dy =
-            local_grid.globalGrid().globalMesh().cellSize( Cajita::Dim::J );
-        auto dz =
-            local_grid.globalGrid().globalMesh().cellSize( Cajita::Dim::K );
         const auto& global_mesh = global_grid.globalMesh();
-        _global_low = {
-            global_mesh.lowCorner( Cajita::Dim::I ) + minimum_halo_width * dx,
-            global_mesh.lowCorner( Cajita::Dim::J ) + minimum_halo_width * dy,
-            global_mesh.lowCorner( Cajita::Dim::K ) + minimum_halo_width * dz };
-        _global_high = {
-            global_mesh.highCorner( Cajita::Dim::I ) - minimum_halo_width * dx,
-            global_mesh.highCorner( Cajita::Dim::J ) - minimum_halo_width * dy,
-            global_mesh.highCorner( Cajita::Dim::K ) -
-                minimum_halo_width * dz };
-        _global_extent = { global_mesh.extent( Cajita::Dim::I ),
-                           global_mesh.extent( Cajita::Dim::J ),
-                           global_mesh.extent( Cajita::Dim::K ) };
-
+        for ( std::size_t d = 0; d < num_space_dim; ++d )
+        {
+            _periodic[d] = global_grid.isPeriodic( d );
+            auto dx = local_grid.globalGrid().globalMesh().cellSize( d );
+            _global_low[d] =
+                global_mesh.lowCorner( d ) + minimum_halo_width * dx;
+            _global_high =
+                global_mesh.highCorner( d ) - minimum_halo_width * dx;
+            _global_extent = global_mesh.extent( d );
+        }
         _min_halo = minimum_halo_width;
 
         build( local_grid );
@@ -112,19 +101,19 @@ struct HaloIds
 
     KOKKOS_INLINE_FUNCTION void operator()( const int p ) const
     {
-        Kokkos::Array<double, 3> pos = { _positions( p, Cajita::Dim::I ),
-                                         _positions( p, Cajita::Dim::J ),
-                                         _positions( p, Cajita::Dim::K ) };
+        Kokkos::Array<bool, num_space_dim> pos{};
+        for ( std::size_t d = 0; d < num_space_dim; ++d )
+            pos = _positions( p, d );
 
         // Check the if particle is both in the owned space
         // and the ghosted space of this neighbor (ignore
         // the current cell).
-        if ( ( pos[Cajita::Dim::I] > _min_coord[Cajita::Dim::I] &&
-               pos[Cajita::Dim::I] < _max_coord[Cajita::Dim::I] ) &&
-             ( pos[Cajita::Dim::J] > _min_coord[Cajita::Dim::J] &&
-               pos[Cajita::Dim::J] < _max_coord[Cajita::Dim::J] ) &&
-             ( pos[Cajita::Dim::K] > _min_coord[Cajita::Dim::K] &&
-               pos[Cajita::Dim::K] < _max_coord[Cajita::Dim::K] ) )
+        bool within_halo = false;
+        for ( std::size_t d = 0; d < num_space_dim; ++d )
+            if ( pos[d] > _min_coord[d] && pos[d] < _max_coord[d] )
+                within_halo = true;
+
+        if ( within_halo )
         {
             const std::size_t sc = _send_count()++;
             // If the size of the arrays is exceeded, keep
@@ -137,7 +126,7 @@ struct HaloIds
                 _ids( sc ) = p;
                 // Determine if this ghost particle needs to
                 // be shifted through the periodic boundary.
-                for ( int d = 0; d < 3; ++d )
+                for ( int d = 0; d < num_space_dim; ++d )
                 {
                     _shifts( sc, d ) = 0.0;
                     if ( _periodic[d] && _ijk[d] )
