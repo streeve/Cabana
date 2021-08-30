@@ -77,6 +77,15 @@ jobs:
             heffte: 'heFFTe_MKL'
             hypre: 'NoHYPRE'
             coverage: 'OFF'
+          - distro: 'fedora:intel'
+            cxx: 'icpc'
+            openmp: 'OFF'
+            cmake_build_type: 'Debug'
+            kokkos_ver: 'master'
+            arborx: 'NoArborX'
+            heffte: 'heFFTe_MKL_ONEAPI'
+            hypre: 'NoHYPRE'
+            coverage: 'OFF'
           - distro: 'fedora:latest'
             cxx: 'g++'
             openmp: 'ON'
@@ -212,13 +221,15 @@ jobs:
       - name: Build kokkos
         working-directory: kokkos
         run: |
+          [[ ${{ matrix.heffte }} == *"ONEAPI"* ]] && kokkos_cmake_opts=( "-DCMAKE_CXX_STANDARD=17 -DKokkos_ENABLE_SYCL=ON" )
           cmake -B build \
             -DCMAKE_INSTALL_PREFIX=$HOME/kokkos \
             -DKokkos_ENABLE_OPENMP=${{ matrix.openmp }} \
             -DCMAKE_CXX_COMPILER=${{ matrix.cxx }} \
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
             -DKokkos_ENABLE_HWLOC=ON \
-            -DCMAKE_BUILD_TYPE=${{ matrix.cmake_build_type }}
+            -DCMAKE_BUILD_TYPE=${{ matrix.cmake_build_type }} \
+            ${kokkos_cmake_opts}
           cmake --build build --parallel 2
           cmake --install build
       - name: Checkout arborx
@@ -249,8 +260,9 @@ jobs:
         if: ${{ matrix.heffte != 'NoheFFTe' }}
         working-directory: heffte
         run: |
-          [[ ${{ matrix.heffte }} == "heFFTe_FFTW" ]] && heffte_cmake_opts+=( -DHeffte_ENABLE_FFTW=ON )
-          [[ ${{ matrix.heffte }} == "heFFTe_MKL" ]] && heffte_cmake_opts+=( -DHeffte_ENABLE_MKL=ON )
+          [[ ${{ matrix.heffte }} == *"heFFTe_FFTW"* ]] && heffte_cmake_opts+=( -DHeffte_ENABLE_FFTW=ON )
+          [[ ${{ matrix.heffte }} == *"heFFTe_MKL"* ]] && heffte_cmake_opts+=( -DHeffte_ENABLE_MKL=ON )
+          [[ ${{ matrix.heffte }} == *"ONEAPI"* ]] && heffte_cmake_opts+=( -DHeffte_ENABLE_ONEAPI=ON )
           cmake -B build \
             -DCMAKE_CXX_STANDARD="11" \
             -DBUILD_SHARED_LIBS=ON \
