@@ -72,8 +72,9 @@ class CartesianGrid
     }
 
     // Get the total number of cells.
+    // One additional bin for anything outside the grid range.
     KOKKOS_INLINE_FUNCTION
-    std::size_t totalNumCells() const { return _nx * _ny * _nz; }
+    std::size_t totalNumCells() const { return _nx * _ny * _nz + 1; }
 
     // Get the number of cells in each direction.
     KOKKOS_INLINE_FUNCTION
@@ -111,6 +112,14 @@ class CartesianGrid
         jc = ( jc == _ny ) ? jc - 1 : jc;
         kc = cellsBetween( zp, _min_z, _rdz );
         kc = ( kc == _nz ) ? kc - 1 : kc;
+
+        // Handle particles outside the grid.
+        if ( xp < _min_x || xp > _max_x )
+            ic = -1;
+        if ( yp < _min_y || yp > _max_y )
+            jc = -1;
+        if ( zp < _min_z || zp > _max_z )
+            kc = -1;
     }
 
     // Given a position and a cell index get square of the minimum distance to
@@ -139,7 +148,11 @@ class CartesianGrid
     KOKKOS_INLINE_FUNCTION
     int cardinalCellIndex( const int i, const int j, const int k ) const
     {
-        return ( i * _ny + j ) * _nz + k;
+        // Extra bin is last.
+        if ( i * j * k == -1 )
+            return totalNumCells() - 1;
+        else
+            return ( i * _ny + j ) * _nz + k;
     }
 
     KOKKOS_INLINE_FUNCTION
