@@ -233,6 +233,21 @@ the data to the class memory space is all that is required. In user code,
 multiple instances of this class may be used with different memory and
 execution spaces possible for each instance.
 
+### Data structures across physics kernels
+
+The AoSoA data structure enables not only flexibility for ideal layouts for
+different architectures, but also for complex physics applications with
+multiple kernels that are each optimized for a different data layout. This is
+common, where the particle update (integration) kernel has regular access
+across all particles which can be effectively strided, but the particle
+interaction kernel is based on random access across neighbors of each particle
+in memory. Rather than pay the performance penalty of choosing one data layout
+(SoA or AoS) which is suboptimal for at least one kernel or transposing data to
+the optimal layout for each kernel, the AoSoA enables performance near the
+ideal for both kernels.
+
+**Planned to add a code snippet, but never got to it**
+
 ### Enabling kernel fusion
 
 A more specific design pattern that enables not only flexibility, but also
