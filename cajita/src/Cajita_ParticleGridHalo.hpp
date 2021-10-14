@@ -90,9 +90,9 @@ struct HaloIds
             auto dx = local_grid.globalGrid().globalMesh().cellSize( d );
             _global_low[d] =
                 global_mesh.lowCorner( d ) + minimum_halo_width * dx;
-            _global_high =
+            _global_high[d] =
                 global_mesh.highCorner( d ) - minimum_halo_width * dx;
-            _global_extent = global_mesh.extent( d );
+            _global_extent[d] = global_mesh.extent( d );
         }
         _min_halo = minimum_halo_width;
 
@@ -103,7 +103,7 @@ struct HaloIds
     {
         Kokkos::Array<bool, num_space_dim> pos{};
         for ( std::size_t d = 0; d < num_space_dim; ++d )
-            pos = _positions( p, d );
+            pos[d] = _positions( p, d );
 
         // Check the if particle is both in the owned space
         // and the ghosted space of this neighbor (ignore
@@ -126,7 +126,7 @@ struct HaloIds
                 _ids( sc ) = p;
                 // Determine if this ghost particle needs to
                 // be shifted through the periodic boundary.
-                for ( int d = 0; d < num_space_dim; ++d )
+                for ( std::size_t d = 0; d < num_space_dim; ++d )
                 {
                     _shifts( sc, d ) = 0.0;
                     if ( _periodic[d] && _ijk[d] )
