@@ -72,19 +72,21 @@ list construction.
 developed as part of the Co-Design Center for Particle Applications (CoPA)
 within the Exascale Computing Project (ECP) [@ecp:2020]. The CoPA project and
 its full development scope, including ECP partner applications, algorithm
-development, and similar libraries for quantum MD, is described in
+development, and similar software libraries for quantum MD, is described in
 [@copa:2021]. `Cabana` uses the `Kokkos` library for on-node parallelism
 [@kokkos:2014], enabling simulation on multi-core CPU and GPU architectures,
 and `MPI` for GPU-aware, multi-node communication. `Cabana` provides particle
-simulation capabilities on all currently supported `Kokkos` backends, including
+simulation capabilities on almost all current `Kokkos` backends, including
 serial execution, `OpenMP` (including `OpenMP-Target` for GPUs), `CUDA` (NVIDIA
 GPUs), `HIP` (AMD GPUs), and `SYCL` (Intel GPUs), providing a clear path for
-the coming generation of accelerated exascale hardware. `Cabana` builds on
-`Kokkos` by providing new particle data structures and particle algorithms
-resulting in a similar execution policy-based, node-level programming model.
-`Cabana` is an application and physics agnostic, but particle-specific, toolkit
-intended to be used in conjunction with `Kokkos` to generate an application or
-to be used as needed through interfaces that wrap user memory.
+the coming generation of accelerator-based exascale hardware. `Cabana` builds
+on `Kokkos` by providing new particle data structures and particle algorithms
+resulting in a similar execution policy-based, node-level programming model. In
+addition, `Cabana` provides particle communication routines with an
+`MPI+Kokkos` approach. `Cabana` is an application and physics agnostic, but
+particle-specific toolkit intended to be used in conjunction with `Kokkos` to
+generate an application or to be used as needed through interfaces that wrap
+user memory.
 
 # Statement of need
 
@@ -242,13 +244,11 @@ entities using `Cajita`:
     // Create halo exchange pattern for an individual array.
     auto halo = Cajita::createHalo( field, ... );
 
-    // Interpolate scalar point gradient value to the grid in a kernel
-    // and MPI scatter.
+    // Interpolate scalar gradient to the grid with kernel and MPI scatter.
     auto val_1 = Cajita::createScalarGradientP2G( ... );
     Cajita::p2g( val_1, ..., halo, ...);
 
-    // Interpolate tensor point divergence value to the grid in a kernel
-    // and MPI scatter.
+    // Interpolate tensor divergence to the grid with kernel and MPI scatter.
     auto val_2 = Cajita::createTensorDivergenceP2G( ... );
     Cajita::p2g( val_2, ..., halo, ... );
 
@@ -263,8 +263,8 @@ cases, improve performance considerably:
     auto fused_halo = Cajita::createHalo( ..., *field_1, *field_2 );
 
     // Fused local interpolation of both properties.
-    parallel_for( exec_space, num_point, points,
-                  LAMBDA( const Particle& p ){
+    Kokkos::parallel_for( exec_space, num_point, points,
+        KOKKOS_LAMBDA( const Particle& p ){
             Cajita::SplineData<float,3,Cajita::Node> sd;
             Cajita::evaluateSpline( p.x );
             Cajita::P2G::gradient( sd, p.scalar_field, field_1 );
@@ -299,17 +299,17 @@ a `Cabana` Docker container is deployed and a `spack` installation is available
 to enable easy testing. For Fortran integration, a separate repository
 exemplifies using `Cabana` with Fortran applications [@copa]. Many proxy
 applications have also been developed using `Cabana`: `CabanaMD` for MD,
-`CabanaPIC` for plasma PIC, and `ExaMPM` for the material point method (MPM)
-[@copa]. Proxy apps are relatively simple representations of the main physics
-in production applications and have proven useful within the `Cabana`
-development process for demonstrating library needs, capability, and
-performance.
+`CabanaPIC` for plasma PIC, `ExaMPM` for the material point method (MPM), and
+`HACCabana` for N-body cosmology [@copa]. Proxy apps are relatively simple
+representations of the main physics in production applications and have proven
+useful within the `Cabana` development process for demonstrating library needs,
+capability, and performance.
 
 ## Application adoption and future work
 
 `Cabana` is designed for high-performance, large-scale particle simulations,
 with early adoption by the `XGC` plasma physics code [@Scheinberg:2019], as
-well as a new production MPM code for additive manufacturing, both a part of
+well as the new `PicassoMPM` code for additive manufacturing, both a part of
 ECP. The proxy apps developed thus far also demonstrate the potential for rapid
 prototyping of particle codes on emerging hardware and interactions with
 hardware vendors. One important aspect of continuing work is consistent
@@ -354,6 +354,6 @@ Energy's National Nuclear Security Administration under contract number
 DE-NA-0003525.
 
 This research used resources of the Oak Ridge Leadership Computing Facility
-(OLCF),supported by DOE under the contract  DE-AC05-00OR22725.
+(OLCF),supported by DOE under contract DE-AC05-00OR22725.
 
 # References
