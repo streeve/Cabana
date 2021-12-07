@@ -84,6 +84,17 @@ struct HypreIsCompatibleWithMemorySpace<Kokkos::ExperimentalHIPSpace>
 #endif // end KOKKOS_ENABLE_HIP
 #endif // end HYPRE_USING_HIP
 
+#ifdef HYPRE_USING_SYCL
+#ifdef KOKKOS_ENABLE_SYCL
+//! Hypre device compatibility check - SYCL memory.
+template <>
+struct HypreIsCompatibleWithMemorySpace<
+    Kokkos::Experimental::SYCLDeviceUSMSpace> : std::true_type
+{
+};
+#endif // end KOKKOS_ENABLE_SYCL
+#endif // end HYPRE_USING_SYCL
+
 #ifndef HYPRE_USING_GPU
 //! Hypre device compatibility check - host memory.
 template <>
