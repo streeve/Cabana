@@ -16,45 +16,10 @@
 
 #include <gtest/gtest.h>
 
+#include <aosoa_unit_test.hpp>
+
 namespace Test
 {
-
-//---------------------------------------------------------------------------//
-// Check the data given a set of values.
-template <class aosoa_type>
-void checkDataMembers( aosoa_type aosoa, int begin, int end, const float fval,
-                       const double dval, const int ival, const int dim_1,
-                       const int dim_2, const int dim_3 )
-{
-    auto mirror =
-        Cabana::create_mirror_view_and_copy( Kokkos::HostSpace(), aosoa );
-
-    auto slice_0 = Cabana::slice<0>( mirror );
-    auto slice_1 = Cabana::slice<1>( mirror );
-    auto slice_2 = Cabana::slice<2>( mirror );
-    auto slice_3 = Cabana::slice<3>( mirror );
-
-    for ( int idx = begin; idx != end; ++idx )
-    {
-        // Member 0.
-        for ( int i = 0; i < dim_1; ++i )
-            for ( int j = 0; j < dim_2; ++j )
-                for ( int k = 0; k < dim_3; ++k )
-                    EXPECT_EQ( slice_0( idx, i, j, k ), fval * ( i + j + k ) );
-
-        // Member 1.
-        EXPECT_EQ( slice_1( idx ), ival );
-
-        // Member 2.
-        for ( int i = 0; i < dim_1; ++i )
-            EXPECT_EQ( slice_2( idx, i ), dval * i );
-
-        // Member 3.
-        for ( int i = 0; i < dim_1; ++i )
-            for ( int j = 0; j < dim_2; ++j )
-                EXPECT_EQ( slice_3( idx, i, j ), dval * ( i + j ) );
-    }
-}
 
 //---------------------------------------------------------------------------//
 // Functor work tag for only assigning half the value.
@@ -186,8 +151,8 @@ void runTest2d()
     Kokkos::fence();
 
     // Check data members for proper initialization.
-    checkDataMembers( aosoa, range_begin, range_end, fval, dval, ival, dim_1,
-                      dim_2, dim_3 );
+    checkDataMembers( aosoa, fval, dval, ival, dim_1, dim_2, dim_3, range_begin,
+                      range_end );
 
     // Change values and write a second functor.
     fval = 93.4;
@@ -204,8 +169,8 @@ void runTest2d()
     Kokkos::fence();
 
     // Check data members for proper initialization.
-    checkDataMembers( aosoa, 0, aosoa.size(), fval, dval, ival, dim_1, dim_2,
-                      dim_3 );
+    checkDataMembers( aosoa, fval, dval, ival, dim_1, dim_2, dim_3, 0,
+                      aosoa.size() );
 
     // Change values and write a third functor over a single element.
     fval = 7.7;
@@ -224,8 +189,8 @@ void runTest2d()
     Kokkos::fence();
 
     // Check data members for proper initialization.
-    checkDataMembers( aosoa, range_begin, range_end, fval, dval, ival, dim_1,
-                      dim_2, dim_3 );
+    checkDataMembers( aosoa, fval, dval, ival, dim_1, dim_2, dim_3, range_begin,
+                      range_end );
 
     // Now use the tagged version and assign half the value.
     fval = 93.4;
@@ -242,8 +207,8 @@ void runTest2d()
     Kokkos::fence();
 
     // Check data members for proper initialization.
-    checkDataMembers( aosoa, 0, aosoa.size(), fval / 2.0, dval / 2.0,
-                      ival / 2.0, dim_1, dim_2, dim_3 );
+    checkDataMembers( aosoa, fval / 2.0, dval / 2.0, ival / 2.0, dim_1, dim_2,
+                      dim_3, 0, aosoa.size() );
 }
 
 //---------------------------------------------------------------------------//
