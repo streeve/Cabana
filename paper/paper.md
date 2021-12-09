@@ -74,18 +74,17 @@ within the Exascale Computing Project (ECP) [@ecp:2020]. The CoPA project and
 its full development scope, including ECP partner applications, algorithm
 development, and similar software libraries for quantum MD, is described in
 [@copa:2021]. `Cabana` uses the `Kokkos` library for on-node parallelism
-[@kokkos:2014], enabling simulation on multi-core CPU and GPU architectures,
-and `MPI` for GPU-aware, multi-node communication. `Cabana` provides particle
-simulation capabilities on almost all current `Kokkos` backends, including
-serial execution, `OpenMP` (including `OpenMP-Target` for GPUs), `CUDA` (NVIDIA
-GPUs), `HIP` (AMD GPUs), and `SYCL` (Intel GPUs), providing a clear path for
-the coming generation of accelerator-based exascale hardware. `Cabana` builds
-on `Kokkos` by providing new particle data structures and particle algorithms
-resulting in a similar execution policy-based, node-level programming model. In
-addition, `Cabana` provides particle communication routines with an
-`MPI+Kokkos` approach. `Cabana` is an application and physics agnostic, but
-particle-specific toolkit intended to be used in conjunction with `Kokkos` to
-generate an application or to be used as needed through interfaces that wrap
+[@kokkos:2014, @kokkos:2022], enabling simulation on multi-core CPU and GPU
+architectures, and `MPI` for GPU-aware, multi-node communication. `Cabana`
+provides particle simulation capabilities on almost all current `Kokkos`
+backends, including serial execution, `OpenMP` (including `OpenMP-Target` for
+GPUs), `CUDA` (NVIDIA GPUs), `HIP` (AMD GPUs), and `SYCL` (Intel GPUs),
+providing a clear path for the coming generation of accelerator-based exascale
+hardware. `Cabana` builds on `Kokkos` by providing new particle data structures
+and particle algorithms resulting in a similar execution policy-based,
+node-level programming model. `Cabana` is an application and physics agnostic,
+but particle-specific toolkit intended to be used in conjunction with `Kokkos`
+to generate an application or to be used as needed through interfaces that wrap
 user memory.
 
 # Statement of need
