@@ -313,8 +313,9 @@ An extensive set of documentation, tests, and examples are available for
 across library functionality along with the GitHub wiki and `doxygen` API
 documentation. Continuous integration is used to ensure software quality, with
 testing across `Kokkos` backends and corresponding architectures. In addition,
-a `Cabana` Docker container is deployed and a `spack` installation is available
-to enable easy testing. For Fortran integration, a separate repository
+a `Cabana` Docker container is deployed, `spack` installation is available, and
+`Cabana` is a part of the Extreme-scale Scientific Software Stack (E4S) [@e4s]
+to enable easy testing and use. For Fortran integration, a separate repository
 exemplifies using `Cabana` with Fortran applications [@copa]. Many proxy
 applications have also been developed using `Cabana`: `CabanaMD` for MD,
 `CabanaPIC` for plasma PIC, `ExaMPM` for the material point method (MPM), and
