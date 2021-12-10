@@ -25,16 +25,18 @@ authors:
     affiliation: 2
   - name: Yuxing Qiu
     affiliation: 3
-  - name: Aaron Scheinberg
+  - name: Stephan Schulz
     affiliation: 4
-  - name: Stan Moore
+  - name: Aaron Scheinberg
     affiliation: 5
   - name: Steven Plimpton
-    affiliation: 5
+    affiliation: 6
+  - name: Stan Moore
+    affiliation: 6
   - name: Timothy Germann
     affiliation: 2
   - name: James Belak
-    affiliation: 6
+    affiliation: 7
   - name: Susan Mniszewski
     affiliation: 2
 affiliations:
@@ -44,12 +46,14 @@ affiliations:
     index: 2
   - name: University of California, Los Angeles
     index: 3
-  - name: Jubilee Development
+  - name: Julich Supercomputing Centre
     index: 4
-  - name: Sandia National Laboratories
+  - name: Jubilee Development
     index: 5
-  - name: Lawrence Livermore National Laboratory
+  - name: Sandia National Laboratories
     index: 6
+  - name: Lawrence Livermore National Laboratory
+    index: 7
 date: 15 July 2021
 bibliography: paper.bib
 ---
