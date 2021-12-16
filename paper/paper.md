@@ -54,7 +54,7 @@ affiliations:
     index: 6
   - name: Lawrence Livermore National Laboratory
     index: 7
-date: 15 July 2021
+date: 15 December 2021
 bibliography: paper.bib
 ---
 
@@ -78,7 +78,7 @@ within the Exascale Computing Project (ECP) [@ecp:2020]. The CoPA project and
 its full development scope, including ECP partner applications, algorithm
 development, and similar software libraries for quantum MD, is described in
 [@copa:2021]. `Cabana` uses the `Kokkos` library for on-node parallelism
-[@kokkos:2014, @kokkos:2022], enabling simulation on multi-core CPU and GPU
+[@kokkos:2014; @kokkos:2022], enabling simulation on multi-core CPU and GPU
 architectures, and `MPI` for GPU-aware, multi-node communication. `Cabana`
 provides particle simulation capabilities on almost all current `Kokkos`
 backends, including serial execution, `OpenMP` (including `OpenMP-Target` for
@@ -222,19 +222,18 @@ following design:
         }
     };
 
-Here, the data in the class is stored in a specific memory space and,
-separately, when the user chooses to operate on the data in parallel, can
-choose any execution space that is compatible with that memory by passing the
-appropriate object instance. This greatly increases the flexibility of the
-class, first for easily using different parallel threading backends on a given
-device, e.g. both `OpenMP-Target` and vendor-specific backends. This also
-extends to easier adoption of newer execution options, such as `CUDA` streams,
-which can enable coarse-grained asynchronous tasking in applications. In
-addition, this makes the class amenable to both separate host or device
-computation as well as an offload model where a new overload that first copies
-the data to the class memory space is all that is required. In user code,
-multiple instances of this class may be used with different memory and
-execution spaces possible for each instance.
+Here, the class data is stored in a specific memory space and, separately for
+each parallel execution, the user can choose any execution space that is
+compatible with that memory space. This greatly increases the flexibility of
+the class for using different parallel threading backends on a given device,
+e.g. both `OpenMP-Target` and vendor-specific backends. This also extends to
+easier adoption of newer execution options, such as `CUDA` streams, which can
+enable coarse-grained asynchronous tasking in applications. In addition, this
+makes the class amenable to both separate host or device computation as well as
+an offload model where a new overload that first copies the data to the class
+memory space is all that is required. In user code, multiple instances of this
+class may be used with different memory and execution spaces possible for each
+instance.
 
 ### Data structures across physics kernels
 
@@ -297,14 +296,13 @@ launches in an accelerated setting and MPI communication calls have been
 reduced by a factor of 2, thus reducing latency. Second, identical quantities
 that would have been computed in each interpolation kernel, such as the spline
 interpolation data, can be reused for multiple interpolations to reduce total
-operation counts. Third, our experience is that some level of kernel fusion
-often allows for temporary results that need to be shared between kernels no
-longer need to be allocated in large global memory arrays and instead become
-in-kernel, thread-local temporaries which can significantly reduce memory
-costs. Finally, cache performance can be significantly improved due to global
-data reuse combined with the AoSoA data structure such that a single particle
-is accessed multiple times in a single kernel rather than a single time in
-multiple kernels.
+operation counts. Third, our experience shows that kernel fusion often allows
+for temporary variables that are needed across multiple kernels no longer need
+to be allocated in large global memory arrays and can instead become in-kernel,
+thread-local temporaries, significantly reducing memory costs. Finally, cache
+performance can be significantly improved due to global data reuse combined
+with the AoSoA data structure such that a single particle is accessed multiple
+times in a single kernel rather than a single time in multiple kernels.
 
 ## Tutorial, proxy applications, and Fortran support
 
