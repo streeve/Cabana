@@ -10,17 +10,19 @@ def skip_lines(txt, l):
 plt.rcParams["font.size"] = 12
 
 all_backends = ['host', 'serial', 'openmp', 'cuda', 'hip', 'cudauvm']
-backends = ['cuda', 'hip']
-#backends = ['cuda_cuda', 'hip_hip']
+
+comm = True
+#backends = ['cuda', 'hip']
+backends = ['cuda_cuda', 'hip_hip']
 
 size_list = [1e3, 1e4, 1e5, 1e6, 1e7]
-#type_list = ['create', 'gather']
+type_list = ['create', 'migrate']
 #type_list = ['create', 'permute']
-type_list = ['create', 'iteration']
+#type_list = ['create', 'iteration']
 
-#param_list = ['halo']
+param_list = ['dist']
 #param_list = ['10', '100', '1000', '10000']
-param_list = ['3', '4']
+#param_list = ['3', '4']
 
 
 color_dict = {type_list[0]: '#E31A1C', type_list[1]:'#4291C7'}
@@ -33,6 +35,9 @@ n_sizes = len(size_list)
 backend_dict = {key: {key: {key: np.zeros([n_sizes]) for key in type_list} for key in param_list} for key in backends}
 
 for file in filenames:
+    if comm:
+        read_size = float(file.split("_")[-1])
+
     with open(file) as f:
         txt = f.readlines()
 
@@ -67,7 +72,8 @@ for file in filenames:
 
         else:
             vals = txt[l].split()
-            read_size = float(vals[0])
+            if not comm:
+                read_size = float(vals[0])
             for s, size in enumerate(size_list):
                 if size == read_size:
                     backend_dict[current_backend][current_param][current_type][s] = float(vals[-1])
