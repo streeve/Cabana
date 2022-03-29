@@ -11,22 +11,25 @@ plt.rcParams["font.size"] = 12
 
 all_backends = ['host', 'serial', 'openmp', 'cuda', 'hip', 'cudauvm']
 
-backends = ['cuda', 'hip']
+backends = ['cuda_cuda', 'host_host']
 #backends = ['cuda_cuda', 'hip_hip']
 
 size_list = [1e3, 1e4, 1e5, 1e6, 1e7]
-#type_list = ['create', 'migrate']
-type_list = ['create', 'permute']
+type_list = ['create', 'migrate']
+#type_list = ['create', 'permute']
 #type_list = ['create', 'iteration']
 
 param_list = ['dist']
 #param_list = ['10', '100', '1000', '10000', '100000', '1000000', '10000000'] #['sort']
-#param_list = ['3', '4']
+#param_list = ['3', '4', '5']
 
 comm = 'dist' in param_list or 'halo' in param_list
 
 color_dict = {type_list[0]: '#E31A1C', type_list[1]:'#4291C7'}
+dash_dict = {backends[0]: "-", backends[1]: "--"}
+
 width = 0.1
+linewidth = 2
 
 filenames = sys.argv[1:]
 n_files = len(filenames)
@@ -91,20 +94,31 @@ ax1 = fig.add_subplot(111)
         for type in type_list:
             plt.plot(size_list, backend_dict[backend][param][type] / 1e6, width, color=color_dict[type], label=type)
 '''
-for param in param_list:
-    for type in type_list:
-        for size in size_list:
-            y = np.array(backend_dict[backends[0]][param][type]) / np.array(backend_dict[backends[1]][param][type])
-            plt.plot(sizes_dict[backends[0]][param][type], y, color=color_dict[type], lw=4)#, facecolors=color_dict[type])
+for backend in backend_dict:
+    for param in param_list:
+        for type in type_list:
+            #for size in size_list:
+            y = np.array(backend_dict[backend][param][type]) #/ np.array(backend_dict[backends[1]][param][type])
+            if "host" in backend:
+                plt.plot(np.array(sizes_dict[backend][param][type])*1.2, y, color=color_dict[type], lw=linewidth, linestyle="none", fillstyle="none", marker='o')# linestyle=dash_dict[backend])#, facecolors=color_dict[type])
+            else:
+                plt.plot(sizes_dict[backend][param][type], y, color=color_dict[type], lw=linewidth, linestyle="none", marker='o')
 
-ax1.set_ylabel("Speedup relative to V100-CUDA")
-
+#ax1.set_ylabel("Speedup relative to V100-CUDA")
+ax1.set_ylabel("Time (seconds)")
+ax1.set_xlabel("Number of particles")
+ax1.set_title("Cabana 1-rank Migrate benchmark (ORNL Summit)")
 fake_lines = [Line2D([0], [0], color=color_dict[type_list[0]], lw=2, label=type_list[0]),
-              Line2D([0], [0], color=color_dict[type_list[1]], lw=2, label=type_list[1])]
+              Line2D([0], [0], color=color_dict[type_list[1]], lw=2, label=type_list[1]),
+              #Line2D([0], [0], color="k", lw=2, linestyle=dash_dict[backends[1]], label="POWER9 CPU"),
+              #Line2D([0], [0], color="k", lw=2, linestyle=dash_dict[backends[0]], label="V100 GPU")
+              Line2D([0], [0], color="k", lw=2, linestyle="none", fillstyle="none", marker='o', label="POWER9 CPU"),
+              Line2D([0], [0], color="k", lw=2, linestyle="none", marker='o', label="V100 GPU")]
 
 # Only if needed
 ax1.legend(handles=fake_lines)
 ax1.set_xscale('log')
+ax1.set_yscale('log')
 
-plt.show()
-#plt.savefig("plot.png", dpi=300)
+#plt.show()
+plt.savefig("plot.png", dpi=300)
