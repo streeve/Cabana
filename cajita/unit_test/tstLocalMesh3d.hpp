@@ -40,72 +40,149 @@ void uniformLocalMeshTest3d( const LocalMeshType& local_mesh,
 {
     // Get the global grid.
     const auto& global_grid = local_grid.globalGrid();
-
-    // Check the low and high corners.
-    Kokkos::View<double[3], TEST_DEVICE> own_lc( "own_lc" );
-    Kokkos::View<double[3], TEST_DEVICE> own_hc( "own_hc" );
-    Kokkos::View<double[3], TEST_DEVICE> own_ext( "own_extent" );
-    Kokkos::View<double[3], TEST_DEVICE> ghost_lc( "ghost_lc" );
-    Kokkos::View<double[3], TEST_DEVICE> ghost_hc( "ghost_hc" );
-    Kokkos::View<double[3], TEST_DEVICE> ghost_ext( "ghost_extent" );
-
-    Kokkos::parallel_for(
-        "get_corners", Kokkos::RangePolicy<TEST_EXECSPACE>( 0, 3 ),
-        KOKKOS_LAMBDA( const int d ) {
-            own_lc( d ) = local_mesh.lowCorner( Own(), d );
-            own_hc( d ) = local_mesh.highCorner( Own(), d );
-            own_ext( d ) = local_mesh.extent( Own(), d );
-            ghost_lc( d ) = local_mesh.lowCorner( Ghost(), d );
-            ghost_hc( d ) = local_mesh.highCorner( Ghost(), d );
-            ghost_ext( d ) = local_mesh.extent( Ghost(), d );
-        } );
-
-    auto own_lc_m =
-        Kokkos::create_mirror_view_and_copy( Kokkos::HostSpace(), own_lc );
-    auto own_hc_m =
-        Kokkos::create_mirror_view_and_copy( Kokkos::HostSpace(), own_hc );
-    auto own_ext_m =
-        Kokkos::create_mirror_view_and_copy( Kokkos::HostSpace(), own_ext );
-    auto ghost_lc_m =
-        Kokkos::create_mirror_view_and_copy( Kokkos::HostSpace(), ghost_lc );
-    auto ghost_hc_m =
-        Kokkos::create_mirror_view_and_copy( Kokkos::HostSpace(), ghost_hc );
-    auto ghost_ext_m =
-        Kokkos::create_mirror_view_and_copy( Kokkos::HostSpace(), ghost_ext );
-
-    for ( int d = 0; d < 3; ++d )
-        EXPECT_FLOAT_EQ( own_lc_m( d ),
-                         low_corner[d] +
-                             cell_size * global_grid.globalOffset( d ) );
-
-    for ( int d = 0; d < 3; ++d )
-        EXPECT_FLOAT_EQ( own_hc_m( d ),
-                         low_corner[d] +
-                             cell_size * ( global_grid.globalOffset( d ) +
-                                           global_grid.ownedNumCell( d ) ) );
-
-    for ( int d = 0; d < 3; ++d )
-        EXPECT_FLOAT_EQ( own_ext_m( d ),
-                         cell_size * global_grid.ownedNumCell( d ) );
-
-    for ( int d = 0; d < 3; ++d )
     {
-        EXPECT_FLOAT_EQ(
-            ghost_lc_m( d ),
-            low_corner[d] +
-                cell_size * ( global_grid.globalOffset( d ) - halo_width ) );
+        // Check the low and high corners.
+        Kokkos::View<double[3], TEST_DEVICE> own_lc( "own_lc" );
+        Kokkos::View<double[3], TEST_DEVICE> own_hc( "own_hc" );
+        Kokkos::View<double[3], TEST_DEVICE> own_ext( "own_extent" );
+        Kokkos::View<double[3], TEST_DEVICE> ghost_lc( "ghost_lc" );
+        Kokkos::View<double[3], TEST_DEVICE> ghost_hc( "ghost_hc" );
+        Kokkos::View<double[3], TEST_DEVICE> ghost_ext( "ghost_extent" );
 
-        EXPECT_FLOAT_EQ( ghost_hc_m( d ),
-                         low_corner[d] +
-                             cell_size * ( global_grid.globalOffset( d ) +
-                                           global_grid.ownedNumCell( d ) +
-                                           halo_width ) );
+        Kokkos::parallel_for(
+            "get_corners", Kokkos::RangePolicy<TEST_EXECSPACE>( 0, 3 ),
+            KOKKOS_LAMBDA( const int d ) {
+                own_lc( d ) = local_mesh.lowCorner( Own(), d );
+                own_hc( d ) = local_mesh.highCorner( Own(), d );
+                own_ext( d ) = local_mesh.extent( Own(), d );
+                ghost_lc( d ) = local_mesh.lowCorner( Ghost(), d );
+                ghost_hc( d ) = local_mesh.highCorner( Ghost(), d );
+                ghost_ext( d ) = local_mesh.extent( Ghost(), d );
+            } );
 
-        EXPECT_FLOAT_EQ(
-            ghost_ext_m( d ),
-            cell_size * ( global_grid.ownedNumCell( d ) + 2 * halo_width ) );
+        auto own_lc_m =
+            Kokkos::create_mirror_view_and_copy( Kokkos::HostSpace(), own_lc );
+        auto own_hc_m =
+            Kokkos::create_mirror_view_and_copy( Kokkos::HostSpace(), own_hc );
+        auto own_ext_m =
+            Kokkos::create_mirror_view_and_copy( Kokkos::HostSpace(), own_ext );
+        auto ghost_lc_m = Kokkos::create_mirror_view_and_copy(
+            Kokkos::HostSpace(), ghost_lc );
+        auto ghost_hc_m = Kokkos::create_mirror_view_and_copy(
+            Kokkos::HostSpace(), ghost_hc );
+        auto ghost_ext_m = Kokkos::create_mirror_view_and_copy(
+            Kokkos::HostSpace(), ghost_ext );
+
+        for ( int d = 0; d < 3; ++d )
+            EXPECT_FLOAT_EQ( own_lc_m( d ),
+                             low_corner[d] +
+                                 cell_size * global_grid.globalOffset( d ) );
+
+        for ( int d = 0; d < 3; ++d )
+            EXPECT_FLOAT_EQ(
+                own_hc_m( d ),
+                low_corner[d] + cell_size * ( global_grid.globalOffset( d ) +
+                                              global_grid.ownedNumCell( d ) ) );
+
+        for ( int d = 0; d < 3; ++d )
+            EXPECT_FLOAT_EQ( own_ext_m( d ),
+                             cell_size * global_grid.ownedNumCell( d ) );
+
+        for ( int d = 0; d < 3; ++d )
+        {
+            EXPECT_FLOAT_EQ( ghost_lc_m( d ),
+                             low_corner[d] +
+                                 cell_size * ( global_grid.globalOffset( d ) -
+                                               halo_width ) );
+
+            EXPECT_FLOAT_EQ( ghost_hc_m( d ),
+                             low_corner[d] +
+                                 cell_size * ( global_grid.globalOffset( d ) +
+                                               global_grid.ownedNumCell( d ) +
+                                               halo_width ) );
+
+            EXPECT_FLOAT_EQ( ghost_ext_m( d ),
+                             cell_size * ( global_grid.ownedNumCell( d ) +
+                                           2 * halo_width ) );
+        }
     }
+    {
+        // Test again with the array interface instead of per dimension.
 
+        // Check the low and high corners.
+        Kokkos::View<double[3], TEST_DEVICE> own_lc( "own_lc" );
+        Kokkos::View<double[3], TEST_DEVICE> own_hc( "own_hc" );
+        Kokkos::View<double[3], TEST_DEVICE> own_ext( "own_extent" );
+        Kokkos::View<double[3], TEST_DEVICE> ghost_lc( "ghost_lc" );
+        Kokkos::View<double[3], TEST_DEVICE> ghost_hc( "ghost_hc" );
+        Kokkos::View<double[3], TEST_DEVICE> ghost_ext( "ghost_extent" );
+
+        Kokkos::parallel_for(
+            "get_corners", Kokkos::RangePolicy<TEST_EXECSPACE>( 0, 1 ),
+            KOKKOS_LAMBDA( const int d ) {
+                auto own_lc_array = local_mesh.lowCorner( Own() );
+                auto own_hc_array = local_mesh.highCorner( Own() );
+                auto own_ext_array = local_mesh.extent( Own() );
+                auto ghost_lc_array = local_mesh.lowCorner( Ghost() );
+                auto ghost_hc_array = local_mesh.highCorner( Ghost() );
+                auto ghost_ext_array = local_mesh.extent( Ghost() );
+                for ( int d = 0; d < 3; ++d )
+                {
+                    own_lc( d ) = own_lc_array( d );
+                    own_hc( d ) = own_hc_array( d );
+                    own_ext( d ) = own_ext_array( d );
+                    ghost_lc( d ) = ghost_lc_array( d );
+                    ghost_hc( d ) = ghost_hc_array( d );
+                    ghost_ext( d ) = ghost_ext_array( d );
+                }
+            } );
+
+        auto own_lc_m =
+            Kokkos::create_mirror_view_and_copy( Kokkos::HostSpace(), own_lc );
+        auto own_hc_m =
+            Kokkos::create_mirror_view_and_copy( Kokkos::HostSpace(), own_hc );
+        auto own_ext_m =
+            Kokkos::create_mirror_view_and_copy( Kokkos::HostSpace(), own_ext );
+        auto ghost_lc_m = Kokkos::create_mirror_view_and_copy(
+            Kokkos::HostSpace(), ghost_lc );
+        auto ghost_hc_m = Kokkos::create_mirror_view_and_copy(
+            Kokkos::HostSpace(), ghost_hc );
+        auto ghost_ext_m = Kokkos::create_mirror_view_and_copy(
+            Kokkos::HostSpace(), ghost_ext );
+
+        for ( int d = 0; d < 3; ++d )
+            EXPECT_FLOAT_EQ( own_lc_m( d ),
+                             low_corner[d] +
+                                 cell_size * global_grid.globalOffset( d ) );
+
+        for ( int d = 0; d < 3; ++d )
+            EXPECT_FLOAT_EQ(
+                own_hc_m( d ),
+                low_corner[d] + cell_size * ( global_grid.globalOffset( d ) +
+                                              global_grid.ownedNumCell( d ) ) );
+
+        for ( int d = 0; d < 3; ++d )
+            EXPECT_FLOAT_EQ( own_ext_m( d ),
+                             cell_size * global_grid.ownedNumCell( d ) );
+
+        for ( int d = 0; d < 3; ++d )
+        {
+            EXPECT_FLOAT_EQ( ghost_lc_m( d ),
+                             low_corner[d] +
+                                 cell_size * ( global_grid.globalOffset( d ) -
+                                               halo_width ) );
+
+            EXPECT_FLOAT_EQ( ghost_hc_m( d ),
+                             low_corner[d] +
+                                 cell_size * ( global_grid.globalOffset( d ) +
+                                               global_grid.ownedNumCell( d ) +
+                                               halo_width ) );
+
+            EXPECT_FLOAT_EQ( ghost_ext_m( d ),
+                             cell_size * ( global_grid.ownedNumCell( d ) +
+                                           2 * halo_width ) );
+        }
+    }
     // Check the cell locations and measures.
     auto cell_space = local_grid.indexSpace( Ghost(), Cell(), Local() );
     {
