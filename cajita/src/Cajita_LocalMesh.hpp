@@ -119,13 +119,31 @@ class LocalMesh<Device, UniformMesh<Scalar, NumSpaceDim>>
     KOKKOS_INLINE_FUNCTION
     bool isPeriodic( const int dim ) const { return _periodic[dim]; }
 
+    //! Determine if the mesh is periodic in all dimensions.
+    KOKKOS_INLINE_FUNCTION
+    Kokkos::Array<bool, num_space_dim> isPeriodic() const { return _periodic; }
+
     //! Determine if this block is on a low boundary in the given dimension.
     KOKKOS_INLINE_FUNCTION
     bool onLowBoundary( const int dim ) const { return _boundary_lo[dim]; }
 
+    //! Determine if this block is on a low boundary in all dimensions.
+    KOKKOS_INLINE_FUNCTION
+    Kokkos::Array<bool, num_space_dim> onLowBoundary() const
+    {
+        return _boundary_lo;
+    }
+
     //! Determine if this block is on a high boundary in the given dimension.
     KOKKOS_INLINE_FUNCTION
     bool onHighBoundary( const int dim ) const { return _boundary_hi[dim]; }
+
+    //! Determine if this block is on a high boundary in all dimensions.
+    KOKKOS_INLINE_FUNCTION
+    Kokkos::Array<bool, num_space_dim> onHighBoundary() const
+    {
+        return _boundary_hi;
+    }
 
     //! Get the physical coordinate of the low corner of the owned local grid.
     //! \param dim Spatial dimension.
@@ -133,6 +151,14 @@ class LocalMesh<Device, UniformMesh<Scalar, NumSpaceDim>>
     Scalar lowCorner( Own, const int dim ) const
     {
         return _own_low_corner[dim];
+    }
+
+    //! Get the physical coordinates of the low corner of the owned local grid
+    //! in all dimensions.
+    KOKKOS_INLINE_FUNCTION
+    Kokkos::Array<Scalar, num_space_dim> lowCorner( Own ) const
+    {
+        return _own_low_corner;
     }
 
     //! Get the physical coordinate of the low corner of the local grid
@@ -144,12 +170,28 @@ class LocalMesh<Device, UniformMesh<Scalar, NumSpaceDim>>
         return _ghost_low_corner[dim];
     }
 
+    //! Get the physical coordinates of the low corner of the local grid
+    //! including ghosts in all dimensions.
+    KOKKOS_INLINE_FUNCTION
+    Kokkos::Array<Scalar, num_space_dim> lowCorner( Ghost ) const
+    {
+        return _ghost_low_corner;
+    }
+
     //! Get the physical coordinate of the high corner of the owned local grid.
     //! \param dim Spatial dimension.
     KOKKOS_INLINE_FUNCTION
     Scalar highCorner( Own, const int dim ) const
     {
         return _own_high_corner[dim];
+    }
+
+    //! Get the physical coordinates of the high corner of the owned local grid
+    //! in all dimensions.
+    KOKKOS_INLINE_FUNCTION
+    Kokkos::Array<Scalar, num_space_dim> highCorner( Own ) const
+    {
+        return _own_high_corner;
     }
 
     //! Get the physical coordinate of the high corner of the local grid
@@ -161,11 +203,32 @@ class LocalMesh<Device, UniformMesh<Scalar, NumSpaceDim>>
         return _ghost_high_corner[dim];
     }
 
+    //! Get the physical coordinates of the high corner of the local grid
+    //! including ghosts in all dimensions.
+    KOKKOS_INLINE_FUNCTION
+    Kokkos::Array<Scalar, num_space_dim> highCorner( Ghost ) const
+    {
+        return _ghost_high_corner;
+    }
+
     //! Get the extent of a given dimension.
     template <typename Decomposition>
     KOKKOS_FUNCTION Scalar extent( Decomposition d, const int dim ) const
     {
         return highCorner( d, dim ) - lowCorner( d, dim );
+    }
+
+    //! Get the physical length of the local grid of the given decomposition in
+    //! all dimensions.
+    //! \param d Decomposition: Own or Ghost
+    template <typename Decomposition>
+    KOKKOS_FUNCTION Kokkos::Array<Scalar, num_space_dim>
+    extent( Decomposition d ) const
+    {
+        Kokkos::Array<Scalar, num_space_dim> ext;
+        for ( std::size_t dim = 0; dim < num_space_dim; ++dim )
+            ext[d] = highCorner( d, dim ) - lowCorner( d, dim );
+        return ext;
     }
 
     //! Get the coordinates of a Cell given the local index.
@@ -516,15 +579,33 @@ class LocalMesh<Device, NonUniformMesh<Scalar, NumSpaceDim>>
     KOKKOS_INLINE_FUNCTION
     bool isPeriodic( const int dim ) const { return _periodic[dim]; }
 
+    //! Determine if the mesh is periodic in all dimensions.
+    KOKKOS_INLINE_FUNCTION
+    Kokkos::Array<bool, num_space_dim> isPeriodic() const { return _periodic; }
+
     //! Determine if this block is on a low boundary in the given dimension.
     //! \param dim Spatial dimension.
     KOKKOS_INLINE_FUNCTION
     bool onLowBoundary( const int dim ) const { return _boundary_lo[dim]; }
 
+    //! Determine if this block is on a low boundary in all dimensions.
+    KOKKOS_INLINE_FUNCTION
+    Kokkos::Array<bool, num_space_dim> onLowBoundary() const
+    {
+        return _boundary_lo;
+    }
+
     //! Determine if this block is on a high boundary in the given dimension.
     //! \param dim Spatial dimension.
     KOKKOS_INLINE_FUNCTION
     bool onHighBoundary( const int dim ) const { return _boundary_hi[dim]; }
+
+    //! Determine if this block is on a high boundary in all dimensions.
+    KOKKOS_INLINE_FUNCTION
+    Kokkos::Array<bool, num_space_dim> onHighBoundary() const
+    {
+        return _boundary_hi;
+    }
 
     //! Get the physical coordinate of the low corner of the owned local grid.
     //! \param dim Spatial dimension.
@@ -532,6 +613,14 @@ class LocalMesh<Device, NonUniformMesh<Scalar, NumSpaceDim>>
     Scalar lowCorner( Own, const int dim ) const
     {
         return _own_low_corner[dim];
+    }
+
+    //! Get the physical coordinates of the low corner of the owned local grid
+    //! in all dimensions.
+    KOKKOS_INLINE_FUNCTION
+    Kokkos::Array<Scalar, num_space_dim> lowCorner( Own ) const
+    {
+        return _own_low_corner;
     }
 
     //! Get the physical coordinate of the low corner of the local grid
@@ -543,12 +632,28 @@ class LocalMesh<Device, NonUniformMesh<Scalar, NumSpaceDim>>
         return _ghost_low_corner[dim];
     }
 
+    //! Get the physical coordinates of the low corner of the local grid
+    //! including ghosts in all dimensions.
+    KOKKOS_INLINE_FUNCTION
+    Kokkos::Array<Scalar, num_space_dim> lowCorner( Ghost ) const
+    {
+        return _ghost_low_corner;
+    }
+
     //! Get the physical coordinate of the high corner of the owned local grid.
     //! \param dim Spatial dimension.
     KOKKOS_INLINE_FUNCTION
     Scalar highCorner( Own, const int dim ) const
     {
         return _own_high_corner[dim];
+    }
+
+    //! Get the physical coordinates of the high corner of the owned local grid
+    //! in all dimensions.
+    KOKKOS_INLINE_FUNCTION
+    Kokkos::Array<Scalar, num_space_dim> highCorner( Own ) const
+    {
+        return _own_high_corner;
     }
 
     //! Get the physical coordinate of the high corner of the local grid
@@ -560,6 +665,14 @@ class LocalMesh<Device, NonUniformMesh<Scalar, NumSpaceDim>>
         return _ghost_high_corner[dim];
     }
 
+    //! Get the physical coordinates of the high corner of the local grid
+    //! including ghosts in all dimensions.
+    KOKKOS_INLINE_FUNCTION
+    Kokkos::Array<Scalar, num_space_dim> highCorner( Ghost ) const
+    {
+        return _ghost_high_corner;
+    }
+
     //! Get the physical length of the local grid of the given decomposition.
     //! \param d Decomposition: Own or Ghost
     //! \param dim Spatial dimension.
@@ -567,6 +680,19 @@ class LocalMesh<Device, NonUniformMesh<Scalar, NumSpaceDim>>
     KOKKOS_FUNCTION Scalar extent( Decomposition d, const int dim ) const
     {
         return highCorner( d, dim ) - lowCorner( d, dim );
+    }
+
+    //! Get the physical length of the local grid of the given decomposition in
+    //! all dimensions.
+    //! \param d Decomposition: Own or Ghost
+    template <typename Decomposition>
+    KOKKOS_FUNCTION Kokkos::Array<Scalar, num_space_dim>
+    extent( Decomposition d ) const
+    {
+        Kokkos::Array<Scalar, num_space_dim> ext;
+        for ( std::size_t dim = 0; dim < num_space_dim; ++dim )
+            ext[d] = highCorner( d, dim ) - lowCorner( d, dim );
+        return ext;
     }
 
     /*!
