@@ -62,6 +62,11 @@ class CartesianGrid
         _ny = cellsBetween( max_y, min_y, 1.0 / delta_y );
         _nz = cellsBetween( max_z, min_z, 1.0 / delta_z );
 
+        // Ensure at least one grid cell per dimension.
+        _nx = _nx > 0 ? _nx : 1;
+        _ny = _ny > 0 ? _ny : 1;
+        _nz = _nz > 0 ? _nz : 1;
+
         _dx = ( max_x - min_x ) / _nx;
         _dy = ( max_y - min_y ) / _ny;
         _dz = ( max_z - min_z ) / _nz;
