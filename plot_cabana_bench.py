@@ -11,15 +11,18 @@ plt.rcParams["font.size"] = 12
 
 all_backends = ['host', 'serial', 'openmp', 'cuda', 'hip', 'cudauvm']
 
-backends = ['cuda_cuda', 'host_host']
+backends = ['cuda', 'serial']
 #backends = ['cuda_cuda', 'hip_hip']
 
 size_list = [1e3, 1e4, 1e5, 1e6, 1e7]
-type_list = ['create', 'migrate']
+size_list = [16, 32, 64, 128, 256]
+
+#type_list = ['create', 'migrate']
 #type_list = ['create', 'permute']
 #type_list = ['create', 'iteration']
+type_list = ['create', 'scatter']
 
-param_list = ['dist']
+param_list = ['halo']
 #param_list = ['10', '100', '1000', '10000', '100000', '1000000', '10000000'] #['sort']
 #param_list = ['3', '4', '5']
 
@@ -49,7 +52,7 @@ for file in filenames:
     while l < len(txt):
         if txt[l].isspace() or 'problem_size' in txt[l]:
             l += 1
-        elif "Cabana Comm" in txt[l]:
+        elif "Cabana Comm" in txt[l] or "Cajita Halo" in txt[l]:
             l = skip_lines(txt, l)
 
         elif txt[l].split("_")[0] in backends or "_".join(txt[l].split("_")[:2]) in backends:
@@ -83,7 +86,7 @@ for file in filenames:
             l += 1
 
 print(backend_dict)
-print(sizes_dict)
+#print(sizes_dict)
 
 fig = plt.figure()
 ax1 = fig.add_subplot(111)
@@ -99,15 +102,16 @@ for backend in backend_dict:
         for type in type_list:
             #for size in size_list:
             y = np.array(backend_dict[backend][param][type]) #/ np.array(backend_dict[backends[1]][param][type])
-            if "host" in backend:
-                plt.plot(np.array(sizes_dict[backend][param][type])*1.2, y, color=color_dict[type], lw=linewidth, linestyle="none", fillstyle="none", marker='o')# linestyle=dash_dict[backend])#, facecolors=color_dict[type])
+            if "host" in backend or "serial" in backend or "openmp" in backend:
+                plt.plot(np.array(sizes_dict[backend][param][type])*1.05, y, color=color_dict[type], lw=linewidth, linestyle="none", fillstyle="none", marker='o')# linestyle=dash_dict[backend])#, facecolors=color_dict[type])
             else:
                 plt.plot(sizes_dict[backend][param][type], y, color=color_dict[type], lw=linewidth, linestyle="none", marker='o')
 
 #ax1.set_ylabel("Speedup relative to V100-CUDA")
 ax1.set_ylabel("Time (seconds)")
-ax1.set_xlabel("Number of particles")
-ax1.set_title("Cabana 1-rank Migrate benchmark (ORNL Summit)")
+#ax1.set_xlabel("Number of particles")
+ax1.set_xlabel("Number of grid points per dimension")
+ax1.set_title("Cabana benchmark (ORNL Summit)")
 fake_lines = [Line2D([0], [0], color=color_dict[type_list[0]], lw=2, label=type_list[0]),
               Line2D([0], [0], color=color_dict[type_list[1]], lw=2, label=type_list[1]),
               #Line2D([0], [0], color="k", lw=2, linestyle=dash_dict[backends[1]], label="POWER9 CPU"),
@@ -120,5 +124,5 @@ ax1.legend(handles=fake_lines)
 ax1.set_xscale('log')
 ax1.set_yscale('log')
 
-#plt.show()
-plt.savefig("plot.png", dpi=300)
+plt.show()
+#plt.savefig("plot.png", dpi=300)
