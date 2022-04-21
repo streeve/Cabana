@@ -960,19 +960,20 @@ struct NeighborListTestData
 #ifdef KOKKOS_ENABLE_OPENMPTARGET // FIXME_OPENMPTARGET
         using AoSoA_copy = Cabana::AoSoA<DataTypes, Kokkos::HostSpace>;
         AoSoA_copy aosoa_copy( "aosoa", num_particle );
-        auto positions = Cabana::slice<0>( aosoa_copy );
+        auto random_positions = Cabana::slice<0>( aosoa_copy );
 #else
-        auto positions = Cabana::slice<0>( aosoa );
+        auto random_positions = Cabana::slice<0>( aosoa );
 #endif
 
-        Cabana::createRandomParticles( positions, positions.size(), box_min,
-                                       box_max );
+        Cabana::createRandomParticles(
+            random_positions, random_positions.size(), box_min, box_max );
 
 #ifdef KOKKOS_ENABLE_OPENMPTARGET // FIXME_OPENMPTARGET
         Cabana::deep_copy( aosoa, aosoa_copy );
 #endif
 
         // Create a full N^2 neighbor list to check against.
+        auto positions = Cabana::slice<0>( aosoa );
         auto N2_list = computeFullNeighborList( positions, test_radius );
         N2_list_copy = createTestListHostCopy( N2_list );
     }
