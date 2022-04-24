@@ -20,7 +20,7 @@ size_list = [16, 32, 64, 128, 256]
 #type_list = ['create', 'migrate']
 #type_list = ['create', 'permute']
 #type_list = ['create', 'iteration']
-type_list = ['create', 'scatter']
+type_list = ['create', 'gather']#, 'scatter']
 
 param_list = ['halo']
 #param_list = ['10', '100', '1000', '10000', '100000', '1000000', '10000000'] #['sort']
@@ -28,7 +28,7 @@ param_list = ['halo']
 
 comm = 'dist' in param_list or 'halo' in param_list
 
-color_dict = {type_list[0]: '#E31A1C', type_list[1]:'#4291C7'}
+color_dict = {type_list[0]: '#E31A1C', type_list[1]:'#4291C7'} #, type_list[2]: '#4291C7'}
 dash_dict = {backends[0]: "-", backends[1]: "--"}
 
 width = 0.1
@@ -60,14 +60,14 @@ for file in filenames:
                 if backend in txt[l]:
                     current_backend = backend
             current_param = None
+            current_type = None
             for param in param_list:
                 if param in txt[l] and "." not in txt[l]:
                     current_param = param
             for type in type_list:
                 if type in txt[l]:
                     current_type = type
-
-            if current_param == None:
+            if current_param == None or current_type == None:
                 l = skip_lines(txt, l)
             else:
                 l += 2
