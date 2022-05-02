@@ -11,20 +11,23 @@ plt.rcParams["font.size"] = 12
 
 all_backends = ['host', 'serial', 'openmp', 'cuda', 'hip', 'cudauvm']
 
-#backends = ['cuda', 'hip'] #, 'serial']
-backends = ['cuda_cuda', 'hip_hip']
+backends = ['serial', 'hip'] #, 'serial']
+#backends = ['cuda_cuda', 'hip_hip']
 
-size_list = [1e3, 1e4, 1e5, 1e6, 1e7]
+#size_list = [1e3, 1e4, 1e5, 1e6, 1e7]
 #size_list = [16, 32, 64, 128, 256]
+size_list = [1, 2, 4]
 
-type_list = ['create', 'scatter']
+#type_list = ['create', 'gather'] #'scatter'
 #type_list = ['create', 'migrate']
+type_list = ['p2g', 'g2p']
 #type_list = ['create', 'permute']
 #type_list = ['create', 'iteration']
-#type_list = ['create', 'gather']#, 'scatter']
 
-param_list = ['halo'] # dist
-#param_list = ['10', '100', '1000', '10000', '100000', '1000000', '10000000'] #['sort']
+#param_list = ['halo'] # dist
+param_list = ['16', '32', '64', '128', '256']
+#param_list = ['', 'aosoa', 'slice']
+#param_list =  ['10', '100', '1000', '10000', '100000', '1000000', '10000000'] #['sort']
 #param_list = ['3', '4', '5']
 
 comm = 'dist' in param_list or 'halo' in param_list
@@ -88,7 +91,7 @@ for file in filenames:
             l += 1
 
 print(backend_dict)
-#print(sizes_dict)
+print(sizes_dict)
 
 fig = plt.figure()
 ax1 = fig.add_subplot(111)
@@ -103,12 +106,19 @@ for backend in backend_dict:
     for param in param_list:
         for type in type_list:
             #for size in size_list:
-            x = np.array(sizes_dict[backend][param][type]) # grid
-            y = np.array(backend_dict[backend][param][type]) / np.array(backend_dict[backends[1]][param][type])
+            x = np.array(sizes_dict[backend][param][type])**3 #grid
+            minval = len(backend_dict[backends[0]][param][type])
+            #if len(backend_dict[backends[0]][param][type]) > len(backend_dict[backends[1]][param][type]):
+            #    minval = len(backend_dict[backends[1]][param][type])
+            #print(minval, len(backend_dict[backends[0]][param][type]), len(backend_dict[backends[1]][param][type]))
+            y = np.array(backend_dict[backend][param][type][:minval])# / np.array(backend_dict[backends[1]][param][type][:minval])
             if "host" in backend or "serial" in backend or "openmp" in backend:
                 plt.plot(x*1.05, y, color=color_dict[type], lw=linewidth, linestyle="none", fillstyle="none", marker='o')# linestyle=dash_dict[backend])#, facecolors=color_dict[type])
             elif "hip" not in backend:
-                plt.plot(x, y, color=color_dict[type], lw=linewidth, linestyle="none", marker='o')
+                plt.plot(x, y, color=color_dict[type], lw=linewidth,
+                         linestyle="none",
+                         marker='o')
+                         #, alpha=0.40)
 
             plt.plot(x, [1]*len(x), c="k")
 
@@ -116,9 +126,9 @@ ax1.set_ylabel("MI250X-HIP speedup relative to V100-CUDA")
 #ax1.set_ylabel("Time (seconds)")
 #ax1.set_xlabel("Number of particles")
 ax1.set_xlabel("Number of grid points")
-ax1.set_title("Cabana benchmark - OLCF comparison")
+#ax1.set_title("Cabana benchmark - OLCF comparison")
 fake_lines = [Line2D([0], [0], color=color_dict[type_list[0]], lw=2, label=type_list[0]),
-              Line2D([0], [0], color=color_dict[type_list[1]], lw=2, label=type_list[1])]
+              Line2D([0], [0], color=color_dict[type_list[1]], lw=2, label="iterate" if "iteration" in type_list[1] else type_list[1])]
               #Line2D([0], [0], color="k", lw=2, linestyle=dash_dict[backends[1]], label="POWER9 CPU"),
               #Line2D([0], [0], color="k", lw=2, linestyle=dash_dict[backends[0]], label="V100 GPU")
               #Line2D([0], [0], color="k", lw=2, linestyle="none", fillstyle="none", marker='o', label="POWER9 CPU"),
@@ -129,6 +139,7 @@ ax1.legend(handles=fake_lines)
 ax1.set_xscale('log')
 ax1.set_yscale('log')
 #ax1.set_yscale([])
+fig.tight_layout()
 
-#plt.show()
-plt.savefig(outname+".png", dpi=300)
+plt.show()
+#plt.savefig(outname+".png", dpi=300)
