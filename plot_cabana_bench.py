@@ -11,7 +11,7 @@ plt.rcParams["font.size"] = 12
 
 all_backends = ['host', 'serial', 'openmp', 'cuda', 'hip', 'cudauvm']
 
-backends = ['serial', 'hip'] #, 'serial']
+backends = ['cuda', 'hip'] #, 'serial']
 #backends = ['cuda_cuda', 'hip_hip']
 
 #size_list = [1e3, 1e4, 1e5, 1e6, 1e7]
@@ -87,7 +87,7 @@ for file in filenames:
             for s, size in enumerate(size_list):
                 if size == read_size:
                     backend_dict[current_backend][current_param][current_type].append(float(vals[-1]))
-                    sizes_dict[current_backend][current_param][current_type].append(size)
+                    sizes_dict[current_backend][current_param][current_type].append(int(current_param))
             l += 1
 
 print(backend_dict)
@@ -106,12 +106,14 @@ for backend in backend_dict:
     for param in param_list:
         for type in type_list:
             #for size in size_list:
-            x = np.array(sizes_dict[backend][param][type])**3 #grid
             minval = len(backend_dict[backends[0]][param][type])
-            #if len(backend_dict[backends[0]][param][type]) > len(backend_dict[backends[1]][param][type]):
-            #    minval = len(backend_dict[backends[1]][param][type])
-            #print(minval, len(backend_dict[backends[0]][param][type]), len(backend_dict[backends[1]][param][type]))
-            y = np.array(backend_dict[backend][param][type][:minval])# / np.array(backend_dict[backends[1]][param][type][:minval])
+            if len(backend_dict[backends[0]][param][type]) > len(backend_dict[backends[1]][param][type]):
+                minval = len(backend_dict[backends[1]][param][type])
+            print(minval, len(backend_dict[backends[0]][param][type]), len(backend_dict[backends[1]][param][type]))
+
+            x = np.array(sizes_dict[backend][param][type][:minval])**3 #grid
+            #x = np.array(param_list[backend][param][type])**3
+            y = np.array(backend_dict[backend][param][type][:minval]) / np.array(backend_dict[backends[1]][param][type][:minval])
             if "host" in backend or "serial" in backend or "openmp" in backend:
                 plt.plot(x*1.05, y, color=color_dict[type], lw=linewidth, linestyle="none", fillstyle="none", marker='o')# linestyle=dash_dict[backend])#, facecolors=color_dict[type])
             elif "hip" not in backend:
@@ -121,6 +123,7 @@ for backend in backend_dict:
                          #, alpha=0.40)
 
             plt.plot(x, [1]*len(x), c="k")
+            #plt.plot([16**3, 128**3], [1, 1], c="k")
 
 ax1.set_ylabel("MI250X-HIP speedup relative to V100-CUDA")
 #ax1.set_ylabel("Time (seconds)")
@@ -138,7 +141,7 @@ fake_lines = [Line2D([0], [0], color=color_dict[type_list[0]], lw=2, label=type_
 ax1.legend(handles=fake_lines)
 ax1.set_xscale('log')
 ax1.set_yscale('log')
-#ax1.set_yscale([])
+ax1.set_ylim([0.1, 5])
 fig.tight_layout()
 
 plt.show()
