@@ -51,8 +51,12 @@ for fn, file in enumerate(filenames):
     for kernel in kernel_dict.keys():
         print(kernel, kernel_dict[kernel][fn:])
         if not fn:
+            if not len(kernel_dict[kernel]):
+                kernel_dict[kernel] = 0.0
             kernel_dict[kernel] = np.array([np.sum(kernel_dict[kernel])])
         else:
+            if len(kernel_dict[kernel]) <= fn:
+                kernel_dict[kernel] = np.append(kernel_dict[kernel], 0.0)
             kernel_dict[kernel][fn] = np.sum(kernel_dict[kernel][fn:])
             kernel_dict[kernel] = np.resize(kernel_dict[kernel], fn+1)
     #print(kernel_dict)
@@ -110,7 +114,7 @@ ax1.set_position([box.x0, box.y0, box.width * 0.95, box.height])
 ax1.legend(bbox_to_anchor=(1, 1.0))
 
 ax1.set_yscale('log')
-ax1.set_xlim([0.9,1.9])
+#ax1.set_xlim([0.9,1.9])
 #ax1.set_ylim([5e-3,1e4])
 fig.tight_layout()
 
