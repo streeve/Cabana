@@ -16,7 +16,6 @@ set(HEADERS_PUBLIC
   Cabana_Core.hpp
   Cabana_DeepCopy.hpp
   Cabana_ExecutionPolicy.hpp
-  Cabana_LinkedCellList.hpp
   Cabana_MemberTypes.hpp
   Cabana_NeighborList.hpp
   Cabana_Parallel.hpp

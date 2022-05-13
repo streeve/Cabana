@@ -20,7 +20,6 @@
 
 #include <Cabana_AoSoA.hpp>
 #include <Cabana_DeepCopy.hpp>
-#include <Cabana_LinkedCellList.hpp>
 #include <Cabana_MemberTypes.hpp>
 #include <Cabana_NeighborList.hpp>
 #include <Cabana_Parallel.hpp>

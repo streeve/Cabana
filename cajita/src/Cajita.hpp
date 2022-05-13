@@ -26,6 +26,7 @@
 #include <Cajita_IndexConversion.hpp>
 #include <Cajita_IndexSpace.hpp>
 #include <Cajita_Interpolation.hpp>
+#include <Cajita_LinkedCellList.hpp>
 #include <Cajita_LocalGrid.hpp>
 #include <Cajita_LocalMesh.hpp>
 #include <Cajita_ManualPartitioner.hpp>

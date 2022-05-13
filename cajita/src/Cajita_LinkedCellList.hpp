@@ -30,14 +30,14 @@ namespace Cabana
 //---------------------------------------------------------------------------//
 /*!
   \brief Data describing the bin sizes and offsets resulting from a binning
-  operation on a 3d regular Cartesian grid.
+  operation on a 3d regular Cartesian grid, a Cajita local_mesh.
 */
-template <class DeviceType>
-class [[deprecated]] LinkedCellList
+template <class LocalMeshType>
+class LinkedCellList
 {
   public:
     //! Kokkos device_type.
-    using device_type = DeviceType;
+    using device_type = typename LocalMeshType::device_type;
     //! Kokkos memory space.
     using memory_space = typename device_type::memory_space;
     //! Kokkos execution space.
@@ -48,11 +48,6 @@ class [[deprecated]] LinkedCellList
     using CountView = Kokkos::View<int*, device_type>;
     //! Offset view type.
     using OffsetView = Kokkos::View<size_type*, device_type>;
-
-    /*!
-      \brief Default constructor.
-    */
-    LinkedCellList() {}
 
     /*!
       \brief Slice constructor
@@ -68,15 +63,8 @@ class [[deprecated]] LinkedCellList
       \param grid_max Grid maximum value in each direction.
     */
     template <class SliceType>
-    LinkedCellList(
-        SliceType positions, const typename SliceType::value_type grid_delta[3],
-        const typename SliceType::value_type grid_min[3],
-        const typename SliceType::value_type grid_max[3],
-        typename std::enable_if<( is_slice<SliceType>::value ), int>::type* =
-            0 )
-        : _grid( grid_min[0], grid_min[1], grid_min[2], grid_max[0],
-                 grid_max[1], grid_max[2], grid_delta[0], grid_delta[1],
-                 grid_delta[2] )
+    LinkedCellList( SliceType positions, const LocalMeshType local_mesh )
+        : _local_mesh( local_mesh )
     {
         std::size_t np = positions.size();
         allocate( totalBins(), np );
@@ -101,16 +89,9 @@ class [[deprecated]] LinkedCellList
       \param grid_max Grid maximum value in each direction.
     */
     template <class SliceType>
-    LinkedCellList(
-        SliceType positions, const std::size_t begin, const std::size_t end,
-        const typename SliceType::value_type grid_delta[3],
-        const typename SliceType::value_type grid_min[3],
-        const typename SliceType::value_type grid_max[3],
-        typename std::enable_if<( is_slice<SliceType>::value ), int>::type* =
-            0 )
-        : _grid( grid_min[0], grid_min[1], grid_min[2], grid_max[0],
-                 grid_max[1], grid_max[2], grid_delta[0], grid_delta[1],
-                 grid_delta[2] )
+    LinkedCellList( SliceType positions, const std::size_t begin,
+                    const std::size_t end, const LocalMeshType local_mesh )
+        : _local_mesh( local_mesh )
     {
         allocate( totalBins(), end - begin );
         build( positions, begin, end );
@@ -121,7 +102,7 @@ class [[deprecated]] LinkedCellList
       \return the total number of bins.
     */
     KOKKOS_INLINE_FUNCTION
-    int totalBins() const { return _grid.totalNumCells(); }
+    int totalBins() const { return _local_mesh.totalNumCells(); }
 
     /*!
       \brief Get the number of bins in a given dimension.
@@ -129,7 +110,7 @@ class [[deprecated]] LinkedCellList
       \return The number of bins.
     */
     KOKKOS_INLINE_FUNCTION
-    int numBin( const int dim ) const { return _grid.numBin( dim ); }
+    int numBin( const int dim ) const { return _local_mesh.numCells( dim ); }
 
     /*!
       \brief Given the ijk index of a bin get its cardinal index.
@@ -378,7 +359,7 @@ struct is_linked_cell_list
   \param aosoa The AoSoA to permute.
  */
 template <class LinkedCellListType, class AoSoA_t>
-[[deprecated]] void permute(
+void permute(
     const LinkedCellListType& linked_cell_list, AoSoA_t& aosoa,
     typename std::enable_if<( is_linked_cell_list<LinkedCellListType>::value &&
                               is_aosoa<AoSoA_t>::value ),
@@ -400,7 +381,7 @@ template <class LinkedCellListType, class AoSoA_t>
   \param slice The slice to permute.
  */
 template <class LinkedCellListType, class SliceType>
-[[deprecated]] void permute(
+void permute(
     const LinkedCellListType& linked_cell_list, SliceType& slice,
     typename std::enable_if<( is_linked_cell_list<LinkedCellListType>::value &&
                               is_slice<SliceType>::value ),
@@ -409,6 +390,13 @@ template <class LinkedCellListType, class SliceType>
     permute( linked_cell_list.binningData(), slice );
 }
 
+//! Creation function for linked cell list.
+template <class MeshType, class PositionType>
+LinkedCellList<MeshType> createLinkedCellList( const PositionType positions,
+                                               const MeshType& local_mesh )
+{
+    return LinkedCellList<MeshType>( positions, local_mesh );
+}
 //---------------------------------------------------------------------------//
 
 } // end namespace Cabana

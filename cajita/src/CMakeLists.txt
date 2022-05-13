@@ -23,6 +23,7 @@ set(HEADERS_PUBLIC
   Cajita_IndexSpace.hpp
   Cajita_SparseIndexSpace.hpp
   Cajita_Interpolation.hpp
+  Cajita_LinkedCellList.hpp
   Cajita_LocalGrid.hpp
   Cajita_LocalGrid_impl.hpp
   Cajita_LocalMesh.hpp
