@@ -9,30 +9,32 @@ def skip_lines(txt, l):
 
 plt.rcParams["font.size"] = 12
 
-all_backends = ['host', 'serial', 'openmp', 'cuda', 'hip', 'cudauvm']
+#all_backends = ['host', 'serial', 'openmp', 'cuda', 'hip', 'cudauvm']
+all_backends = ['device', 'host']
 
-backends = ['cuda', 'hip'] #, 'serial']
+#backends = ['cuda', 'hip'] #, 'serial']
 #backends = ['cuda_cuda', 'hip_hip']
+backends = ['device', 'host']
 
-#size_list = [1e3, 1e4, 1e5, 1e6, 1e7]
+size_list = [1e3, 1e4, 1e5, 1e6, 1e7]
 #size_list = [16, 32, 64, 128, 256]
-size_list = [1, 2, 4]
+#size_list = [1, 2, 4]
 
 #type_list = ['create', 'gather'] #'scatter'
 #type_list = ['create', 'migrate']
-type_list = ['p2g', 'g2p']
+#type_list = ['p2g', 'g2p']
 #type_list = ['create', 'permute']
-#type_list = ['create', 'iteration']
+type_list = ['create', 'iteration']#, 'build']
 
 #param_list = ['halo'] # dist
-param_list = ['16', '32', '64', '128', '256']
+#param_list = ['16', '32', '64', '128', '256']
 #param_list = ['', 'aosoa', 'slice']
 #param_list =  ['10', '100', '1000', '10000', '100000', '1000000', '10000000'] #['sort']
-#param_list = ['3', '4', '5']
+param_list = ['3', '4', '5']
 
 comm = 'dist' in param_list or 'halo' in param_list
 
-color_dict = {type_list[0]: '#E31A1C', type_list[1]:'#4291C7'} #, type_list[2]: '#4291C7'}
+color_dict = {type_list[0]: '#E31A1C', type_list[1]:'#4291C7'}#, type_list[2]: 'k'}
 dash_dict = {backends[0]: "-", backends[1]: "--"}
 
 width = 0.1
@@ -110,12 +112,12 @@ for backend in backend_dict:
             if len(backend_dict[backends[0]][param][type]) > len(backend_dict[backends[1]][param][type]):
                 minval = len(backend_dict[backends[1]][param][type])
 
-            x = np.array(sizes_dict[backend][param][type][:minval])**3 #grid
+            x = np.array(sizes_dict[backend][param][type][0:3]) #**3 #grid
             #x = np.array(param_list[backend][param][type])**3
-            y = np.array(backend_dict[backend][param][type][:minval]) / np.array(backend_dict[backends[1]][param][type][:minval])
+            y = np.array(backend_dict[backend][param][type][0:3])  / np.array(backend_dict[backend][param][type][3:6])# / np.array(backend_dict[backends[1]][param][type][:minval])
             if "host" in backend or "serial" in backend or "openmp" in backend:
                 plt.plot(x*1.05, y, color=color_dict[type], lw=linewidth, linestyle="none", fillstyle="none", marker='o')# linestyle=dash_dict[backend])#, facecolors=color_dict[type])
-            elif "hip" not in backend:
+            else: #elif "hip" not in backend:
                 plt.plot(x, y, color=color_dict[type], lw=linewidth,
                          linestyle="none",
                          marker='o')
@@ -124,23 +126,25 @@ for backend in backend_dict:
             plt.plot(x, [1]*len(x), c="k")
             #plt.plot([16**3, 128**3], [1, 1], c="k")
 
-ax1.set_ylabel("MI250X-HIP speedup relative to V100-CUDA")
+#ax1.set_ylabel("MI250X-HIP speedup relative to V100-CUDA")
+ax1.set_ylabel("Speedup")
 #ax1.set_ylabel("Time (seconds)")
-#ax1.set_xlabel("Number of particles")
-ax1.set_xlabel("Number of grid points")
+ax1.set_xlabel("Number of particles")
+#ax1.set_xlabel("Number of grid points")
 #ax1.set_title("Cabana benchmark - OLCF comparison")
 fake_lines = [Line2D([0], [0], color=color_dict[type_list[0]], lw=2, label=type_list[0]),
-              Line2D([0], [0], color=color_dict[type_list[1]], lw=2, label="iterate" if "iteration" in type_list[1] else type_list[1])]
+              Line2D([0], [0], color=color_dict[type_list[1]], lw=2, label="iterate" if "iteration" in type_list[1] else type_list[1]),
               #Line2D([0], [0], color="k", lw=2, linestyle=dash_dict[backends[1]], label="POWER9 CPU"),
               #Line2D([0], [0], color="k", lw=2, linestyle=dash_dict[backends[0]], label="V100 GPU")
-              #Line2D([0], [0], color="k", lw=2, linestyle="none", fillstyle="none", marker='o', label="POWER9 CPU"),
-              #Line2D([0], [0], color="k", lw=2, linestyle="none", marker='o', label="V100 GPU")]
+              Line2D([0], [0], color="k", lw=2, linestyle="none", fillstyle="none", marker='o', label="POWER9 CPU"),
+              Line2D([0], [0], color="k", lw=2, linestyle="none", marker='o', label="V100 GPU")
+              ]
 
 # Only if needed
 ax1.legend(handles=fake_lines)
 ax1.set_xscale('log')
 ax1.set_yscale('log')
-ax1.set_ylim([0.1, 5])
+#ax1.set_ylim([0.1, 5])
 fig.tight_layout()
 
 plt.show()
