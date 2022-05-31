@@ -87,7 +87,7 @@ for file in filenames:
             for s, size in enumerate(size_list):
                 if size == read_size:
                     backend_dict[current_backend][current_param][current_type].append(float(vals[-1]))
-                    sizes_dict[current_backend][current_param][current_type].append(int(current_param))
+                    sizes_dict[current_backend][current_param][current_type].append(int(size))
             l += 1
 
 print(backend_dict)
@@ -109,7 +109,6 @@ for backend in backend_dict:
             minval = len(backend_dict[backends[0]][param][type])
             if len(backend_dict[backends[0]][param][type]) > len(backend_dict[backends[1]][param][type]):
                 minval = len(backend_dict[backends[1]][param][type])
-            print(minval, len(backend_dict[backends[0]][param][type]), len(backend_dict[backends[1]][param][type]))
 
             x = np.array(sizes_dict[backend][param][type][:minval])**3 #grid
             #x = np.array(param_list[backend][param][type])**3
