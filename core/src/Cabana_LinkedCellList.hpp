@@ -31,6 +31,8 @@ namespace Cabana
 /*!
   \brief Data describing the bin sizes and offsets resulting from a binning
   operation on a 3d regular Cartesian grid.
+
+  Note that this version is deprecated in favor of the Cajita::LinkedCellList.
 */
 template <class DeviceType>
 class [[deprecated]] LinkedCellList

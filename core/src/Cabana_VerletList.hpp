@@ -636,10 +636,12 @@ struct VerletListBuilder
 
   Neighbor list implementation most appropriate for somewhat regularly
   distributed particles due to the use of a Cartesian grid.
+
+  Note that this version is deprecated in favor of the Cajita::VerletList.
 */
 template <class MemorySpace, class AlgorithmTag, class LayoutTag,
           class BuildTag = TeamVectorOpTag>
-class VerletList
+class [[deprecated]] VerletList
 {
   public:
     static_assert( Kokkos::is_memory_space<MemorySpace>::value, "" );
