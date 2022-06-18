@@ -104,6 +104,55 @@ void testLinkedCellStencil()
 
 //---------------------------------------------------------------------------//
 template <class LayoutTag, class BuildTag>
+void testN2ListFull()
+{
+    // Create the AoSoA and fill with random particle positions.
+    NeighborListTestData test_data;
+    auto position = Cabana::slice<0>( test_data.aosoa );
+
+    // Create the neighbor list.
+    {
+        Cabana::N2NeighborList<TEST_MEMSPACE, Cabana::FullNeighborTag,
+                               LayoutTag, BuildTag>
+            nlist_full( position, 0, position.size(), test_data.test_radius );
+        // Test default construction.
+        Cabana::N2NeighborList<TEST_MEMSPACE, Cabana::FullNeighborTag,
+                               LayoutTag, BuildTag>
+            nlist;
+
+        nlist = nlist_full;
+
+        checkFullNeighborList( nlist, test_data.N2_list_copy,
+                               test_data.num_particle );
+
+        // Test rebuild function with explict execution space.
+        nlist.build( TEST_EXECSPACE{}, position, 0, position.size(),
+                     test_data.test_radius );
+        checkFullNeighborList( nlist, test_data.N2_list_copy,
+                               test_data.num_particle );
+    }
+    // Check again, building with a large array allocation size
+    {
+        Cabana::N2NeighborList<TEST_MEMSPACE, Cabana::FullNeighborTag,
+                               LayoutTag, BuildTag>
+            nlist_max( position, 0, position.size(), test_data.test_radius,
+                       100 );
+        checkFullNeighborList( nlist_max, test_data.N2_list_copy,
+                               test_data.num_particle );
+    }
+    // Check again, building with a small array allocation size (refill)
+    {
+        Cabana::N2NeighborList<TEST_MEMSPACE, Cabana::FullNeighborTag,
+                               LayoutTag, BuildTag>
+            nlist_max2( position, 0, position.size(), test_data.test_radius,
+                        2 );
+        checkFullNeighborList( nlist_max2, test_data.N2_list_copy,
+                               test_data.num_particle );
+    }
+}
+
+//---------------------------------------------------------------------------//
+template <class LayoutTag, class BuildTag>
 void testVerletListFull()
 {
     // Create the AoSoA and fill with random particle positions.
@@ -295,44 +344,48 @@ TEST( TEST_CATEGORY, linked_cell_stencil_test ) { testLinkedCellStencil(); }
 TEST( TEST_CATEGORY, verlet_list_full_test )
 {
 #ifndef KOKKOS_ENABLE_OPENMPTARGET // FIXME_OPENMPTARGET
-    testVerletListFull<Cabana::VerletLayoutCSR, Cabana::TeamOpTag>();
+    testVerletListFull<Cabana::NeighborLayoutCSR, Cabana::TeamOpTag>();
 #endif
-    testVerletListFull<Cabana::VerletLayout2D, Cabana::TeamOpTag>();
+    testVerletListFull<Cabana::NeighborLayout2D, Cabana::TeamOpTag>();
 
 #ifndef KOKKOS_ENABLE_OPENMPTARGET // FIXME_OPENMPTARGET
-    testVerletListFull<Cabana::VerletLayoutCSR, Cabana::TeamVectorOpTag>();
+    testVerletListFull<Cabana::NeighborLayoutCSR, Cabana::TeamVectorOpTag>();
 #endif
-    testVerletListFull<Cabana::VerletLayout2D, Cabana::TeamVectorOpTag>();
+    testVerletListFull<Cabana::NeighborLayout2D, Cabana::TeamVectorOpTag>();
+
+    testN2ListFull<Cabana::NeighborLayoutCSR, Cabana::SerialOpTag>();
+    testN2ListFull<Cabana::NeighborLayoutCSR, Cabana::TeamOpTag>();
 }
 
 //---------------------------------------------------------------------------//
 TEST( TEST_CATEGORY, verlet_list_half_test )
 {
 #ifndef KOKKOS_ENABLE_OPENMPTARGET // FIXME_OPENMPTARGET
-    testVerletListHalf<Cabana::VerletLayoutCSR, Cabana::TeamOpTag>();
+    testVerletListHalf<Cabana::NeighborLayoutCSR, Cabana::TeamOpTag>();
 #endif
-    testVerletListHalf<Cabana::VerletLayout2D, Cabana::TeamOpTag>();
+    testVerletListHalf<Cabana::NeighborLayout2D, Cabana::TeamOpTag>();
 
 #ifndef KOKKOS_ENABLE_OPENMPTARGET // FIXME_OPENMPTARGET
-    testVerletListHalf<Cabana::VerletLayoutCSR, Cabana::TeamVectorOpTag>();
+    testVerletListHalf<Cabana::NeighborLayoutCSR, Cabana::TeamVectorOpTag>();
 #endif
-    testVerletListHalf<Cabana::VerletLayout2D, Cabana::TeamVectorOpTag>();
+    testVerletListHalf<Cabana::NeighborLayout2D, Cabana::TeamVectorOpTag>();
 }
 
 //---------------------------------------------------------------------------//
 TEST( TEST_CATEGORY, verlet_list_full_range_test )
 {
 #ifndef KOKKOS_ENABLE_OPENMPTARGET // FIXME_OPENMPTARGET
-    testVerletListFullPartialRange<Cabana::VerletLayoutCSR,
+    testVerletListFullPartialRange<Cabana::NeighborLayoutCSR,
                                    Cabana::TeamOpTag>();
 #endif
-    testVerletListFullPartialRange<Cabana::VerletLayout2D, Cabana::TeamOpTag>();
+    testVerletListFullPartialRange<Cabana::NeighborLayout2D,
+                                   Cabana::TeamOpTag>();
 
 #ifndef KOKKOS_ENABLE_OPENMPTARGET // FIXME_OPENMPTARGET
-    testVerletListFullPartialRange<Cabana::VerletLayoutCSR,
+    testVerletListFullPartialRange<Cabana::NeighborLayoutCSR,
                                    Cabana::TeamVectorOpTag>();
 #endif
-    testVerletListFullPartialRange<Cabana::VerletLayout2D,
+    testVerletListFullPartialRange<Cabana::NeighborLayout2D,
                                    Cabana::TeamVectorOpTag>();
 }
 
@@ -340,18 +393,18 @@ TEST( TEST_CATEGORY, verlet_list_full_range_test )
 TEST( TEST_CATEGORY, parallel_for_test )
 {
 #ifndef KOKKOS_ENABLE_OPENMPTARGET // FIXME_OPENMPTARGET
-    testNeighborParallelFor<Cabana::VerletLayoutCSR>();
+    testNeighborParallelFor<Cabana::NeighborLayoutCSR>();
 #endif
-    testNeighborParallelFor<Cabana::VerletLayout2D>();
+    testNeighborParallelFor<Cabana::NeighborLayout2D>();
 }
 
 //---------------------------------------------------------------------------//
 TEST( TEST_CATEGORY, parallel_reduce_test )
 {
 #ifndef KOKKOS_ENABLE_OPENMPTARGET // FIXME_OPENMPTARGET
-    testNeighborParallelReduce<Cabana::VerletLayoutCSR>();
+    testNeighborParallelReduce<Cabana::NeighborLayoutCSR>();
 #endif
-    testNeighborParallelReduce<Cabana::VerletLayout2D>();
+    testNeighborParallelReduce<Cabana::NeighborLayout2D>();
 }
 //---------------------------------------------------------------------------//
 

@@ -35,7 +35,7 @@ namespace Cabana
   Note that this version is deprecated in favor of the Cajita::LinkedCellList.
 */
 template <class DeviceType>
-class [[deprecated]] LinkedCellList
+class LinkedCellList
 {
   public:
     //! Kokkos device_type.
@@ -380,7 +380,7 @@ struct is_linked_cell_list
   \param aosoa The AoSoA to permute.
  */
 template <class LinkedCellListType, class AoSoA_t>
-[[deprecated]] void permute(
+void permute(
     const LinkedCellListType& linked_cell_list, AoSoA_t& aosoa,
     typename std::enable_if<( is_linked_cell_list<LinkedCellListType>::value &&
                               is_aosoa<AoSoA_t>::value ),
@@ -402,7 +402,7 @@ template <class LinkedCellListType, class AoSoA_t>
   \param slice The slice to permute.
  */
 template <class LinkedCellListType, class SliceType>
-[[deprecated]] void permute(
+void permute(
     const LinkedCellListType& linked_cell_list, SliceType& slice,
     typename std::enable_if<( is_linked_cell_list<LinkedCellListType>::value &&
                               is_slice<SliceType>::value ),
