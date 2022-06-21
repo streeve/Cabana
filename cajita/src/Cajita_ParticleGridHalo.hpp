@@ -105,27 +105,26 @@ struct HaloIds
         for ( std::size_t d = 0; d < num_space_dim; ++d )
             pos[d] = _positions( p, d );
 
-        // Check the if particle is both in the owned space
-        // and the ghosted space of this neighbor (ignore
-        // the current cell).
-        bool within_halo = false;
+        // Check the if particle is both in the owned space and the ghosted
+        // space of this neighbor (ignore the current cell).
+        int within_halo = 1;
         for ( std::size_t d = 0; d < num_space_dim; ++d )
-            if ( pos[d] > _min_coord[d] && pos[d] < _max_coord[d] )
-                within_halo = true;
+            if ( pos[d] < _min_coord[d] || pos[d] > _max_coord[d] )
+                within_halo *= 0;
 
         if ( within_halo )
         {
             const std::size_t sc = _send_count()++;
-            // If the size of the arrays is exceeded, keep
-            // counting to resize and fill next.
+            // If the size of the arrays is exceeded, keep counting to resize
+            // and fill next.
             if ( sc < _destinations.extent( 0 ) )
             {
                 // Keep the destination MPI rank.
                 _destinations( sc ) = _neighbor_rank;
                 // Keep the particle ID.
                 _ids( sc ) = p;
-                // Determine if this ghost particle needs to
-                // be shifted through the periodic boundary.
+                // Determine if this ghost particle needs to be shifted through
+                // the periodic boundary.
                 for ( std::size_t d = 0; d < num_space_dim; ++d )
                 {
                     _shifts( sc, d ) = 0.0;
@@ -171,7 +170,7 @@ struct HaloIds
                     {
                         if ( i != 0 || j != 0 || k != 0 )
                         {
-                            const int _neighbor_rank = topology[nr];
+                            _neighbor_rank = topology[nr];
                             if ( _neighbor_rank == unique_topology[ar] )
                             {
                                 auto sis = local_grid.sharedIndexSpace(
