@@ -357,12 +357,13 @@ auto countSendsAndCreateSteering( const ExportRankView element_export_ranks,
 
 //---------------------------------------------------------------------------//
 // Return unique neighbor ranks, with the current rank first.
-inline std::vector<int> getUniqueTopology( std::vector<int> topology )
+inline auto getUniqueTopology( std::vector<int> topology )
 {
     auto remove_end = std::remove( topology.begin(), topology.end(), -1 );
     std::sort( topology.begin(), remove_end );
     auto unique_end = std::unique( topology.begin(), remove_end );
     topology.resize( std::distance( topology.begin(), unique_end ) );
+    std::size_t num_n = topology.size();
 
     // Put this rank first.
     int my_rank = -1;
@@ -375,7 +376,14 @@ inline std::vector<int> getUniqueTopology( std::vector<int> topology )
             break;
         }
     }
-    return topology;
+
+    // Copy into member View.
+    Kokkos::View<int*, Kokkos::HostSpace> topology_view( "neighbor_topology",
+                                                         num_n );
+    for ( std::size_t n = 0; n < num_n; ++n )
+        topology_view( n ) = topology[n];
+
+    return topology_view;
 }
 
 //---------------------------------------------------------------------------//
@@ -472,7 +480,7 @@ class CommunicationPlan
     */
     int neighborRank( const int neighbor ) const
     {
-        return _neighbors[neighbor];
+        return _neighbors( neighbor );
     }
 
     /*!
@@ -487,7 +495,7 @@ class CommunicationPlan
      */
     std::size_t numExport( const int neighbor ) const
     {
-        return _num_export[neighbor];
+        return _num_export( neighbor );
     }
 
     /*!
@@ -613,8 +621,8 @@ class CommunicationPlan
         const int mpi_tag = 1221;
 
         // Initialize import/export sizes.
-        _num_export.assign( num_n, 0 );
-        _num_import.assign( num_n, 0 );
+        Kokkos::resize( _num_export, num_n );
+        Kokkos::resize( _num_import, num_n );
 
         // Count the number of sends this rank will do to other ranks. Keep
         // track of which slot we get in our neighbor's send buffer.
@@ -629,26 +637,27 @@ class CommunicationPlan
 
         // Get the export counts.
         for ( int n = 0; n < num_n; ++n )
-            _num_export[n] = neighbor_counts_host( _neighbors[n] );
+            _num_export( n ) = neighbor_counts_host( _neighbors( n ) );
 
         // Post receives for the number of imports we will get.
         std::vector<MPI_Request> requests;
         requests.reserve( num_n );
         for ( int n = 0; n < num_n; ++n )
-            if ( my_rank != _neighbors[n] )
+            if ( my_rank != _neighbors( n ) )
             {
                 requests.push_back( MPI_Request() );
-                MPI_Irecv( &_num_import[n], 1, MPI_UNSIGNED_LONG, _neighbors[n],
-                           mpi_tag, comm(), &( requests.back() ) );
+                MPI_Irecv( &_num_import( n ), 1, MPI_UNSIGNED_LONG,
+                           _neighbors( n ), mpi_tag, comm(),
+                           &( requests.back() ) );
             }
             else
-                _num_import[n] = _num_export[n];
+                _num_import( n ) = _num_export( n );
 
         // Send the number of exports to each of our neighbors.
         for ( int n = 0; n < num_n; ++n )
-            if ( my_rank != _neighbors[n] )
-                MPI_Send( &_num_export[n], 1, MPI_UNSIGNED_LONG, _neighbors[n],
-                          mpi_tag, comm() );
+            if ( my_rank != _neighbors( n ) )
+                MPI_Send( &_num_export( n ), 1, MPI_UNSIGNED_LONG,
+                          _neighbors( n ), mpi_tag, comm() );
 
         // Wait on receives.
         std::vector<MPI_Status> status( requests.size() );
@@ -751,10 +760,10 @@ class CommunicationPlan
         // list and assign the number of imports to be the number of exports.
         bool self_send = false;
         for ( int n = 0; n < num_export_rank; ++n )
-            if ( _neighbors[n] == my_rank )
+            if ( _neighbors( n ) == my_rank )
             {
-                std::swap( _neighbors[n], _neighbors[0] );
-                std::swap( _num_export[n], _num_export[0] );
+                std::swap( _neighbors( n ), _neighbors[0] );
+                std::swap( _num_export( n ), _num_export[0] );
                 _num_import[0] = _num_export[0];
                 self_send = true;
                 break;
@@ -773,13 +782,13 @@ class CommunicationPlan
         std::vector<std::size_t> import_sizes( num_import_rank );
         std::vector<MPI_Request> requests( num_import_rank );
         for ( int n = 0; n < num_import_rank; ++n )
-            MPI_Irecv( &import_sizes[n], 1, MPI_UNSIGNED_LONG, MPI_ANY_SOURCE,
+            MPI_Irecv( &import_sizes( n ), 1, MPI_UNSIGNED_LONG, MPI_ANY_SOURCE,
                        mpi_tag, comm(), &requests[n] );
 
         // Do blocking sends. Dont do any self sends.
         int self_offset = ( self_send ) ? 1 : 0;
         for ( int n = self_offset; n < num_export_rank; ++n )
-            MPI_Send( &_num_export[n], 1, MPI_UNSIGNED_LONG, _neighbors[n],
+            MPI_Send( &_num_export( n ), 1, MPI_UNSIGNED_LONG, _neighbors( n ),
                       mpi_tag, comm() );
 
         // Wait on non-blocking receives.
@@ -821,7 +830,7 @@ class CommunicationPlan
             else
             {
                 auto n = std::distance( _neighbors.begin(), found_neighbor );
-                _num_import[n] = import_sizes[i];
+                _num_import( n ) = import_sizes[i];
             }
         }
 
@@ -909,7 +918,7 @@ class CommunicationPlan
         Kokkos::View<std::size_t*, Kokkos::HostSpace> rank_offsets_host(
             Kokkos::ViewAllocateWithoutInitializing( "rank_map" ), comm_size );
         for ( int n = 0; n < num_n; ++n )
-            rank_offsets_host( _neighbors[n] ) = offsets[n];
+            rank_offsets_host( _neighbors( n ) ) = offsets[n];
         auto rank_offsets = Kokkos::create_mirror_view_and_copy(
             memory_space(), rank_offsets_host );
 
@@ -935,11 +944,11 @@ class CommunicationPlan
 
   private:
     std::shared_ptr<MPI_Comm> _comm_ptr;
-    std::vector<int> _neighbors;
+    Kokkos::View<int*, Kokkos::HostSpace> _neighbors;
     std::size_t _total_num_export;
     std::size_t _total_num_import;
-    std::vector<std::size_t> _num_export;
-    std::vector<std::size_t> _num_import;
+    Kokkos::View<std::size_t*, Kokkos::HostSpace> _num_export;
+    Kokkos::View<std::size_t*, Kokkos::HostSpace> _num_import;
     std::size_t _num_export_element;
     Kokkos::View<std::size_t*, device_type> _export_steering;
 };
