@@ -15,7 +15,7 @@
 
 #include <mpi.h>
 
-auto createGrid( const Cajita::ManualPartitioner& partitioner,
+auto createGrid( const Cajita::ManualBlockPartitioner<3>& partitioner,
                  const std::array<bool, 3>& is_periodic,
                  const double cell_size )
 {
