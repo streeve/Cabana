@@ -203,7 +203,7 @@ void testParticleGridGather( const bool periodic )
     // Test multiple system halo sizes
     for ( int i = 0; i < 3; i++ )
         // Test multiple minimum_halo_width
-        for ( int j = 0; j < 3; j++ )
+        for ( int j = 0; j <= i; j++ )
             gatherTest( global_grid, cell_size, i, j, false, 0 );
 
     // Retest with separate destination AoSoA.
