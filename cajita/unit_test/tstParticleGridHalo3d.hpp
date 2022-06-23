@@ -238,3 +238,5 @@ void testParticleGridGather( const bool periodic )
 // RUN TESTS
 //---------------------------------------------------------------------------//
 TEST( TEST_CATEGORY, periodic_test ) { testParticleGridGather( true ); }
+
+TEST( TEST_CATEGORY, nonperiodic_test ) { testParticleGridGather( false ); }
