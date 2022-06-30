@@ -116,9 +116,10 @@ struct VerletListBuilder
     // Maximum neighbors per particle
     using n2_list_type::max_n;
 
-    using CountNeighborsPolicy = typename n2_list_type::CountNeighborsPolicy;
+    using CountNeighborsPolicy =
+        typename n2_list_type::CountNeighborsTeamPolicy;
     using CountNeighborsTag = typename n2_list_type::CountNeighborsTag;
-    using FillNeighborsPolicy = typename n2_list_type::FillNeighborsPolicy;
+    using FillNeighborsPolicy = typename n2_list_type::FillNeighborsTeamPolicy;
     using FillNeighborsTag = typename n2_list_type::FillNeighborsTag;
 
     // Binning Data.

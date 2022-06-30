@@ -98,6 +98,13 @@ struct N2NeighborListBuilder
     struct CountNeighborsTag
     {
     };
+    using CountNeighborsSerialPolicy =
+        Kokkos::RangePolicy<execution_space, CountNeighborsTag,
+                            Kokkos::IndexType<int>>;
+    using CountNeighborsTeamPolicy =
+        Kokkos::TeamPolicy<execution_space, CountNeighborsTag,
+                           Kokkos::IndexType<int>,
+                           Kokkos::Schedule<Kokkos::Dynamic>>;
     KOKKOS_INLINE_FUNCTION
     void operator()( const CountNeighborsTag&, const int pid ) const
     {
@@ -121,14 +128,10 @@ struct N2NeighborListBuilder
         }
     }
 
-    using CountNeighborsPolicy =
-        Kokkos::TeamPolicy<execution_space, CountNeighborsTag,
-                           Kokkos::IndexType<int>,
-                           Kokkos::Schedule<Kokkos::Dynamic>>;
     KOKKOS_INLINE_FUNCTION
-    void
-    operator()( const CountNeighborsTag&,
-                const typename CountNeighborsPolicy::member_type& team ) const
+    void operator()(
+        const CountNeighborsTag&,
+        const typename CountNeighborsTeamPolicy::member_type& team ) const
     {
         // The league rank of the team is the current particle.
         std::size_t pid = team.league_rank() + pid_begin;
@@ -287,6 +290,14 @@ struct N2NeighborListBuilder
     struct FillNeighborsTag
     {
     };
+    using FillNeighborsTeamPolicy =
+        Kokkos::TeamPolicy<execution_space, FillNeighborsTag,
+                           Kokkos::IndexType<int>,
+                           Kokkos::Schedule<Kokkos::Dynamic>>;
+    using FillNeighborsSerialPolicy =
+        Kokkos::RangePolicy<execution_space, FillNeighborsTag,
+                            Kokkos::IndexType<int>>;
+
     KOKKOS_INLINE_FUNCTION
     void operator()( const FillNeighborsTag&, const int pid ) const
     {
@@ -305,14 +316,10 @@ struct N2NeighborListBuilder
         }
     };
 
-    using FillNeighborsPolicy =
-        Kokkos::TeamPolicy<execution_space, FillNeighborsTag,
-                           Kokkos::IndexType<int>,
-                           Kokkos::Schedule<Kokkos::Dynamic>>;
     KOKKOS_INLINE_FUNCTION
-    void
-    operator()( const FillNeighborsTag&,
-                const typename FillNeighborsPolicy::member_type& team ) const
+    void operator()(
+        const FillNeighborsTag&,
+        const typename FillNeighborsTeamPolicy::member_type& team ) const
     {
         // The league rank of the team is the current particle.
         std::size_t pid = team.league_rank() + pid_begin;
@@ -371,6 +378,10 @@ struct N2NeighborListBuilder
 //! \endcond
 } // end namespace Impl
 
+template <class MemorySpace, class AlgorithmTag, class LayoutTag,
+          class BuildTag = TeamOpTag>
+class N2NeighborList;
+
 //---------------------------------------------------------------------------//
 /*!
   \brief Neighbor list implementation based on interaction distance.
@@ -385,9 +396,8 @@ struct N2NeighborListBuilder
   \tparam BuildTag Tag indicating whether to use serial or team parallelism when
   building neighbor lists.
 */
-template <class MemorySpace, class AlgorithmTag, class LayoutTag,
-          class BuildTag = TeamOpTag>
-class N2NeighborList
+template <class MemorySpace, class AlgorithmTag, class LayoutTag>
+class N2NeighborList<MemorySpace, AlgorithmTag, LayoutTag, TeamOpTag>
 {
   public:
     static_assert( Kokkos::is_memory_space<MemorySpace>::value, "" );
@@ -452,6 +462,7 @@ class N2NeighborList
         build( execution_space{}, x, begin, end, neighborhood_radius,
                max_neigh );
     }
+
     /*!
       \brief Given a list of particle positions and a neighborhood radius
       calculate the neighbor list.
@@ -472,19 +483,148 @@ class N2NeighborList
         // Create a builder functor.
         using builder_type =
             Impl::N2NeighborListBuilder<device_type, PositionSlice,
-                                        AlgorithmTag, LayoutTag, BuildTag>;
+                                        AlgorithmTag, LayoutTag, TeamOpTag>;
         builder_type builder( x, begin, end, neighborhood_radius, max_neigh );
 
         // For each particle in the range check for neighbor particles. For CSR
         // lists, we count, then fill neighbors. For 2D lists, we count and fill
         // at the same time, unless the array size is exceeded, at which point
         // only counting is continued to reallocate and refill.
-        typename builder_type::FillNeighborsPolicy fill_policy(
+        typename builder_type::FillNeighborsTeamPolicy fill_policy(
             end - begin, Kokkos::AUTO, 4 );
         if ( builder.count )
         {
-            typename builder_type::CountNeighborsPolicy count_policy(
+            typename builder_type::CountNeighborsTeamPolicy count_policy(
                 end - begin, Kokkos::AUTO, 4 );
+            Kokkos::parallel_for( "Cabana::N2NeighborList::count_neighbors",
+                                  count_policy, builder );
+        }
+        else
+        {
+            builder.processCounts( LayoutTag() );
+            Kokkos::parallel_for( "Cabana::N2NeighborList::fill_neighbors",
+                                  fill_policy, builder );
+        }
+        Kokkos::fence();
+
+        // Process the counts by computing offsets and allocating the
+        // neighbor list, if needed.
+        builder.processCounts( LayoutTag() );
+
+        // For each particle in the range fill (or refill) its part of the
+        // neighbor list.
+        if ( builder.count or builder.refill )
+        {
+            Kokkos::parallel_for( "Cabana::N2NeighborList::fill_neighbors",
+                                  fill_policy, builder );
+            Kokkos::fence();
+        }
+
+        // Get the data from the builder.
+        _data = builder._data;
+    }
+};
+
+template <class MemorySpace, class AlgorithmTag, class LayoutTag>
+class N2NeighborList<MemorySpace, AlgorithmTag, LayoutTag, SerialOpTag>
+{
+  public:
+    static_assert( Kokkos::is_memory_space<MemorySpace>::value, "" );
+
+    //! Kokkos memory space in which the neighbor list data resides.
+    using memory_space = MemorySpace;
+
+    //! Kokkos default execution space for this memory space.
+    using execution_space = typename memory_space::execution_space;
+
+    //! Neighbor list data.
+    NeighborListData<memory_space, LayoutTag> _data;
+
+    /*!
+      \brief Default constructor.
+    */
+    N2NeighborList() {}
+
+    /*!
+      \brief N2NeighborList constructor. Given a list of particle positions
+      and a neighborhood radius calculate the neighbor list.
+
+      \param x The slice containing the particle positions
+
+      \param begin The beginning particle index to compute neighbors for.
+
+      \param end The end particle index to compute neighbors for.
+
+      \param neighborhood_radius The radius of the neighborhood. Particles
+      within this radius are considered neighbors.
+
+      \param max_neigh Optional maximum number of neighbors per particle to
+      pre-allocate the neighbor list. Potentially avoids recounting with 2D
+      layout only.
+
+      Particles outside of the neighborhood radius will not be considered
+      neighbors. Only compute the neighbors of those that are within the
+      given range. All particles are candidates for being a neighbor,
+      regardless of whether or not they are in the range.
+    */
+    template <class PositionSlice>
+    N2NeighborList(
+        PositionSlice x, const std::size_t begin, const std::size_t end,
+        const typename PositionSlice::value_type neighborhood_radius,
+        const std::size_t max_neigh = 0,
+        typename std::enable_if<( is_slice<PositionSlice>::value ),
+                                int>::type* = 0 )
+    {
+        build( x, begin, end, neighborhood_radius, max_neigh );
+    }
+
+    /*!
+      \brief Given a list of particle positions and a neighborhood radius
+      calculate the neighbor list.
+    */
+    template <class PositionSlice>
+    void build( PositionSlice x, const std::size_t begin, const std::size_t end,
+                const typename PositionSlice::value_type neighborhood_radius,
+                const std::size_t max_neigh = 0 )
+    {
+        // Use the default execution space.
+        build( execution_space{}, x, begin, end, neighborhood_radius,
+               max_neigh );
+    }
+
+    /*!
+      \brief Given a list of particle positions and a neighborhood radius
+      calculate the neighbor list.
+    */
+    template <class PositionSlice, class ExecutionSpace>
+    void build( ExecutionSpace, PositionSlice x, const std::size_t begin,
+                const std::size_t end,
+                const typename PositionSlice::value_type neighborhood_radius,
+                const std::size_t max_neigh = 0 )
+    {
+        static_assert( is_accessible_from<memory_space, ExecutionSpace>{}, "" );
+
+        assert( end >= begin );
+        assert( end <= x.size() );
+
+        using device_type = Kokkos::Device<ExecutionSpace, memory_space>;
+
+        // Create a builder functor.
+        using builder_type =
+            Impl::N2NeighborListBuilder<device_type, PositionSlice,
+                                        AlgorithmTag, LayoutTag, SerialOpTag>;
+        builder_type builder( x, begin, end, neighborhood_radius, max_neigh );
+
+        // For each particle in the range check for neighbor particles. For CSR
+        // lists, we count, then fill neighbors. For 2D lists, we count and fill
+        // at the same time, unless the array size is exceeded, at which point
+        // only counting is continued to reallocate and refill.
+        typename builder_type::FillNeighborsSerialPolicy fill_policy( begin,
+                                                                      end );
+        if ( builder.count )
+        {
+            typename builder_type::CountNeighborsSerialPolicy count_policy(
+                begin, end );
             Kokkos::parallel_for( "Cabana::N2NeighborList::count_neighbors",
                                   count_policy, builder );
         }
