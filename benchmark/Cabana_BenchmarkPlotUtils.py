@@ -42,7 +42,7 @@ class DataPoint:
         #problem_size min max ave
         self.line = line
         results = line.split()
-        self.size = int(results[0])
+        self.size = int(float(results[0]))
         self._initTimeResults(results[1:])
 
     def _initTimeResults(self, results):
@@ -87,7 +87,6 @@ class AllData:
     def _readFile(self, filename):
         with open(filename) as f:
             txt = f.readlines()
-
         l = 0
         self.total = len(txt)
         while not self._endOfFile(l):
@@ -212,7 +211,7 @@ def plotResults(fig, ax, x, y, backend, color):
     linewidth = 2
     dash = "-"
     offset = 1.0
-    if "host" in backend:
+    if "host" in backend or "serial" in backend or "openmp" in backend:
         dash = "--"
         offset = 1.1
 
