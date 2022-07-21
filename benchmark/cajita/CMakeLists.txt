@@ -21,6 +21,9 @@ target_link_libraries(SparseMapDynamicPartitionerPerformance Cajita)
 add_executable(HaloPerformance Cajita_HaloPerformance.cpp)
 target_link_libraries(HaloPerformance Cajita)
 
+add_executable(InterpolationPerformance Cajita_InterpolationPerformance.cpp)
+target_link_libraries(InterpolationPerformance Cajita)
+
 if(Cabana_ENABLE_HEFFTE)
   add_executable(FastFourierTransformPerformance Cajita_FastFourierTransformPerformance.cpp)
   target_link_libraries(FastFourierTransformPerformance Cajita)
@@ -34,6 +37,8 @@ if(Cabana_ENABLE_TESTING)
   add_test(NAME Cajita_SparseMapDynamicPartitionerPerformance COMMAND ${NONMPI_PRECOMMAND} SparseMapDynamicPartitionerPerformance sparsemapdynamicpartitioner_output.txt)
 
   add_test(NAME Cajita_HaloPerformance COMMAND ${NONMPI_PRECOMMAND} HaloPerformance halo_output.txt)
+
+  add_test(NAME Cajita_InterpolationPerformance COMMAND ${NONMPI_PRECOMMAND} InterpolationPerformance interpolation_output.txt)
 
   if (Cabana_ENABLE_HEFFTE)
     add_test(NAME Cajita_FastFourierTransformPerformance COMMAND ${NONMPI_PRECOMMAND} FastFourierTransformPerformance fastfouriertransform_output.txt)
