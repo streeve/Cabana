@@ -165,7 +165,7 @@ void performanceTest( ParticleWorkloadTag, std::ostream& stream, MPI_Comm comm,
                 // compute local workload
                 local_workload_timer.start( p );
                 auto pws =
-                    Cajita::createParticleDynamicPartitionerWorkloadMeasurer<
+                    Cajita::createParticleWorkloadMeasurer<
                         partitioner.cell_num_per_tile_dim,
                         partitioner.num_space_dim, Device>(
                         pos_view, par_num, global_low_corner,

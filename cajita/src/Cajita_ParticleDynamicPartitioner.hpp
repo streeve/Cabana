@@ -40,8 +40,8 @@ namespace Cajita
 */
 template <class ParticlePosViewType, typename ArrayType, typename CellUnit,
           unsigned long long CellPerTileDim, int num_space_dim, typename Device>
-class ParticleDynamicPartitionerWorkloadMeasurer
-    : public DynamicPartitionerWorkloadMeasurer<Device>
+class ParticleWorkloadMeasurer
+    : public WorkloadMeasurer<Device>
 {
     using memory_space = typename Device::memory_space;
     using execution_space = typename Device::execution_space;
@@ -64,7 +64,7 @@ class ParticleDynamicPartitionerWorkloadMeasurer
      \param dx The global grid resolution.
      \param comm MPI communicator to use for computing workload.
     */
-    ParticleDynamicPartitionerWorkloadMeasurer(
+    ParticleWorkloadMeasurer(
         const ParticlePosViewType& view, int particle_num,
         const ArrayType& global_lower_corner, const CellUnit dx, MPI_Comm comm )
         : view( view )
@@ -112,18 +112,18 @@ class ParticleDynamicPartitionerWorkloadMeasurer
 };
 
 //---------------------------------------------------------------------------//
-//! Creation function for ParticleDynamicPartitionerWorkloadMeasurer from
+//! Creation function for ParticleWorkloadMeasurer from
 //! Kokkos::View<Scalar* [3], MemorySpace>
 template <unsigned long long CellPerTileDim, int num_space_dim, typename Device,
           class ParticlePosViewType, typename ArrayType, typename CellUnit>
-ParticleDynamicPartitionerWorkloadMeasurer<ParticlePosViewType, ArrayType,
+ParticleWorkloadMeasurer<ParticlePosViewType, ArrayType,
                                            CellUnit, CellPerTileDim,
                                            num_space_dim, Device>
-createParticleDynamicPartitionerWorkloadMeasurer(
+createParticleWorkloadMeasurer(
     const ParticlePosViewType& view, int particle_num,
     const ArrayType& global_lower_corner, const CellUnit dx, MPI_Comm comm )
 {
-    return ParticleDynamicPartitionerWorkloadMeasurer<
+    return ParticleWorkloadMeasurer<
         ParticlePosViewType, ArrayType, CellUnit, CellPerTileDim, num_space_dim,
         Device>( view, particle_num, global_lower_corner, dx, comm );
 }

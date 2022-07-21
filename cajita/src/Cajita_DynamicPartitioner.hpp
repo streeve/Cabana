@@ -33,7 +33,7 @@ namespace Cajita
   \tparam Device Partitioner device type
 */
 template <typename Device>
-class DynamicPartitionerWorkloadMeasurer
+class WorkloadMeasurer
 {
     using memory_space = typename Device::memory_space;
 
@@ -439,11 +439,11 @@ class DynamicPartitioner : public BlockPartitioner<NumSpaceDim>
     /*!
       \brief compute workload in each MPI rank
       \param measurer measurer defined by user to compute workload.
-      DynamicPartitionerWorkloadMeasurer is the base class and the user
-      should define a derived measurer class with compute() implemented.
+
+      \note WorkloadMeasurer is the base class and the user should define a
+      derived measurer class with compute() implemented.
     */
-    void
-    setLocalWorkload( DynamicPartitionerWorkloadMeasurer<Device>* measurer )
+    void setLocalWorkload( WorkloadMeasurer<Device>* measurer )
     {
         resetWorkload();
         measurer->compute( _workload_per_tile );

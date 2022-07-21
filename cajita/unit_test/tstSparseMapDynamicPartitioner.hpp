@@ -147,9 +147,9 @@ void uniform_distribution_automatic_rank()
     Kokkos::fence();
 
     // compute workload and do partition optimization
-    auto smws = createSparseMapDynamicPartitionerWorkloadMeasurer<TEST_DEVICE>(
-        sis, MPI_COMM_WORLD );
-    partitioner.setLocalWorkload( &smws );
+    auto smwm =
+        createSparseMapWorkloadMeasurer<TEST_DEVICE>( sis, MPI_COMM_WORLD );
+    partitioner.setLocalWorkload( &smwm );
     partitioner.optimizePartition( MPI_COMM_WORLD );
 
     // check results (should be the same as the average partition)
@@ -364,9 +364,9 @@ void random_distribution_automatic_rank( int occupy_num_per_rank )
     Kokkos::fence();
 
     // compute workload from a sparseMap and do partition optimization
-    auto smws = createSparseMapDynamicPartitionerWorkloadMeasurer<TEST_DEVICE>(
-        sis, MPI_COMM_WORLD );
-    partitioner.setLocalWorkload( &smws );
+    auto smwm =
+        createSparseMapWorkloadMeasurer<TEST_DEVICE>( sis, MPI_COMM_WORLD );
+    partitioner.setLocalWorkload( &smwm );
     partitioner.optimizePartition( MPI_COMM_WORLD );
 
     // check results (should be the same as the gt_partition)

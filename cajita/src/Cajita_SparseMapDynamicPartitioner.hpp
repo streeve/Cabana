@@ -35,8 +35,8 @@ namespace Cajita
   \tparam Device Partitioner device type
 */
 template <class SparseMapType, typename Device>
-class SparseMapDynamicPartitionerWorkloadMeasurer
-    : public DynamicPartitionerWorkloadMeasurer<Device>
+class SparseMapWorkloadMeasurer
+    : public WorkloadMeasurer<Device>
 {
     using memory_space = typename Device::memory_space;
     using execution_space = typename Device::execution_space;
@@ -50,7 +50,7 @@ class SparseMapDynamicPartitionerWorkloadMeasurer
      \param sparseMap Sparse map used in workload computation.
      \param comm MPI communicator to use for computing workload.
     */
-    SparseMapDynamicPartitionerWorkloadMeasurer( const SparseMapType& sparseMap,
+    SparseMapWorkloadMeasurer( const SparseMapType& sparseMap,
                                                  MPI_Comm comm )
         : sparseMap( sparseMap )
         , comm( comm )
@@ -80,14 +80,14 @@ class SparseMapDynamicPartitionerWorkloadMeasurer
 };
 
 //---------------------------------------------------------------------------//
-//! Creation function for SparseMapDynamicPartitionerWorkloadMeasurer from
+//! Creation function for SparseMapWorkloadMeasurer from
 //! SparseMap
 template <typename Device, class SparseMapType>
-SparseMapDynamicPartitionerWorkloadMeasurer<SparseMapType, Device>
-createSparseMapDynamicPartitionerWorkloadMeasurer(
+SparseMapWorkloadMeasurer<SparseMapType, Device>
+createSparseMapWorkloadMeasurer(
     const SparseMapType& sparseMap, MPI_Comm comm )
 {
-    return SparseMapDynamicPartitionerWorkloadMeasurer<SparseMapType, Device>(
+    return SparseMapWorkloadMeasurer<SparseMapType, Device>(
         sparseMap, comm );
 }
 
