@@ -24,9 +24,11 @@ for backend in data.getAllBackends():
                 print(backend, cat, type, param)
                 desc = ManualDataDescription(backend, type, cat, param)
                 result = AllSizesSingleResult(data, desc)
+                desc2 = ManualDataDescription("serial", type, cat, param)
+                result2 = AllSizesSingleResult(data, desc2)
 
                 x = np.array(result.sizes)
-                y = np.array(result.data)
+                y = np.array(result2.data) / np.array(result.data)
                 plotResults(fig1, ax1, x, y, backend, color_dict[cat])
 
 min_max = data.minMaxSize()

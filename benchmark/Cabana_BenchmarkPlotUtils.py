@@ -9,15 +9,9 @@ class DataDescription:
         self.backend = details[0].strip()
         self.type = details[1].strip()
         self.category = details[2].strip()
-        self.params = details[3:]
-
-    def __init__(self, backend, type, category, params):
-        self.backend = backend
-        self.type = type
-        self.category = category
-        self.params = params
-        label_list = [backend, type, category] + params
-        self.label = "_".join(label_list)
+        self.params = []
+        for p in details[3:]:
+            self.params.append(p.strip())
 
 class DataDescriptionMPI(DataDescription):
     # Purposely not calling base __init__
@@ -29,6 +23,15 @@ class DataDescriptionMPI(DataDescription):
         self.type = details[2].strip()
         self.category = details[-1].strip()
         self.params = details[3:-1]
+
+class ManualDataDescription:
+    def __init__(self, backend, type, category, params):
+        self.backend = backend
+        self.type = type
+        self.category = category
+        self.params = params
+        label_list = [backend, type, category] + params
+        self.label = "_".join(label_list)
 
 class DataPoint:
     num_rank = 1
@@ -69,7 +72,7 @@ class AllData:
             self._readFile(filename)
 
     def _endOfFile(self, l):
-        return l > self.total
+        return l >= self.total
 
     def _emptyLine(self, line):
         if line.isspace():
@@ -93,9 +96,11 @@ class AllData:
                 description = DataDescription(txt[l])
             elif self._headerLine(txt[l]):
                 l += 1
-                while not self._emptyLine(txt[l]) and not self._endOfFile(l):
+                while not self._endOfFile(l) and not self._emptyLine(txt[l]):
                     self.results.append(DataPoint(description, txt[l]))
                     l += 1
+            else:
+                l += 1
 
     def minMaxSize(self):
         min = 1e100
@@ -139,7 +144,7 @@ class AllData:
 
 class AllDataMPI(AllData):
     def _endOfFile(self, l):
-        return l > self.total
+        return l >= self.total
 
     def _headerLine(self, line):
         if 'num_rank' in line:
@@ -176,7 +181,21 @@ class AllDataMPI(AllData):
         return unique
 
 class AllSizesSingleResult:
-    def __init__(self, all_data: AllData, descr: DataDescription, n):
+    def __init__(self, all_data: AllData, descr: ManualDataDescription):
+        self.data = []
+        self.sizes = []
+        for d in all_data.results:
+            if self._compareAll(d.description, descr):
+                self.sizes.append(d.size)
+                self.data.append(d.ave)
+
+    def _compareAll(self, data_description, check):
+        if data_description.backend == check.backend and data_description.category == check.category and data_description.type == check.type and data_description.params == check.params:
+            return True
+        return False
+
+class AllSizesSingleResultMPI:
+    def __init__(self, all_data: AllDataMPI, descr: ManualDataDescription, n):
         self.data = []
         self.sizes = []
         for d in all_data.results:
