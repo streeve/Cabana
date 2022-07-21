@@ -31,8 +31,8 @@ namespace Cajita
 //---------------------------------------------------------------------------//
 /*!
   \brief Helper class to set workload for DynamicPartitioner with sparse map.
-  \tparam Sparse map type
-  \tparam Partitioner's device type
+  \tparam SparseMapType Sparse map type
+  \tparam Device Partitioner device type
 */
 template <class SparseMapType, typename Device>
 class SparseMapDynamicPartitionerWorkloadMeasurer

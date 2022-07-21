@@ -28,6 +28,10 @@
 namespace Cajita
 {
 
+/*!
+  \brief Helper class to set workload for DynamicPartitioner.
+  \tparam Device Partitioner device type
+*/
 template <typename Device>
 class DynamicPartitionerWorkloadMeasurer
 {
@@ -46,8 +50,7 @@ class DynamicPartitionerWorkloadMeasurer
   \tparam Device Kokkos device type.
   \tparam CellPerTileDim Cells
   per tile per dimension.
-  \tparam NumSpaceDim Dimemsion (The current version
-  support 3D only)
+  \tparam NumSpaceDim Dimemsion (The current version supports 3D only)
 */
 template <typename Device, unsigned long long CellPerTileDim = 4,
           std::size_t NumSpaceDim = 3>
