@@ -405,6 +405,8 @@ template <typename MemorySpace, unsigned long long CellPerTileDim = 4,
 class SparseMap
 {
   public:
+    //! Kokkos memory space.
+    using memory_space = MemorySpace;
     //! Number of dimensions, 3 = ijk
     static constexpr int rank = 3;
     //! Number of bits (per dimension) needed to index the cells inside a tile

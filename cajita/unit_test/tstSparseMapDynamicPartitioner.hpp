@@ -47,7 +47,7 @@ void uniform_distribution_automatic_rank()
         size_tile_per_dim * cell_per_tile_dim };
 
     // partitioner
-    DynamicPartitioner<TEST_DEVICE, cell_per_tile_dim> partitioner(
+    DynamicPartitioner<TEST_EXECSPACE, cell_per_tile_dim> partitioner(
         MPI_COMM_WORLD, max_workload_coeff, workload_num, num_step_rebalance,
         global_cells_per_dim, max_optimize_iteration );
 
@@ -132,7 +132,7 @@ void uniform_distribution_automatic_rank()
     auto global_mesh = createSparseGlobalMesh(
         global_low_corner, global_high_corner, global_cells_per_dim );
     // create a new sparseMap
-    auto sis = createSparseMap<TEST_EXECSPACE>( global_mesh, pre_alloc_size );
+    auto sis = createSparseMap<TEST_MEMSPACE>( global_mesh, pre_alloc_size );
     // register tiles to the sparseMap
     Kokkos::parallel_for(
         "insert_cell_to_sparse_map",
@@ -147,10 +147,10 @@ void uniform_distribution_automatic_rank()
     Kokkos::fence();
 
     // compute workload and do partition optimization
-    auto smwm =
-        createSparseMapWorkloadMeasurer<TEST_DEVICE>( sis, MPI_COMM_WORLD );
+    auto smwm = createSparseMapWorkloadMeasurer( TEST_EXECSPACE{}, sis,
+                                                 MPI_COMM_WORLD );
     partitioner.setLocalWorkload( &smwm );
-    partitioner.optimizePartition( MPI_COMM_WORLD );
+    partitioner.optimizePartition( TEST_EXECSPACE{}, MPI_COMM_WORLD );
 
     // check results (should be the same as the average partition)
     owned_cells_per_dim = partitioner.ownedCellsPerDimension( cart_comm );
@@ -249,7 +249,7 @@ void random_distribution_automatic_rank( int occupy_num_per_rank )
                                                 size_per_dim };
 
     // partitioner
-    DynamicPartitioner<TEST_DEVICE, cell_per_tile_dim> partitioner(
+    DynamicPartitioner<TEST_EXECSPACE, cell_per_tile_dim> partitioner(
         MPI_COMM_WORLD, max_workload_coeff, particle_num, num_step_rebalance,
         global_cells_per_dim, max_optimize_iteration );
 
@@ -352,7 +352,7 @@ void random_distribution_automatic_rank( int occupy_num_per_rank )
     // create a new sparseMap
     auto global_mesh = createSparseGlobalMesh(
         global_low_corner, global_high_corner, global_cells_per_dim );
-    auto sis = createSparseMap<TEST_EXECSPACE>( global_mesh, pre_alloc_size );
+    auto sis = createSparseMap<TEST_MEMSPACE>( global_mesh, pre_alloc_size );
     // register selected tiles to the sparseMap
     Kokkos::parallel_for(
         "insert_tile_to_sparse_map",
@@ -364,10 +364,10 @@ void random_distribution_automatic_rank( int occupy_num_per_rank )
     Kokkos::fence();
 
     // compute workload from a sparseMap and do partition optimization
-    auto smwm =
-        createSparseMapWorkloadMeasurer<TEST_DEVICE>( sis, MPI_COMM_WORLD );
+    auto smwm = createSparseMapWorkloadMeasurer( TEST_EXECSPACE{}, sis,
+                                                 MPI_COMM_WORLD );
     partitioner.setLocalWorkload( &smwm );
-    partitioner.optimizePartition( MPI_COMM_WORLD );
+    partitioner.optimizePartition( TEST_EXECSPACE{}, MPI_COMM_WORLD );
 
     // check results (should be the same as the gt_partition)
     auto part = partitioner.getCurrentPartition();

@@ -29,12 +29,7 @@
 #include <mpi.h>
 
 //---------------------------------------------------------------------------//
-// Helper functions.
-struct ParticleWorkloadTag
-{
-};
-
-// generate average partitioner
+// Helper function: generate average partitioner
 std::array<std::vector<int>, 3>
 computeAveragePartition( const int tile_per_dim,
                          const std::array<int, 3>& ranks_per_dim )
@@ -57,12 +52,13 @@ computeAveragePartition( const int tile_per_dim,
 //---------------------------------------------------------------------------//
 // Performance test.
 template <class Device>
-void performanceTest( ParticleWorkloadTag, std::ostream& stream, MPI_Comm comm,
+void performanceTest( std::ostream& stream, MPI_Comm comm,
                       const std::string& test_prefix,
                       std::vector<int> problem_sizes,
                       std::vector<int> num_cells_per_dim )
 {
     using memory_space = typename Device::memory_space;
+    using exec_space = typename Device::execution_space;
 
     // Get comm rank;
     int comm_rank;
@@ -164,18 +160,17 @@ void performanceTest( ParticleWorkloadTag, std::ostream& stream, MPI_Comm comm,
 
                 // compute local workload
                 local_workload_timer.start( p );
-                auto pws =
-                    Cajita::createParticleWorkloadMeasurer<
-                        partitioner.cell_num_per_tile_dim,
-                        partitioner.num_space_dim, Device>(
-                        pos_view, par_num, global_low_corner,
-                        1.0f / num_cells_per_dim[c], comm );
+                auto pws = Cajita::createParticleWorkloadMeasurer<
+                    partitioner.cell_num_per_tile_dim,
+                    partitioner.num_space_dim>(
+                    exec_space{}, pos_view, par_num, global_low_corner,
+                    1.0f / num_cells_per_dim[c], comm );
                 partitioner.setLocalWorkload( &pws );
                 local_workload_timer.stop( p );
 
                 // compute prefix sum matrix
                 prefix_sum_timer.start( p );
-                partitioner.computeFullPrefixSum( comm );
+                partitioner.computeFullPrefixSum( exec_space{}, comm );
                 prefix_sum_timer.stop( p );
 
                 // optimization
@@ -184,7 +179,8 @@ void performanceTest( ParticleWorkloadTag, std::ostream& stream, MPI_Comm comm,
                 total_optimize_timer.start( p );
                 for ( int i = 0; i < max_optimize_iteration; ++i )
                 {
-                    partitioner.updatePartition( std::rand() % 3, is_changed );
+                    partitioner.updatePartition( exec_space{}, std::rand() % 3,
+                                                 is_changed );
                     if ( !is_changed )
                         break;
                 }
@@ -285,12 +281,11 @@ int main( int argc, char* argv[] )
     // Don't rerun on the CPU if already done or if turned off.
     if ( !std::is_same<device_type, host_device_type>{} )
     {
-        performanceTest<device_type>( ParticleWorkloadTag(), file,
-                                      MPI_COMM_WORLD, "device_particleWL_",
-                                      problem_sizes, num_cells_per_dim );
+        performanceTest<device_type>( file, MPI_COMM_WORLD,
+                                      "device_particleWL_", problem_sizes,
+                                      num_cells_per_dim );
     }
-    performanceTest<host_device_type>( ParticleWorkloadTag(), file,
-                                       MPI_COMM_WORLD, "host_particleWL_",
+    performanceTest<host_device_type>( file, MPI_COMM_WORLD, "host_particleWL_",
                                        problem_sizes, num_cells_per_dim );
 
     // Close the output file on rank 0.

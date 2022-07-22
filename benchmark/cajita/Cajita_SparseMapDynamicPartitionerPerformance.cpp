@@ -29,12 +29,7 @@
 #include <mpi.h>
 
 //---------------------------------------------------------------------------//
-// Helper functions.
-struct SparseMapTag
-{
-};
-
-// generate a random tile sequence
+// Helper functions: generate a random tile sequence
 int current = 0;
 int uniqueNumber() { return current++; }
 
@@ -79,7 +74,7 @@ std::array<std::vector<int>, 3> computeAveragePartition(
 //---------------------------------------------------------------------------//
 // Performance test.
 template <class Device>
-void performanceTest( SparseMapTag, std::ostream& stream, MPI_Comm comm,
+void performanceTest( std::ostream& stream, MPI_Comm comm,
                       const std::string& test_prefix,
                       std::vector<double> occupy_fraction,
                       std::vector<int> num_cells_per_dim )
@@ -180,15 +175,14 @@ void performanceTest( SparseMapTag, std::ostream& stream, MPI_Comm comm,
 
                 // compute local workload
                 local_workload_timer.start( frac );
-                auto smws =
-                    Cajita::createSparseMapWorkloadMeasurer<
-                        Device>( sis, comm );
+                auto smws = Cajita::createSparseMapWorkloadMeasurer(
+                    exec_space{}, sis, comm );
                 partitioner.setLocalWorkload( &smws );
                 local_workload_timer.stop( frac );
 
                 // compute prefix sum matrix
                 prefix_sum_timer.start( frac );
-                partitioner.computeFullPrefixSum( comm );
+                partitioner.computeFullPrefixSum( exec_space{}, comm );
                 prefix_sum_timer.stop( frac );
 
                 // optimization
@@ -197,7 +191,8 @@ void performanceTest( SparseMapTag, std::ostream& stream, MPI_Comm comm,
                 total_optimize_timer.start( frac );
                 for ( int i = 0; i < max_optimize_iteration; ++i )
                 {
-                    partitioner.updatePartition( std::rand() % 3, is_changed );
+                    partitioner.updatePartition( exec_space{}, std::rand() % 3,
+                                                 is_changed );
                     if ( !is_changed )
                         break;
                 }
@@ -299,11 +294,11 @@ int main( int argc, char* argv[] )
     // Don't rerun on the CPU if already done or if turned off.
     if ( !std::is_same<device_type, host_device_type>{} )
     {
-        performanceTest<device_type>( SparseMapTag(), file, MPI_COMM_WORLD,
+        performanceTest<device_type>( file, MPI_COMM_WORLD,
                                       "device_sparsemapWL_", occupy_fraction,
                                       num_cells_per_dim );
     }
-    performanceTest<host_device_type>( SparseMapTag(), file, MPI_COMM_WORLD,
+    performanceTest<host_device_type>( file, MPI_COMM_WORLD,
                                        "host_sparsemapWL_", occupy_fraction,
                                        num_cells_per_dim );
 

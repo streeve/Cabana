@@ -31,13 +31,20 @@ namespace Cajita
 /*!
   \brief Helper class to set workload for DynamicPartitioner.
   \tparam Device Partitioner device type
+
+  \note This is templated on ExecutionSpace to avoid a virtual template
+  function.
 */
-template <typename Device>
+template <typename ExecutionSpace, typename MemorySpace>
 class WorkloadMeasurer
 {
-    using memory_space = typename Device::memory_space;
-
   public:
+    //! Kokkos execution space.
+    using execution_space = ExecutionSpace;
+    //! Kokkos memory space.
+    using memory_space = MemorySpace;
+
+    //! \brief Compute workload.
     virtual void compute( Kokkos::View<int***, memory_space>& ) = 0;
 };
 
@@ -52,7 +59,7 @@ class WorkloadMeasurer
   per tile per dimension.
   \tparam NumSpaceDim Dimemsion (The current version supports 3D only)
 */
-template <typename Device, unsigned long long CellPerTileDim = 4,
+template <typename MemorySpace, unsigned long long CellPerTileDim = 4,
           std::size_t NumSpaceDim = 3>
 class DynamicPartitioner : public BlockPartitioner<NumSpaceDim>
 {
@@ -60,25 +67,13 @@ class DynamicPartitioner : public BlockPartitioner<NumSpaceDim>
     //! dimension
     static constexpr std::size_t num_space_dim = NumSpaceDim;
 
-    //! Kokkos device type.
-    using device_type = Device;
     //! Kokkos memory space.
-    using memory_space = typename Device::memory_space;
-    //! Kokkos execution space.
-    using execution_space = typename Device::execution_space;
+    using memory_space = MemorySpace;
 
     //! Workload device view.
     using workload_view = Kokkos::View<int***, memory_space>;
     //! Partition device view.
     using partition_view = Kokkos::View<int* [num_space_dim], memory_space>;
-    //! Workload host view.
-    using workload_view_host =
-        Kokkos::View<int***, typename execution_space::array_layout,
-                     Kokkos::HostSpace>;
-    //! Partition host view.
-    using partition_view_host =
-        Kokkos::View<int* [num_space_dim],
-                     typename execution_space::array_layout, Kokkos::HostSpace>;
 
     //! Number of bits (per dimension) needed to index the cells inside a tile
     static constexpr unsigned long long cell_bits_per_tile_dim =
@@ -306,9 +301,9 @@ class DynamicPartitioner : public BlockPartitioner<NumSpaceDim>
             max_size =
                 max_size < _ranks_per_dim[d] ? _ranks_per_dim[d] : max_size;
 
-        typedef typename execution_space::array_layout layout;
-        Kokkos::View<int* [num_space_dim], layout, Kokkos::HostSpace>
-            rectangle_partition( "rectangle_partition_host", max_size + 1 );
+        auto rectangle_partition = Kokkos::create_mirror_view(
+            Kokkos::HostSpace(), _rectangle_partition_dev );
+        Kokkos::realloc( rectangle_partition, max_size + 1 );
 
         for ( int id = 0; id < _ranks_per_dim[0] + 1; ++id )
             rectangle_partition( id, 0 ) = rec_partition_i[id];
@@ -358,7 +353,8 @@ class DynamicPartitioner : public BlockPartitioner<NumSpaceDim>
       workload prefix sum matrix for all MPI ranks
       \param comm MPI communicator used for workload reduction
     */
-    void computeFullPrefixSum( MPI_Comm comm )
+    template <typename ExecutionSpace>
+    void computeFullPrefixSum( ExecutionSpace, MPI_Comm comm )
     {
         // local copy
         auto workload = _workload_per_tile;
@@ -380,7 +376,7 @@ class DynamicPartitioner : public BlockPartitioner<NumSpaceDim>
                   ++k )
                 Kokkos::parallel_scan(
                     "scan_prefix_sum_dim0",
-                    Kokkos::RangePolicy<execution_space>(
+                    Kokkos::RangePolicy<ExecutionSpace>(
                         0, _workload_prefix_sum.extent( 0 ) ),
                     KOKKOS_LAMBDA( const int i, int& update,
                                    const bool final ) {
@@ -401,7 +397,7 @@ class DynamicPartitioner : public BlockPartitioner<NumSpaceDim>
                   ++k )
                 Kokkos::parallel_scan(
                     "scan_prefix_sum_dim1",
-                    Kokkos::RangePolicy<execution_space>(
+                    Kokkos::RangePolicy<ExecutionSpace>(
                         0, _workload_prefix_sum.extent( 1 ) ),
                     KOKKOS_LAMBDA( const int j, int& update,
                                    const bool final ) {
@@ -422,7 +418,7 @@ class DynamicPartitioner : public BlockPartitioner<NumSpaceDim>
                   ++j )
                 Kokkos::parallel_scan(
                     "scan_prefix_sum_dim2",
-                    Kokkos::RangePolicy<execution_space>(
+                    Kokkos::RangePolicy<ExecutionSpace>(
                         0, _workload_prefix_sum.extent( 2 ) ),
                     KOKKOS_LAMBDA( const int k, int& update,
                                    const bool final ) {
@@ -443,7 +439,8 @@ class DynamicPartitioner : public BlockPartitioner<NumSpaceDim>
       \note WorkloadMeasurer is the base class and the user should define a
       derived measurer class with compute() implemented.
     */
-    void setLocalWorkload( WorkloadMeasurer<Device>* measurer )
+    template <typename WorkloadMeasurer>
+    void setLocalWorkload( WorkloadMeasurer* measurer )
     {
         resetWorkload();
         measurer->compute( _workload_per_tile );
@@ -454,9 +451,10 @@ class DynamicPartitioner : public BlockPartitioner<NumSpaceDim>
       \param comm MPI communicator used for workload reduction
       \return iteration number
     */
-    int optimizePartition( MPI_Comm comm )
+    template <typename ExecutionSpace>
+    int optimizePartition( ExecutionSpace, MPI_Comm comm )
     {
-        computeFullPrefixSum( comm );
+        computeFullPrefixSum( ExecutionSpace{}, comm );
         MPI_Barrier( comm );
 
         // each iteration covers partitioner optization in all three dimensions
@@ -472,7 +470,8 @@ class DynamicPartitioner : public BlockPartitioner<NumSpaceDim>
                     random_dim_id = std::rand() % num_space_dim;
 
                 bool is_dim_changed = false; // record changes in current dim
-                updatePartition( random_dim_id, is_dim_changed );
+                updatePartition( ExecutionSpace{}, random_dim_id,
+                                 is_dim_changed );
 
                 // update control info
                 is_changed = is_changed || is_dim_changed;
@@ -491,7 +490,8 @@ class DynamicPartitioner : public BlockPartitioner<NumSpaceDim>
       optimization
       \param is_changed label if the partition is changed after the optimization
     */
-    void updatePartition( int iter_seed, bool& is_changed )
+    template <typename ExecutionSpace>
+    void updatePartition( ExecutionSpace, int iter_seed, bool& is_changed )
     {
         is_changed = false;
         // loop over three dimensions, optimize the partition in dimension di
@@ -519,7 +519,7 @@ class DynamicPartitioner : public BlockPartitioner<NumSpaceDim>
                 "ave_workload", _ranks_per_dim[dj] * _ranks_per_dim[dk] );
             Kokkos::parallel_for(
                 "compute_average_workload",
-                Kokkos::RangePolicy<execution_space>(
+                Kokkos::RangePolicy<ExecutionSpace>(
                     0, _ranks_per_dim[dj] * _ranks_per_dim[dk] ),
                 KOKKOS_LAMBDA( uint32_t jnk ) {
                     // compute rank_id in the fixed dimensions
@@ -550,7 +550,7 @@ class DynamicPartitioner : public BlockPartitioner<NumSpaceDim>
                     int diff;
                     Kokkos::parallel_reduce(
                         "diff_reduce",
-                        Kokkos::RangePolicy<execution_space>(
+                        Kokkos::RangePolicy<ExecutionSpace>(
                             0, _ranks_per_dim[dj] * _ranks_per_dim[dk] ),
                         KOKKOS_LAMBDA( const int jnk, int& update ) {
                             int j = static_cast<int>( jnk / rank_k );

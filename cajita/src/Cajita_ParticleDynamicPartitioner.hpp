@@ -38,36 +38,45 @@ namespace Cajita
   \tparam Partitioner's space dim number
   \tparam Partitioner's device type
 */
-template <class ParticlePosViewType, typename ArrayType, typename CellUnit,
-          unsigned long long CellPerTileDim, int num_space_dim, typename Device>
+template <typename ExecutionSpace, typename PositionType, typename ArrayType,
+          typename CellUnit, unsigned long long CellPerTileDim,
+          int num_space_dim>
 class ParticleWorkloadMeasurer
-    : public WorkloadMeasurer<Device>
+    : public WorkloadMeasurer<ExecutionSpace,
+                              typename PositionType::memory_space>
 {
-    using memory_space = typename Device::memory_space;
-    using execution_space = typename Device::execution_space;
-
+    // FIXME: this only exists here because it was initially within the sparse
+    // partitioner. Should be removed when the base DynamicPartitioner is
+    // refactored.
     static constexpr unsigned long long cell_bits_per_tile_dim =
         bitCount( CellPerTileDim );
 
-    const ParticlePosViewType& view;
+    const PositionType& positions;
     int particle_num;
     const ArrayType& global_lower_corner;
     const CellUnit dx;
     MPI_Comm comm;
 
   public:
+    //! Kokkos execution space.
+    using execution_space = ExecutionSpace;
+    //! Kokkos memory space.
+    using memory_space = typename PositionType::memory_space;
+    //! Workload view type.
+    using view_type = Kokkos::View<int***, memory_space>;
+
     /*!
      \brief Constructor.
-     \param view Position of particles used in workload computation.
+     \param positions Position of particles used in workload computation.
      \param particle_num The number of particles used in workload computation.
      \param global_lower_corner The bottom-left corner of global grid.
      \param dx The global grid resolution.
      \param comm MPI communicator to use for computing workload.
     */
-    ParticleWorkloadMeasurer(
-        const ParticlePosViewType& view, int particle_num,
-        const ArrayType& global_lower_corner, const CellUnit dx, MPI_Comm comm )
-        : view( view )
+    ParticleWorkloadMeasurer( const PositionType& positions, int particle_num,
+                              const ArrayType& global_lower_corner,
+                              const CellUnit dx, MPI_Comm comm )
+        : positions( positions )
         , particle_num( particle_num )
         , global_lower_corner( global_lower_corner )
         , dx( dx )
@@ -76,7 +85,7 @@ class ParticleWorkloadMeasurer
     }
 
     //! \brief Called by DynamicPartitioner to compute workload
-    void compute( Kokkos::View<int***, memory_space>& workload ) override
+    void compute( view_type& workload ) override
     {
         Kokkos::Array<CellUnit, num_space_dim> lower_corner;
         for ( std::size_t d = 0; d < num_space_dim; ++d )
@@ -84,25 +93,27 @@ class ParticleWorkloadMeasurer
             lower_corner[d] = global_lower_corner[d];
         }
 
-        CellUnit dx_proxy = dx;
-        unsigned long long cell_bits_per_tile_dim_proxy =
-            cell_bits_per_tile_dim;
+        auto dx_copy = dx;
+        auto cell_bits_per_tile_dim_copy = cell_bits_per_tile_dim;
+        auto lower_x = lower_corner[0];
+        auto lower_y = lower_corner[1];
+        auto lower_z = lower_corner[2];
         Kokkos::parallel_for(
             "compute_local_workload_parpos",
             Kokkos::RangePolicy<execution_space>( 0, particle_num ),
             KOKKOS_LAMBDA( const int i ) {
                 int ti =
                     static_cast<int>(
-                        ( view( i, 0 ) - lower_corner[0] ) / dx_proxy - 0.5 ) >>
-                    cell_bits_per_tile_dim_proxy;
+                        ( positions( i, 0 ) - lower_x ) / dx_copy - 0.5 ) >>
+                    cell_bits_per_tile_dim_copy;
                 int tj =
                     static_cast<int>(
-                        ( view( i, 1 ) - lower_corner[1] ) / dx_proxy - 0.5 ) >>
-                    cell_bits_per_tile_dim_proxy;
+                        ( positions( i, 1 ) - lower_y ) / dx_copy - 0.5 ) >>
+                    cell_bits_per_tile_dim_copy;
                 int tz =
                     static_cast<int>(
-                        ( view( i, 2 ) - lower_corner[2] ) / dx_proxy - 0.5 ) >>
-                    cell_bits_per_tile_dim_proxy;
+                        ( positions( i, 2 ) - lower_z ) / dx_copy - 0.5 ) >>
+                    cell_bits_per_tile_dim_copy;
                 Kokkos::atomic_increment( &workload( ti + 1, tj + 1, tz + 1 ) );
             } );
         Kokkos::fence();
@@ -114,18 +125,18 @@ class ParticleWorkloadMeasurer
 //---------------------------------------------------------------------------//
 //! Creation function for ParticleWorkloadMeasurer from
 //! Kokkos::View<Scalar* [3], MemorySpace>
-template <unsigned long long CellPerTileDim, int num_space_dim, typename Device,
-          class ParticlePosViewType, typename ArrayType, typename CellUnit>
-ParticleWorkloadMeasurer<ParticlePosViewType, ArrayType,
-                                           CellUnit, CellPerTileDim,
-                                           num_space_dim, Device>
-createParticleWorkloadMeasurer(
-    const ParticlePosViewType& view, int particle_num,
-    const ArrayType& global_lower_corner, const CellUnit dx, MPI_Comm comm )
+template <unsigned long long CellPerTileDim, int num_space_dim,
+          typename ExecutionSpace, typename PositionType, typename ArrayType,
+          typename CellUnit>
+auto createParticleWorkloadMeasurer( ExecutionSpace,
+                                     const PositionType& positions,
+                                     int particle_num,
+                                     const ArrayType& global_lower_corner,
+                                     const CellUnit dx, MPI_Comm comm )
 {
-    return ParticleWorkloadMeasurer<
-        ParticlePosViewType, ArrayType, CellUnit, CellPerTileDim, num_space_dim,
-        Device>( view, particle_num, global_lower_corner, dx, comm );
+    return ParticleWorkloadMeasurer<ExecutionSpace, PositionType, ArrayType,
+                                    CellUnit, CellPerTileDim, num_space_dim>(
+        positions, particle_num, global_lower_corner, dx, comm );
 }
 
 } // end namespace Cajita

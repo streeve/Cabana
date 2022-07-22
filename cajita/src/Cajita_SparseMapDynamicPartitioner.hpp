@@ -32,33 +32,36 @@ namespace Cajita
 /*!
   \brief Helper class to set workload for DynamicPartitioner with sparse map.
   \tparam SparseMapType Sparse map type
-  \tparam Device Partitioner device type
 */
-template <class SparseMapType, typename Device>
+template <class ExecutionSpace, class SparseMapType>
 class SparseMapWorkloadMeasurer
-    : public WorkloadMeasurer<Device>
+    : public WorkloadMeasurer<ExecutionSpace,
+                              typename SparseMapType::memory_space>
 {
-    using memory_space = typename Device::memory_space;
-    using execution_space = typename Device::execution_space;
-
     const SparseMapType& sparseMap;
     MPI_Comm comm;
 
   public:
+    //! Kokkos execution space.
+    using execution_space = ExecutionSpace;
+    //! Kokkos memory space.
+    using memory_space = typename SparseMapType::memory_space;
+    //! Workload view type.
+    using view_type = Kokkos::View<int***, memory_space>;
+
     /*!
      \brief Constructor.
      \param sparseMap Sparse map used in workload computation.
      \param comm MPI communicator to use for computing workload.
     */
-    SparseMapWorkloadMeasurer( const SparseMapType& sparseMap,
-                                                 MPI_Comm comm )
+    SparseMapWorkloadMeasurer( const SparseMapType& sparseMap, MPI_Comm comm )
         : sparseMap( sparseMap )
         , comm( comm )
     {
     }
 
     //! \brief Called by DynamicPartitioner to compute workload
-    void compute( Kokkos::View<int***, memory_space>& workload ) override
+    void compute( view_type& workload ) override
     {
         Kokkos::parallel_for(
             "compute_local_workload_sparsmap",
@@ -82,13 +85,13 @@ class SparseMapWorkloadMeasurer
 //---------------------------------------------------------------------------//
 //! Creation function for SparseMapWorkloadMeasurer from
 //! SparseMap
-template <typename Device, class SparseMapType>
-SparseMapWorkloadMeasurer<SparseMapType, Device>
-createSparseMapWorkloadMeasurer(
-    const SparseMapType& sparseMap, MPI_Comm comm )
+template <class ExecutionSpace, class SparseMapType>
+auto createSparseMapWorkloadMeasurer( ExecutionSpace,
+                                      const SparseMapType& sparseMap,
+                                      MPI_Comm comm )
 {
-    return SparseMapWorkloadMeasurer<SparseMapType, Device>(
-        sparseMap, comm );
+    return SparseMapWorkloadMeasurer<ExecutionSpace, SparseMapType>( sparseMap,
+                                                                     comm );
 }
 
 } // end namespace Cajita
