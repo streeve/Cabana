@@ -1,6 +1,9 @@
 from  matplotlib import pyplot as plt
 from matplotlib.lines import Line2D
 
+import numpy as np
+from copy import deepcopy
+
 class DataDescription:
     def __init__(self, label):
         #Example: serial_neigh_iteration_3_1
@@ -9,6 +12,8 @@ class DataDescription:
         self.backend = details[0].strip()
         self.type = details[1].strip()
         self.category = details[2].strip()
+        # FIXME
+        if self.category == "iteration": self.category = "iterate"
         self.params = []
         for p in details[3:]:
             self.params.append(p.strip())
@@ -23,6 +28,18 @@ class DataDescriptionMPI(DataDescription):
         self.type = details[2].strip()
         self.category = details[-1].strip()
         self.params = details[3:-1]
+
+class DataDescriptionInterpolation(DataDescription):
+    # Purposely not calling base __init__
+    def __init__(self, label):
+        #Example: device_p2g_scalar_value_16
+        self.label = label
+        details = label.split("_")
+        self.backend = details[0].strip()
+        self.type = "interpolation"
+        self.category = details[1].strip()
+        self.params = ["_".join(details[2:4]).strip()]
+        self.size = details[-1]
 
 class ManualDataDescription:
     def __init__(self, backend, type, category, params):
@@ -64,8 +81,23 @@ class DataPointMPI(DataPoint):
         self.send_bytes_n = n
         self._initTimeResults(results[2:])
 
+class DataPointInterpolation(DataPoint):
+    # Purposely not calling base __init__
+    def __init__(self, description, line):
+        # Deep copy necessary because unique parameters are used per result (ppc)
+        self.description = deepcopy(description)
+
+        #ppc min max ave
+        self.line = line
+        results = line.split()
+        self.size = int(float(description.size))
+        self._initTimeResults(results[1:])
+        self.description.params.append(results[0])
+        print(self.size, self.ave, self.description.category, self.description.type, self.description.params)
+
 class AllData:
-    def __init__(self, filelist):
+    def __init__(self, filelist, grid=False):
+        self.grid = grid
         self.results = []
         self.filelist = filelist
         for filename in filelist:
@@ -80,9 +112,15 @@ class AllData:
         return False
 
     def _headerLine(self, line):
-        if 'problem_size' in line:
+        if 'min max ave' in line:
             return True
         return False
+
+    def _getDescription(self, line):
+        return DataDescription(line)
+
+    def _getData(self, descr, line):
+        return DataPoint(descr, line)
 
     def _readFile(self, filename):
         with open(filename) as f:
@@ -92,11 +130,11 @@ class AllData:
         while not self._endOfFile(l):
             if self._emptyLine(txt[l]):
                 l += 1
-                description = DataDescription(txt[l])
+                description = self._getDescription(txt[l])
             elif self._headerLine(txt[l]):
                 l += 1
                 while not self._endOfFile(l) and not self._emptyLine(txt[l]):
-                    self.results.append(DataPoint(description, txt[l]))
+                    self.results.append(self._getData(description, txt[l]))
                     l += 1
             else:
                 l += 1
@@ -107,7 +145,7 @@ class AllData:
         for r in self.results:
             if r.size < min: min = r.size
             if r.size > max: max = r.size
-        return [min, max]
+        return np.array([min, max])
 
     def getAllBackends(self):
         unique = []
@@ -145,11 +183,6 @@ class AllDataMPI(AllData):
     def _endOfFile(self, l):
         return l >= self.total
 
-    def _headerLine(self, line):
-        if 'num_rank' in line:
-            return True
-        return False
-
     def _readFile(self, filename):
         with open(filename) as f:
             txt = f.readlines()
@@ -179,6 +212,13 @@ class AllDataMPI(AllData):
                 unique.append(send)
         return unique
 
+class AllDataInterpolation(AllData):
+    def _getDescription(self, line):
+        return DataDescriptionInterpolation(line)
+
+    def _getData(self, descr, line):
+        return DataPointInterpolation(descr, line)
+
 class AllSizesSingleResult:
     def __init__(self, all_data: AllData, descr: ManualDataDescription):
         self.data = []
@@ -187,7 +227,7 @@ class AllSizesSingleResult:
             if self._compareAll(d.description, descr):
                 self.sizes.append(d.size)
                 self.data.append(d.ave)
-
+        print(self.sizes, self.data)
     def _compareAll(self, data_description, check):
         if data_description.backend == check.backend and data_description.category == check.category and data_description.type == check.type and data_description.params == check.params:
             return True
@@ -207,23 +247,51 @@ class AllSizesSingleResultMPI:
             return True
         return False
 
+
+def getColors(data: AllData):
+    color_list = ["#e31a1c", "#1f78b4", "#a6cee3", "#cab2d6", "#fdbf6f", "#ffff99"]
+    color_dict = {}
+    categories = data.getAllCategories()
+    for c, cat in enumerate(categories):
+        color_dict[cat] = color_list[c]
+
+    return color_dict
+
+def getLegend(data: AllData, cpu_name, gpu_name, speedup):
+
+    legend = []
+    # No way to know what's being compared here.
+    if not speedup:
+        backends = data.getAllBackends()
+        for backend in data.getAllBackends():
+            # FIXME: backwards compatibility
+            if "host" in backend or "serial" in backend or "openmp" in backend:
+                legend.append(Line2D([0], [0], color="k", lw=2, linestyle= "--", label=cpu_name+" CPU"))
+            if "device" in backend or "cuda" in backend or "hip" in backend:
+                legend.append(Line2D([0], [0], color="k", lw=2, linestyle="-", label=gpu_name+" GPU"))
+
+    colors = getColors(data)
+    categories = data.getAllCategories()
+    for cat in categories:
+        legend.append(Line2D([0], [0], color=colors[cat], lw=2, label=cat))
+    return legend
+
 def plotResults(fig, ax, x, y, backend, color):
     linewidth = 2
     dash = "-"
     offset = 1.0
+    # FIXME: backwards compatibility
     if "host" in backend or "serial" in backend or "openmp" in backend:
         dash = "--"
         offset = 1.1
 
     ax.plot(x*offset, y, color=color, lw=linewidth, marker='o', linestyle=dash)
 
-def createPlot(fig, ax, min_max, speedup=False, grid=False):
-    ax.plot(min_max, [1]*len(min_max), c="k")
-
-    fake_lines = [Line2D([0], [0], color='#E31A1C', lw=2, label='create'),
-                  Line2D([0], [0], color='#4291C7', lw=2, label="iterate"), # if "iteration" in type_list[1] else type_list[1]),
-                  Line2D([0], [0], color="k", lw=2, linestyle= "--", label="POWER9 CPU"),
-                  Line2D([0], [0], color="k", lw=2, linestyle="-", label="V100 GPU")]
+def createPlot(fig, ax, data: AllData, speedup=False, cpu_name="", gpu_name=""):
+    if speedup:
+        min_max = data.minMaxSize()
+        if data.grid: min_max = min_max**3
+        ax.plot(min_max, [1]*len(min_max), c="k")
 
     fig.tight_layout()
     plt.rcParams["font.size"] = 12
@@ -232,15 +300,15 @@ def createPlot(fig, ax, min_max, speedup=False, grid=False):
         ax.set_ylabel("Speedup")
     else:
         ax.set_ylabel("Time (seconds)")
-    if grid:
+    if data.grid:
         ax.set_xlabel("Number of grid points")
     else:
         ax.set_xlabel("Number of particles")
 
-    ax.legend(handles=fake_lines)
+    lines = getLegend(data, cpu_name, gpu_name, speedup)
+    ax.legend(handles=lines)
     ax.set_xscale('log')
     ax.set_yscale('log')
-    #a1.set_ylim([0.1, 5])
 
     plt.show()
-    #plt.savefig(outname+".png", dpi=300)
+    #plt.savefig("Cabana_Benchmark.png", dpi=300)
