@@ -1092,7 +1092,7 @@ class CommunicationData
     */
     CommunicationData( const CommPlanType& comm_plan,
                        const double overallocation = 1.0 )
-        : _comm_plan( comm_plan )
+        : _comm_plan( std::make_unique<comm_plan> )
         , _overallocation( overallocation )
     {
         _comm_data = CommDataType();
@@ -1125,7 +1125,7 @@ class CommunicationData
 
         updateImpl( comm_plan, particles, total_send, total_recv );
     }
-    void updateImpl( const CommPlanType& comm_plan,
+    void updateImpl( const std::unique_ptr<CommPlanType>& comm_plan,
                      const particle_data_type& particles,
                      const std::size_t total_send,
                      const std::size_t total_recv )
@@ -1147,8 +1147,8 @@ class CommunicationData
     //! Update range policy based on new communication plan.
     void updateRangePolicy()
     {
-        _send_policy = policy_type( 0, _comm_plan.totalNumExport() );
-        _recv_policy = policy_type( 0, _comm_plan.totalNumImport() );
+        _send_policy = policy_type( 0, _comm_plan->totalNumExport() );
+        _recv_policy = policy_type( 0, _comm_plan->totalNumImport() );
     }
 
     //! Get the total number of components in the slice.
@@ -1158,7 +1158,7 @@ class CommunicationData
     };
 
     //! Communication plan.
-    plan_type _comm_plan;
+    std::unique_ptr<plan_type> _comm_plan;
     //! Send range policy.
     policy_type _send_policy;
     //! Receive range policy.

@@ -206,11 +206,12 @@ struct is_distributor
 */
 template <class DistributorType, class ParticleData>
 bool distributorCheckValidSize(
-    const DistributorType& distributor, const ParticleData& particles,
+    const std::unique_ptr<DistributorType>& distributor,
+    const ParticleData& particles,
     typename std::enable_if<( is_distributor<DistributorType>::value ),
                             int>::type* = 0 )
 {
-    return ( particles.size() == distributor.exportSize() );
+    return ( particles.size() == distributor->exportSize() );
 }
 /*!
   \brief Ensure the particle size matches the distributor size.
@@ -226,13 +227,13 @@ bool distributorCheckValidSize(
 */
 template <class DistributorType, class ParticleData>
 bool distributorCheckValidSize(
-    const DistributorType& distributor, const ParticleData& src,
-    const ParticleData& dst,
+    const std::unique_ptr<DistributorType>& distributor,
+    const ParticleData& src, const ParticleData& dst,
     typename std::enable_if<( is_distributor<DistributorType>::value ),
                             int>::type* = 0 )
 {
     return ( distributorCheckValidSize( distributor, src ) &&
-             dst.size() == distributor.totalNumImport() );
+             dst.size() == distributor->totalNumImport() );
 }
 
 //---------------------------------------------------------------------------//
@@ -281,11 +282,11 @@ class Migrate<DistributorType, AoSoAType,
       \param overallocation An optional factor to keep extra space in the
       buffers to avoid frequent resizing.
     */
-    Migrate( DistributorType distributor, AoSoAType aosoa,
+    Migrate( std::unique_ptr<DistributorType>& distributor, AoSoAType aosoa,
              const double overallocation = 1.0 )
         : base_type( distributor, overallocation )
     {
-        update( _distributor, aosoa );
+        update( _comm_plan, aosoa );
     }
 
     /*!
@@ -301,11 +302,11 @@ class Migrate<DistributorType, AoSoAType,
       \param overallocation An optional factor to keep extra space in the
       buffers to avoid frequent resizing.
     */
-    Migrate( DistributorType distributor, AoSoAType src, AoSoAType dst,
-             const double overallocation = 1.0 )
+    Migrate( const std::unique_ptr<DistributorType>& distributor, AoSoAType src,
+             AoSoAType dst, const double overallocation = 1.0 )
         : base_type( distributor, overallocation )
     {
-        update( _distributor, src, dst );
+        update( _comm_plan, src, dst );
     }
 
     /*!
@@ -331,9 +332,9 @@ class Migrate<DistributorType, AoSoAType,
         // If the destination decomposition is smaller than the source
         // decomposition resize after we have moved the data.
         bool dst_is_bigger =
-            ( _distributor.totalNumImport() > _distributor.exportSize() );
+            ( _comm_plan->totalNumImport() > _comm_plan->exportSize() );
         if ( !dst_is_bigger )
-            aosoa.resize( _distributor.totalNumImport() );
+            aosoa.resize( _comm_plan->totalNumImport() );
     }
 
     /*!
@@ -359,8 +360,8 @@ class Migrate<DistributorType, AoSoAType,
       \param overallocation An optional factor to keep extra space in the
       buffers to avoid frequent resizing.
     */
-    void update( const DistributorType& distributor, AoSoAType& aosoa,
-                 const double overallocation )
+    void update( const std::unique_ptr<DistributorType>& distributor,
+                 AoSoAType& aosoa, const double overallocation )
     {
         // Check that the AoSoA is the right size.
         if ( !distributorCheckValidSize( distributor, aosoa ) )
@@ -369,15 +370,15 @@ class Migrate<DistributorType, AoSoAType,
         // Determine if the source of destination decomposition has more data on
         // this rank.
         bool dst_is_bigger =
-            ( distributor.totalNumImport() > distributor.exportSize() );
+            ( distributor->totalNumImport() > distributor->exportSize() );
 
         // If the destination decomposition is bigger than the source
         // decomposition resize now so we have enough space to do the operation.
         if ( dst_is_bigger )
-            aosoa.resize( distributor.totalNumImport() );
+            aosoa.resize( distributor->totalNumImport() );
 
-        this->updateImpl( distributor, aosoa, distributor.totalSend(),
-                          distributor.totalReceive(), overallocation );
+        this->updateImpl( distributor, aosoa, distributor->totalSend(),
+                          distributor->totalReceive(), overallocation );
     }
     /*!
       \brief Update the distributor and AoSoA data for migration.
@@ -385,7 +386,8 @@ class Migrate<DistributorType, AoSoAType,
       \param distributor The Distributor to be used for the migrate.
       \param aosoa The AoSoA on which to perform the migrate.
     */
-    void update( const DistributorType& distributor, AoSoAType& aosoa )
+    void update( const std::unique_ptr<DistributorType>& distributor,
+                 AoSoAType& aosoa )
     {
         // Check that the AoSoA is the right size.
         if ( !distributorCheckValidSize( distributor, aosoa ) )
@@ -394,15 +396,15 @@ class Migrate<DistributorType, AoSoAType,
         // Determine if the source of destination decomposition has more data on
         // this rank.
         bool dst_is_bigger =
-            ( distributor.totalNumImport() > distributor.exportSize() );
+            ( distributor->totalNumImport() > distributor->exportSize() );
 
         // If the destination decomposition is bigger than the source
         // decomposition resize now so we have enough space to do the operation.
         if ( dst_is_bigger )
-            aosoa.resize( distributor.totalNumImport() );
+            aosoa.resize( distributor->totalNumImport() );
 
-        this->updateImpl( distributor, aosoa, distributor.totalSend(),
-                          distributor.totalReceive() );
+        this->updateImpl( distributor, aosoa, distributor->totalSend(),
+                          distributor->totalReceive() );
     }
 
     /*!
@@ -417,15 +419,16 @@ class Migrate<DistributorType, AoSoAType,
       \param overallocation An optional factor to keep extra space in the
       buffers to avoid frequent resizing.
     */
-    void update( const DistributorType& distributor, const AoSoAType& src,
-                 AoSoAType& dst, const double overallocation )
+    void update( const std::unique_ptr<DistributorType>& distributor,
+                 const AoSoAType& src, AoSoAType& dst,
+                 const double overallocation )
     {
         // Check that src and dst are the right size.
         if ( !distributorCheckValidSize( distributor, src, dst ) )
             throw std::runtime_error( "AoSoA is the wrong size for migrate!" );
 
-        this->updateImpl( distributor, src, distributor.totalSend(),
-                          distributor.totalReceive(), overallocation );
+        this->updateImpl( distributor, src, distributor->totalSend(),
+                          distributor->totalReceive(), overallocation );
     }
     /*!
       \brief Update the distributor and AoSoA data for migration.
@@ -437,15 +440,15 @@ class Migrate<DistributorType, AoSoAType,
       the same size as the number of imports given by the distributor on this
       rank.
     */
-    void update( const DistributorType& distributor, const AoSoAType& src,
-                 AoSoAType& dst )
+    void update( const std::unique_ptr<DistributorType>& distributor,
+                 const AoSoAType& src, AoSoAType& dst )
     {
         // Check that src and dst are the right size.
         if ( !distributorCheckValidSize( distributor, src, dst ) )
             throw std::runtime_error( "AoSoA is the wrong size for migrate!" );
 
-        this->updateImpl( distributor, src, distributor.totalSend(),
-                          distributor.totalReceive() );
+        this->updateImpl( distributor, src, distributor->totalSend(),
+                          distributor->totalReceive() );
     }
 
   private:
@@ -457,13 +460,13 @@ class Migrate<DistributorType, AoSoAType,
         auto recv_buffer = this->getReceiveBuffer();
 
         // Get the number of neighbors.
-        int num_n = _distributor.numNeighbor();
+        int num_n = _comm_plan->numNeighbor();
 
         // Number of elements that are staying on this rank.
-        auto num_stay = _distributor.numStay();
+        auto num_stay = _comm_plan->numStay();
 
         // Get the steering vector for the sends.
-        auto steering = _distributor.getExportSteering();
+        auto steering = _comm_plan->getExportSteering();
 
         // Gather the exports from the source AoSoA into the tuple-contiguous
         // send buffer or the receive buffer if the data is staying. We know
@@ -490,10 +493,10 @@ class Migrate<DistributorType, AoSoAType,
         std::pair<std::size_t, std::size_t> recv_range = { 0, 0 };
         for ( int n = 0; n < num_n; ++n )
         {
-            recv_range.second = recv_range.first + _distributor.numImport( n );
+            recv_range.second = recv_range.first + _comm_plan->numImport( n );
 
-            if ( ( _distributor.numImport( n ) > 0 ) &&
-                 ( _distributor.neighborRank( n ) != _my_rank ) )
+            if ( ( _comm_plan->numImport( n ) > 0 ) &&
+                 ( _comm_plan->neighborRank( n ) != _my_rank ) )
             {
                 auto recv_subview = Kokkos::subview( recv_buffer, recv_range );
 
@@ -501,8 +504,8 @@ class Migrate<DistributorType, AoSoAType,
 
                 MPI_Irecv( recv_subview.data(),
                            recv_subview.size() * sizeof( data_type ), MPI_BYTE,
-                           _distributor.neighborRank( n ), mpi_tag,
-                           _distributor.comm(), &( requests.back() ) );
+                           _comm_plan->neighborRank( n ), mpi_tag,
+                           _comm_plan->comm(), &( requests.back() ) );
             }
 
             recv_range.first = recv_range.second;
@@ -512,18 +515,18 @@ class Migrate<DistributorType, AoSoAType,
         std::pair<std::size_t, std::size_t> send_range = { 0, 0 };
         for ( int n = 0; n < num_n; ++n )
         {
-            if ( ( _distributor.numExport( n ) > 0 ) &&
-                 ( _distributor.neighborRank( n ) != _my_rank ) )
+            if ( ( _comm_plan->numExport( n ) > 0 ) &&
+                 ( _comm_plan->neighborRank( n ) != _my_rank ) )
             {
                 send_range.second =
-                    send_range.first + _distributor.numExport( n );
+                    send_range.first + _comm_plan->numExport( n );
 
                 auto send_subview = Kokkos::subview( send_buffer, send_range );
 
                 MPI_Send( send_subview.data(),
                           send_subview.size() * sizeof( data_type ), MPI_BYTE,
-                          _distributor.neighborRank( n ), mpi_tag,
-                          _distributor.comm() );
+                          _comm_plan->neighborRank( n ), mpi_tag,
+                          _comm_plan->comm() );
 
                 send_range.first = send_range.second;
             }
@@ -546,10 +549,10 @@ class Migrate<DistributorType, AoSoAType,
         Kokkos::fence();
 
         // Barrier before completing to ensure synchronization.
-        MPI_Barrier( _distributor.comm() );
+        MPI_Barrier( _comm_plan->comm() );
     }
 
-    plan_type _distributor = base_type::_comm_plan;
+    using base_type::_comm_plan;
     using base_type::_recv_policy;
     using base_type::_send_policy;
 
@@ -592,12 +595,13 @@ class Migrate<DistributorType, SliceType,
       \param overallocation An optional factor to keep extra space in the
       buffers to avoid frequent resizing.
     */
-    Migrate( const DistributorType& distributor, const SliceType& src,
-             SliceType& dst, const double overallocation = 1.0 )
+    Migrate( const std::unique_ptr<DistributorType>& distributor,
+             const SliceType& src, SliceType& dst,
+             const double overallocation = 1.0 )
         : base_type( distributor, overallocation )
     {
-        _my_rank = _distributor.getRank();
-        update( _distributor, src, dst );
+        _my_rank = _comm_plan->getRank();
+        update( _comm_plan, src, dst );
     }
 
     /*!
@@ -620,13 +624,13 @@ class Migrate<DistributorType, SliceType,
         auto dst_data = dst.data();
 
         // Get the number of neighbors.
-        int num_n = _distributor.numNeighbor();
+        int num_n = _comm_plan->numNeighbor();
 
         // Number of elements that are staying on this rank.
-        auto num_stay = _distributor.numStay();
+        auto num_stay = _comm_plan->numStay();
 
         // Get the steering vector for the sends.
-        auto steering = _distributor.getExportSteering();
+        auto steering = _comm_plan->getExportSteering();
 
         // Gather from the source Slice into the contiguous send buffer or,
         // if it is part of the local copy, put it directly in the destination
@@ -658,10 +662,10 @@ class Migrate<DistributorType, SliceType,
         std::pair<std::size_t, std::size_t> recv_range = { 0, 0 };
         for ( int n = 0; n < num_n; ++n )
         {
-            recv_range.second = recv_range.first + _distributor.numImport( n );
+            recv_range.second = recv_range.first + _comm_plan->numImport( n );
 
-            if ( ( _distributor.numImport( n ) > 0 ) &&
-                 ( _distributor.neighborRank( n ) != _my_rank ) )
+            if ( ( _comm_plan->numImport( n ) > 0 ) &&
+                 ( _comm_plan->neighborRank( n ) != _my_rank ) )
             {
                 auto recv_subview =
                     Kokkos::subview( recv_buffer, recv_range, Kokkos::ALL );
@@ -670,8 +674,8 @@ class Migrate<DistributorType, SliceType,
 
                 MPI_Irecv( recv_subview.data(),
                            recv_subview.size() * sizeof( data_type ), MPI_BYTE,
-                           _distributor.neighborRank( n ), mpi_tag,
-                           _distributor.comm(), &( requests.back() ) );
+                           _comm_plan->neighborRank( n ), mpi_tag,
+                           _comm_plan->comm(), &( requests.back() ) );
             }
 
             recv_range.first = recv_range.second;
@@ -681,19 +685,19 @@ class Migrate<DistributorType, SliceType,
         std::pair<std::size_t, std::size_t> send_range = { 0, 0 };
         for ( int n = 0; n < num_n; ++n )
         {
-            if ( ( _distributor.numExport( n ) > 0 ) &&
-                 ( _distributor.neighborRank( n ) != _my_rank ) )
+            if ( ( _comm_plan->numExport( n ) > 0 ) &&
+                 ( _comm_plan->neighborRank( n ) != _my_rank ) )
             {
                 send_range.second =
-                    send_range.first + _distributor.numExport( n );
+                    send_range.first + _comm_plan->numExport( n );
 
                 auto send_subview =
                     Kokkos::subview( send_buffer, send_range, Kokkos::ALL );
 
                 MPI_Send( send_subview.data(),
                           send_subview.size() * sizeof( data_type ), MPI_BYTE,
-                          _distributor.neighborRank( n ), mpi_tag,
-                          _distributor.comm() );
+                          _comm_plan->neighborRank( n ), mpi_tag,
+                          _comm_plan->comm() );
 
                 send_range.first = send_range.second;
             }
@@ -721,7 +725,7 @@ class Migrate<DistributorType, SliceType,
         Kokkos::fence();
 
         // Barrier before completing to ensure synchronization.
-        MPI_Barrier( _distributor.comm() );
+        MPI_Barrier( _comm_plan->comm() );
     }
 
     //! \cond Impl
@@ -742,15 +746,16 @@ class Migrate<DistributorType, SliceType,
       \param overallocation An optional factor to keep extra space in the
       buffers to avoid frequent resizing.
     */
-    void update( const DistributorType& distributor, const SliceType& src,
-                 SliceType& dst, const double overallocation )
+    void update( const std::unique_ptr<DistributorType>& distributor,
+                 const SliceType& src, SliceType& dst,
+                 const double overallocation )
     {
         // Check that src and dst are the right size.
         if ( !distributorCheckValidSize( distributor, src, dst ) )
             throw std::runtime_error( "AoSoA is the wrong size for migrate!" );
 
-        this->updateImpl( distributor, src, distributor.totalSend(),
-                          distributor.totalReceive(), overallocation );
+        this->updateImpl( distributor, src, distributor->totalSend(),
+                          distributor->totalReceive(), overallocation );
     }
     /*!
       \brief Update the distributor and slice data for migrate.
@@ -759,19 +764,19 @@ class Migrate<DistributorType, SliceType,
       \param src The slice containing the data to be migrated.
       \param dst The slice to which the migrated data will be written.
     */
-    void update( const DistributorType& distributor, const SliceType& src,
-                 SliceType& dst )
+    void update( const std::unique_ptr<DistributorType>& distributor,
+                 const SliceType& src, SliceType& dst )
     {
         // Check that src and dst are the right size.
         if ( !distributorCheckValidSize( distributor, src, dst ) )
             throw std::runtime_error( "AoSoA is the wrong size for migrate!" );
 
-        this->updateImpl( distributor, src, distributor.totalSend(),
-                          distributor.totalReceive() );
+        this->updateImpl( distributor, src, distributor->totalSend(),
+                          distributor->totalReceive() );
     }
 
   private:
-    plan_type _distributor = base_type::_comm_plan;
+    using base_type::_comm_plan;
     using base_type::_recv_policy;
     using base_type::_send_policy;
 
@@ -788,8 +793,8 @@ class Migrate<DistributorType, SliceType,
   avoid frequent resizing.
 */
 template <class DistributorType, class ParticleDataType>
-auto createMigrate( DistributorType distributor, ParticleDataType data,
-                    const double overallocation = 1.0 )
+auto createMigrate( std::unique_ptr<DistributorType>& distributor,
+                    ParticleDataType data, const double overallocation = 1.0 )
 {
     return Migrate<DistributorType, ParticleDataType>( distributor, data,
                                                        overallocation );
@@ -805,7 +810,7 @@ auto createMigrate( DistributorType distributor, ParticleDataType data,
   avoid frequent resizing.
 */
 template <class DistributorType, class ParticleDataType>
-auto createMigrate( const DistributorType& distributor,
+auto createMigrate( const std::unique_ptr<DistributorType>& distributor,
                     const ParticleDataType& src, ParticleDataType& dst,
                     const double overallocation = 1.0 )
 {
@@ -827,19 +832,18 @@ auto createMigrate( const DistributorType& distributor,
 
   \param distributor The distributor to use for the migration.
 
-  \param src The AoSoA containing the data to be migrated. Must have the same
-  number of elements as the inputs used to construct the distributor.
+  \param src The AoSoA or slice containing the data to be migrated. Must have
+  the same number of elements as the inputs used to construct the distributor.
 
-  \param dst The AoSoA to which the migrated data will be written. Must be the
-  same size as the number of imports given by the distributor on this
+  \param dst The AoSoA or slice to which the migrated data will be written. Must
+  be the same size as the number of imports given by the distributor on this
   rank. Call totalNumImport() on the distributor to get this size value.
 */
 template <class DistributorType, class AoSoAType>
-void migrate(
-    const DistributorType& distributor, const AoSoAType& src, AoSoAType& dst,
-    typename std::enable_if<( is_distributor<DistributorType>::value &&
-                              is_aosoa<AoSoAType>::value ),
-                            int>::type* = 0 )
+void migrate( const std::unique_ptr<DistributorType>& distributor,
+              const AoSoAType& src, AoSoAType& dst,
+              typename std::enable_if<
+                  ( is_distributor<DistributorType>::value ), int>::type* = 0 )
 {
     auto migrate = createMigrate( distributor, src, dst );
     migrate.apply( src, dst );
@@ -871,7 +875,7 @@ void migrate(
 */
 template <class DistributorType, class AoSoAType>
 void migrate(
-    const DistributorType& distributor, AoSoAType& aosoa,
+    const std::unique_ptr<DistributorType>& distributor, AoSoAType& aosoa,
     typename std::enable_if<( is_distributor<DistributorType>::value &&
                               is_aosoa<AoSoAType>::value ),
                             int>::type* = 0 )
@@ -880,35 +884,6 @@ void migrate(
     migrate.apply( aosoa );
 }
 
-//---------------------------------------------------------------------------//
-/*!
-  \brief Synchronously migrate data between two different decompositions using
-  the distributor forward communication plan. Slice version. The user can do
-  this in-place with the same slice but they will need to manage the resizing
-  themselves as we can't resize slices.
-
-  Migrate moves all data to a new distribution that is uniquely owned - each
-  element will only have a single destination rank.
-
-  \param distributor The distributor to use for the migration.
-
-  \param src The slice containing the data to be migrated. Must have the same
-  number of elements as the inputs used to construct the distributor.
-
-  \param dst The slice to which the migrated data will be written. Must be the
-  same size as the number of imports given by the distributor on this
-  rank. Call totalNumImport() on the distributor to get this size value.
-*/
-template <class DistributorType, class SliceType>
-void migrate(
-    const DistributorType& distributor, const SliceType& src, SliceType& dst,
-    typename std::enable_if<( is_distributor<DistributorType>::value &&
-                              is_slice<SliceType>::value ),
-                            int>::type* = 0 )
-{
-    auto migrate = createMigrate( distributor, src, dst );
-    migrate.apply( src, dst );
-}
 //---------------------------------------------------------------------------//
 
 } // end namespace Cabana

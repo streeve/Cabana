@@ -84,7 +84,7 @@ struct HaloData
 auto createHalo( UniqueTestTag, const int use_topology, const int my_size,
                  const int num_local )
 {
-    std::shared_ptr<Cabana::Halo<TEST_MEMSPACE>> halo;
+    std::unique_ptr<Cabana::Halo<TEST_MEMSPACE>> halo;
 
     // Every rank will send ghosts to all other ranks. Send one element to
     // each rank including yourself. Interleave the sends. The resulting
@@ -107,10 +107,10 @@ auto createHalo( UniqueTestTag, const int use_topology, const int my_size,
 
     // Create the plan.
     if ( use_topology )
-        halo = std::make_shared<Cabana::Halo<TEST_MEMSPACE>>(
+        halo = std::make_unique<Cabana::Halo<TEST_MEMSPACE>>(
             MPI_COMM_WORLD, num_local, export_ids, export_ranks, neighbors );
     else
-        halo = std::make_shared<Cabana::Halo<TEST_MEMSPACE>>(
+        halo = std::make_unique<Cabana::Halo<TEST_MEMSPACE>>(
             MPI_COMM_WORLD, num_local, export_ids, export_ranks );
 
     return halo;
@@ -119,7 +119,7 @@ auto createHalo( UniqueTestTag, const int use_topology, const int my_size,
 auto createHalo( AllTestTag, const int use_topology, const int my_size,
                  const int num_local )
 {
-    std::shared_ptr<Cabana::Halo<TEST_MEMSPACE>> halo;
+    std::unique_ptr<Cabana::Halo<TEST_MEMSPACE>> halo;
 
     // Every rank will send its single data point as ghosts to all other
     // ranks. This will create collisions in the scatter as every rank will
@@ -140,10 +140,10 @@ auto createHalo( AllTestTag, const int use_topology, const int my_size,
 
     // Create the plan.
     if ( use_topology )
-        halo = std::make_shared<Cabana::Halo<TEST_MEMSPACE>>(
+        halo = std::make_unique<Cabana::Halo<TEST_MEMSPACE>>(
             MPI_COMM_WORLD, num_local, export_ids, export_ranks, neighbors );
     else
-        halo = std::make_shared<Cabana::Halo<TEST_MEMSPACE>>(
+        halo = std::make_unique<Cabana::Halo<TEST_MEMSPACE>>(
             MPI_COMM_WORLD, num_local, export_ids, export_ranks );
 
     return halo;
@@ -438,7 +438,7 @@ void testHalo( TestTag tag, const bool use_topology )
     auto data = halo_data.createData( my_rank, num_local );
 
     // Gather by AoSoA.
-    Cabana::gather( *halo, data );
+    Cabana::gather( halo, data );
 
     // Compare against original host data.
     auto data_host = halo_data.copyToHost();
@@ -447,14 +447,14 @@ void testHalo( TestTag tag, const bool use_topology )
     // Scatter back the results,
     auto slice_int = Cabana::slice<0>( data );
     auto slice_dbl = Cabana::slice<1>( data );
-    Cabana::scatter( *halo, slice_int );
-    Cabana::scatter( *halo, slice_dbl );
+    Cabana::scatter( halo, slice_int );
+    Cabana::scatter( halo, slice_dbl );
     Cabana::deep_copy( data_host, data );
     checkScatter( tag, data_host, my_size, my_rank, num_local );
 
     // Gather again, this time with slices.
-    Cabana::gather( *halo, slice_int );
-    Cabana::gather( *halo, slice_dbl );
+    Cabana::gather( halo, slice_int );
+    Cabana::gather( halo, slice_dbl );
     Cabana::deep_copy( data_host, data );
     checkGatherSlice( tag, data_host, my_size, my_rank, num_local );
 }
@@ -486,7 +486,7 @@ void testHaloBuffers( TestTag tag, const bool use_topology )
 
     // Create send and receive buffers with an overallocation.
     double overalloc = 1.5;
-    auto gather = createGather( *halo, data, overalloc );
+    auto gather = createGather( halo, data, overalloc );
 
     // Gather by AoSoA using preallocated buffers.
     gather.apply( data );
@@ -498,16 +498,16 @@ void testHaloBuffers( TestTag tag, const bool use_topology )
     // Scatter back the results, now with preallocated slice buffers.
     auto slice_int = Cabana::slice<0>( data );
     auto slice_dbl = Cabana::slice<1>( data );
-    auto scatter_int = createScatter( *halo, slice_int, overalloc );
-    auto scatter_dbl = createScatter( *halo, slice_dbl, overalloc );
+    auto scatter_int = createScatter( halo, slice_int, overalloc );
+    auto scatter_dbl = createScatter( halo, slice_dbl, overalloc );
     scatter_int.apply( slice_int );
     scatter_dbl.apply( slice_dbl );
     Cabana::deep_copy( data_host, data );
     checkScatter( tag, data_host, my_size, my_rank, num_local );
 
     // Gather again, this time with slices.
-    auto gather_int = createGather( *halo, slice_int, overalloc );
-    auto gather_dbl = createGather( *halo, slice_dbl, overalloc );
+    auto gather_int = createGather( halo, slice_int, overalloc );
+    auto gather_dbl = createGather( halo, slice_dbl, overalloc );
     gather_int.apply( slice_int );
     gather_dbl.apply( slice_dbl );
     Cabana::deep_copy( data_host, data );

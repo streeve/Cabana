@@ -211,13 +211,13 @@ struct is_halo : public is_halo_impl<typename std::remove_cv<T>::type>::type
   \param particles The particle data (either AoSoA or slice). Used to query the
   total size.
 */
-template <class Halo, class ParticleData>
+template <class HaloType, class ParticleData>
 bool haloCheckValidSize(
-    const Halo& halo, const ParticleData& particles,
-    typename std::enable_if<( is_halo<Halo>::value ), int>::type* = 0 )
+    const std::unique_ptr<HaloType>& halo, const ParticleData& particles,
+    typename std::enable_if<( is_halo<HaloType>::value ), int>::type* = 0 )
 {
     // Check that the data is the right size.
-    return ( particles.size() == halo.numLocal() + halo.numGhost() );
+    return ( particles.size() == halo->numLocal() + halo->numGhost() );
 }
 
 template <class HaloType, class AoSoAType, class SFINAE = void>
@@ -269,16 +269,17 @@ class Gather<HaloType, AoSoAType,
       \param overallocation An optional factor to keep extra space in the
       buffers to avoid frequent resizing.
     */
-    Gather( HaloType halo, AoSoAType aosoa, const double overallocation = 1.0 )
+    Gather( const std::unique_ptr<HaloType>& halo, AoSoAType aosoa,
+            const double overallocation = 1.0 )
         : base_type( halo, overallocation )
     {
-        update( _halo, aosoa );
+        update( _comm_plan, aosoa );
     }
 
     //! Total gather send size for this rank.
-    auto totalSend() { return _halo.totalNumExport(); }
+    auto totalSend() { return _comm_plan->totalNumExport(); }
     //! Total gather receive size for this rank.
-    auto totalReceive() { return _halo.totalNumImport(); }
+    auto totalReceive() { return _comm_plan->totalNumImport(); }
 
     /*!
       \brief Perform the gather operation.
@@ -292,7 +293,7 @@ class Gather<HaloType, AoSoAType,
         auto recv_buffer = this->getReceiveBuffer();
 
         // Get the steering vector for the sends.
-        auto steering = _halo.getExportSteering();
+        auto steering = _comm_plan->getExportSteering();
 
         // Gather from the local data into a tuple-contiguous send buffer.
         auto gather_send_buffer_func = KOKKOS_LAMBDA( const std::size_t i )
@@ -307,18 +308,18 @@ class Gather<HaloType, AoSoAType,
         const int mpi_tag = 2345;
 
         // Post non-blocking receives.
-        int num_n = _halo.numNeighbor();
+        int num_n = _comm_plan->numNeighbor();
         std::vector<MPI_Request> requests( num_n );
         std::pair<std::size_t, std::size_t> recv_range = { 0, 0 };
         for ( int n = 0; n < num_n; ++n )
         {
-            recv_range.second = recv_range.first + _halo.numImport( n );
+            recv_range.second = recv_range.first + _comm_plan->numImport( n );
 
             auto recv_subview = Kokkos::subview( recv_buffer, recv_range );
 
             MPI_Irecv( recv_subview.data(),
                        recv_subview.size() * sizeof( data_type ), MPI_BYTE,
-                       _halo.neighborRank( n ), mpi_tag, _halo.comm(),
+                       _comm_plan->neighborRank( n ), mpi_tag, _comm_plan->comm(),
                        &( requests[n] ) );
 
             recv_range.first = recv_range.second;
@@ -328,13 +329,13 @@ class Gather<HaloType, AoSoAType,
         std::pair<std::size_t, std::size_t> send_range = { 0, 0 };
         for ( int n = 0; n < num_n; ++n )
         {
-            send_range.second = send_range.first + _halo.numExport( n );
+            send_range.second = send_range.first + _comm_plan->numExport( n );
 
             auto send_subview = Kokkos::subview( send_buffer, send_range );
 
             MPI_Send( send_subview.data(),
                       send_subview.size() * sizeof( data_type ), MPI_BYTE,
-                      _halo.neighborRank( n ), mpi_tag, _halo.comm() );
+                      _comm_plan->neighborRank( n ), mpi_tag, _comm_plan->comm() );
 
             send_range.first = send_range.second;
         }
@@ -347,7 +348,7 @@ class Gather<HaloType, AoSoAType,
             throw std::logic_error( "Failed MPI Communication" );
 
         // Extract the receive buffer into the ghosted elements.
-        std::size_t num_local = _halo.numLocal();
+        std::size_t num_local = _comm_plan->numLocal();
         auto extract_recv_buffer_func = KOKKOS_LAMBDA( const std::size_t i )
         {
             std::size_t ghost_idx = i + num_local;
@@ -358,7 +359,7 @@ class Gather<HaloType, AoSoAType,
         Kokkos::fence();
 
         // Barrier before completing to ensure synchronization.
-        MPI_Barrier( _halo.comm() );
+        MPI_Barrier( _comm_plan->comm() );
     }
 
     void apply( const AoSoAType&, AoSoAType& ) override
@@ -373,7 +374,7 @@ class Gather<HaloType, AoSoAType,
       \param halo The Halo to be used for the gather.
       \param aosoa The AoSoA on which to perform the gather.
     */
-    void update( const HaloType& halo, AoSoAType& aosoa )
+    void update( const std::unique_ptr<HaloType>& halo, AoSoAType& aosoa )
     {
         if ( !haloCheckValidSize( halo, aosoa ) )
             throw std::runtime_error( "AoSoA is the wrong size for gather!" );
@@ -388,7 +389,7 @@ class Gather<HaloType, AoSoAType,
       \param overallocation An optional factor to keep extra space in the
       buffers to avoid frequent resizing.
     */
-    void update( const HaloType& halo, AoSoAType& aosoa,
+    void update( const std::unique_ptr<HaloType>& halo, AoSoAType& aosoa,
                  const double overallocation )
     {
         if ( !haloCheckValidSize( halo, aosoa ) )
@@ -399,7 +400,7 @@ class Gather<HaloType, AoSoAType,
     }
 
   private:
-    plan_type _halo = base_type::_comm_plan;
+    using base_type::_comm_plan;
     using base_type::_recv_policy;
     using base_type::_send_policy;
 };
@@ -449,16 +450,17 @@ class Gather<HaloType, SliceType,
       \param overallocation An optional factor to keep extra space in the
       buffers to avoid frequent resizing.
     */
-    Gather( HaloType halo, SliceType slice, const double overallocation = 1.0 )
+    Gather( std::unique_ptr<HaloType>& halo, SliceType slice,
+            const double overallocation = 1.0 )
         : base_type( halo, overallocation )
     {
-        update( _halo, slice );
+        update( _comm_plan, slice );
     }
 
     //! Total gather send size for this rank.
-    auto totalSend() { return _halo.totalNumExport(); }
+    auto totalSend() { return _comm_plan->totalNumExport(); }
     //! Total gather receive size for this rank.
-    auto totalReceive() { return _halo.totalNumImport(); }
+    auto totalReceive() { return _comm_plan->totalNumImport(); }
 
     /*!
       \brief Perform the gather operation.
@@ -478,7 +480,7 @@ class Gather<HaloType, SliceType,
         auto slice_data = slice.data();
 
         // Get the steering vector for the sends.
-        auto steering = _halo.getExportSteering();
+        auto steering = _comm_plan->getExportSteering();
 
         // Gather from the local data into a tuple-contiguous send buffer.
         auto gather_send_buffer_func = KOKKOS_LAMBDA( const std::size_t i )
@@ -498,19 +500,19 @@ class Gather<HaloType, SliceType,
         const int mpi_tag = 2345;
 
         // Post non-blocking receives.
-        int num_n = _halo.numNeighbor();
+        int num_n = _comm_plan->numNeighbor();
         std::vector<MPI_Request> requests( num_n );
         std::pair<std::size_t, std::size_t> recv_range = { 0, 0 };
         for ( int n = 0; n < num_n; ++n )
         {
-            recv_range.second = recv_range.first + _halo.numImport( n );
+            recv_range.second = recv_range.first + _comm_plan->numImport( n );
 
             auto recv_subview =
                 Kokkos::subview( recv_buffer, recv_range, Kokkos::ALL );
 
             MPI_Irecv( recv_subview.data(),
                        recv_subview.size() * sizeof( data_type ), MPI_BYTE,
-                       _halo.neighborRank( n ), mpi_tag, _halo.comm(),
+                       _comm_plan->neighborRank( n ), mpi_tag, _comm_plan->comm(),
                        &( requests[n] ) );
 
             recv_range.first = recv_range.second;
@@ -520,14 +522,14 @@ class Gather<HaloType, SliceType,
         std::pair<std::size_t, std::size_t> send_range = { 0, 0 };
         for ( int n = 0; n < num_n; ++n )
         {
-            send_range.second = send_range.first + _halo.numExport( n );
+            send_range.second = send_range.first + _comm_plan->numExport( n );
 
             auto send_subview =
                 Kokkos::subview( send_buffer, send_range, Kokkos::ALL );
 
             MPI_Send( send_subview.data(),
                       send_subview.size() * sizeof( data_type ), MPI_BYTE,
-                      _halo.neighborRank( n ), mpi_tag, _halo.comm() );
+                      _comm_plan->neighborRank( n ), mpi_tag, _comm_plan->comm() );
 
             send_range.first = send_range.second;
         }
@@ -540,7 +542,7 @@ class Gather<HaloType, SliceType,
             throw std::logic_error( "Failed MPI Communication" );
 
         // Extract the receive buffer into the ghosted elements.
-        std::size_t num_local = _halo.numLocal();
+        std::size_t num_local = _comm_plan->numLocal();
         auto extract_recv_buffer_func = KOKKOS_LAMBDA( const std::size_t i )
         {
             std::size_t ghost_idx = i + num_local;
@@ -556,7 +558,7 @@ class Gather<HaloType, SliceType,
         Kokkos::fence();
 
         // Barrier before completing to ensure synchronization.
-        MPI_Barrier( _halo.comm() );
+        MPI_Barrier( _comm_plan->comm() );
     }
 
     void apply( const SliceType&, SliceType& ) override
@@ -573,7 +575,7 @@ class Gather<HaloType, SliceType,
       \param overallocation An optional factor to keep extra space in the
       buffers to avoid frequent resizing.
     */
-    void update( const HaloType& halo, const SliceType& slice,
+    void update( const std::unique_ptr<HaloType>& halo, const SliceType& slice,
                  const double overallocation )
     {
         if ( !haloCheckValidSize( halo, slice ) )
@@ -588,7 +590,7 @@ class Gather<HaloType, SliceType,
       \param halo The Halo to be used for the gather.
       \param slice The slice on which to perform the gather.
     */
-    void update( const HaloType& halo, const SliceType& slice )
+    void update( const std::unique_ptr<HaloType>& halo, const SliceType& slice )
     {
         if ( !haloCheckValidSize( halo, slice ) )
             throw std::runtime_error( "AoSoA is the wrong size for gather!" );
@@ -597,7 +599,7 @@ class Gather<HaloType, SliceType,
     }
 
   private:
-    plan_type _halo = base_type::_comm_plan;
+    using base_type::_comm_plan;
     using base_type::_recv_policy;
     using base_type::_send_policy;
 };
@@ -616,7 +618,8 @@ class Gather<HaloType, SliceType,
   avoid frequent resizing.
 */
 template <class HaloType, class ParticleDataType>
-auto createGather( const HaloType& halo, const ParticleDataType& data,
+auto createGather( const std::unique_ptr<HaloType>& halo,
+                   const ParticleDataType& data,
                    const double overallocation = 1.0 )
 {
     return Gather<HaloType, ParticleDataType>( halo, data, overallocation );
@@ -641,7 +644,7 @@ auto createGather( const HaloType& halo, const ParticleDataType& data,
   second (i.e. in the next halo.numGhost() elements()).
 */
 template <class HaloType, class ParticleDataType>
-void gather( const HaloType& halo, ParticleDataType& data )
+void gather( const std::unique_ptr<HaloType>& halo, ParticleDataType& data )
 {
     auto gather = createGather( halo, data );
     gather.apply( data );
@@ -696,16 +699,17 @@ class Scatter
       \param overallocation An optional factor to keep extra space in the
       buffers to avoid frequent resizing.
     */
-    Scatter( HaloType halo, SliceType slice, const double overallocation = 1.0 )
+    Scatter( std::unique_ptr<HaloType>& halo, SliceType slice,
+             const double overallocation = 1.0 )
         : base_type( halo, overallocation )
     {
-        update( _halo, slice );
+        update( _comm_plan, slice );
     }
 
     //! Total scatter send size for this rank.
-    auto totalSend() { return _halo.totalNumImport(); }
+    auto totalSend() { return _comm_plan->totalNumImport(); }
     //! Total scatter receive size for this rank.
-    auto totalReceive() { return _halo.totalNumExport(); }
+    auto totalReceive() { return _comm_plan->totalNumExport(); }
 
     /*!
       \brief Perform the scatter operation.
@@ -728,7 +732,7 @@ class Scatter
             slice_data( slice.data(), slice.numSoA() * slice.stride( 0 ) );
 
         // Extract the send buffer from the ghosted elements.
-        std::size_t num_local = _halo.numLocal();
+        std::size_t num_local = _comm_plan->numLocal();
         auto extract_send_buffer_func = KOKKOS_LAMBDA( const std::size_t i )
         {
             std::size_t ghost_idx = i + num_local;
@@ -748,19 +752,19 @@ class Scatter
         const int mpi_tag = 2345;
 
         // Post non-blocking receives.
-        int num_n = _halo.numNeighbor();
+        int num_n = _comm_plan->numNeighbor();
         std::vector<MPI_Request> requests( num_n );
         std::pair<std::size_t, std::size_t> recv_range = { 0, 0 };
         for ( int n = 0; n < num_n; ++n )
         {
-            recv_range.second = recv_range.first + _halo.numExport( n );
+            recv_range.second = recv_range.first + _comm_plan->numExport( n );
 
             auto recv_subview =
                 Kokkos::subview( recv_buffer, recv_range, Kokkos::ALL );
 
             MPI_Irecv( recv_subview.data(),
                        recv_subview.size() * sizeof( data_type ), MPI_BYTE,
-                       _halo.neighborRank( n ), mpi_tag, _halo.comm(),
+                       _comm_plan->neighborRank( n ), mpi_tag, _comm_plan->comm(),
                        &( requests[n] ) );
 
             recv_range.first = recv_range.second;
@@ -770,14 +774,14 @@ class Scatter
         std::pair<std::size_t, std::size_t> send_range = { 0, 0 };
         for ( int n = 0; n < num_n; ++n )
         {
-            send_range.second = send_range.first + _halo.numImport( n );
+            send_range.second = send_range.first + _comm_plan->numImport( n );
 
             auto send_subview =
                 Kokkos::subview( send_buffer, send_range, Kokkos::ALL );
 
             MPI_Send( send_subview.data(),
                       send_subview.size() * sizeof( data_type ), MPI_BYTE,
-                      _halo.neighborRank( n ), mpi_tag, _halo.comm() );
+                      _comm_plan->neighborRank( n ), mpi_tag, _comm_plan->comm() );
 
             send_range.first = send_range.second;
         }
@@ -790,7 +794,7 @@ class Scatter
             throw std::logic_error( "Failed MPI Communication" );
 
         // Get the steering vector for the sends.
-        auto steering = _halo.getExportSteering();
+        auto steering = _comm_plan->getExportSteering();
 
         // Scatter the ghosts in the receive buffer into the local values.
         auto scatter_recv_buffer_func = KOKKOS_LAMBDA( const std::size_t i )
@@ -809,7 +813,7 @@ class Scatter
         Kokkos::fence();
 
         // Barrier before completing to ensure synchronization.
-        MPI_Barrier( _halo.comm() );
+        MPI_Barrier( _comm_plan->comm() );
     }
 
     void apply( const SliceType&, SliceType& ) override
@@ -826,7 +830,7 @@ class Scatter
       \param overallocation An optional factor to keep extra space in the
       buffers to avoid frequent resizing.
     */
-    void update( const HaloType& halo, const SliceType& slice,
+    void update( const std::unique_ptr<HaloType>& halo, const SliceType& slice,
                  const double overallocation )
     {
         if ( !haloCheckValidSize( halo, slice ) )
@@ -841,7 +845,7 @@ class Scatter
       \param halo The Halo to be used for the scatter.
       \param slice The slice on which to perform the scatter.
     */
-    void update( const HaloType& halo, const SliceType& slice )
+    void update( const std::unique_ptr<HaloType>& halo, const SliceType& slice )
     {
         if ( !haloCheckValidSize( halo, slice ) )
             throw std::runtime_error( "AoSoA is the wrong size for scatter!" );
@@ -850,7 +854,7 @@ class Scatter
     }
 
   private:
-    plan_type _halo = base_type::_comm_plan;
+    using base_type::_comm_plan;
     using base_type::_recv_policy;
     using base_type::_send_policy;
 };
@@ -868,8 +872,8 @@ class Scatter
   avoid frequent resizing.
 */
 template <class HaloType, class SliceType>
-auto createScatter( const HaloType& halo, const SliceType& slice,
-                    const double overallocation = 1.0,
+auto createScatter( const std::unique_ptr<HaloType>& halo,
+                    const SliceType& slice, const double overallocation = 1.0,
                     typename std::enable_if<( is_halo<HaloType>::value &&
                                               is_slice<SliceType>::value ),
                                             int>::type* = 0 )
@@ -896,7 +900,7 @@ auto createScatter( const HaloType& halo, const SliceType& slice,
   the next halo.numGhost() elements()).
 */
 template <class HaloType, class SliceType>
-void scatter( const HaloType& halo, SliceType& slice,
+void scatter( const std::unique_ptr<HaloType>& halo, SliceType& slice,
               typename std::enable_if<( is_halo<HaloType>::value &&
                                         is_slice<SliceType>::value ),
                                       int>::type* = 0 )
