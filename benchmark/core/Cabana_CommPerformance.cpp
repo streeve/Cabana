@@ -190,7 +190,8 @@ void performanceTest( std::ostream& stream, const std::size_t num_particle,
                 comm_memory_space(), dst_particles );
             Cabana::migrate( distributor_fast, comm_src_particles,
                              comm_dst_particles );
-            Cabana::deep_copy( dst_particles, comm_dst_particles );
+            dst_particles = Cabana::create_mirror_view_and_copy(
+                data_memory_space(), comm_dst_particles );
             distributor_aosoa_migrate.stop( fraction );
 
             // Migrate the aosoa using individual slices. Do host/device
@@ -218,7 +219,8 @@ void performanceTest( std::ostream& stream, const std::size_t num_particle,
             auto d3 = Cabana::slice<3>( comm_dst_particles );
             Cabana::migrate( distributor_fast, s3, d3 );
 
-            Cabana::deep_copy( dst_particles, comm_dst_particles );
+            dst_particles = Cabana::create_mirror_view_and_copy(
+                data_memory_space(), comm_dst_particles );
 
             distributor_slice_migrate.stop( fraction );
         }
@@ -336,7 +338,8 @@ void performanceTest( std::ostream& stream, const std::size_t num_particle,
             auto comm_particles = Cabana::create_mirror_view_and_copy(
                 comm_memory_space(), particles );
             Cabana::gather( halo, comm_particles );
-            Cabana::deep_copy( particles, comm_particles );
+            particles = Cabana::create_mirror_view_and_copy(
+                data_memory_space(), comm_particles );
             halo_aosoa_gather.stop( fraction );
 
             // Gather the aosoa using individual slices.
@@ -357,8 +360,8 @@ void performanceTest( std::ostream& stream, const std::size_t num_particle,
             auto s3 = Cabana::slice<3>( comm_particles );
             Cabana::gather( halo, s3 );
 
-            Cabana::deep_copy( particles, comm_particles );
-
+            particles = Cabana::create_mirror_view_and_copy(
+                data_memory_space(), comm_particles );
             halo_slice_gather.stop( fraction );
 
             // Scatter the aosoa using individual slices.
@@ -379,7 +382,8 @@ void performanceTest( std::ostream& stream, const std::size_t num_particle,
             s3 = Cabana::slice<3>( comm_particles );
             Cabana::scatter( halo, s3 );
 
-            Cabana::deep_copy( particles, comm_particles );
+            particles = Cabana::create_mirror_view_and_copy(
+                data_memory_space(), comm_particles );
             halo_slice_scatter.stop( fraction );
         }
 
@@ -397,7 +401,8 @@ void performanceTest( std::ostream& stream, const std::size_t num_particle,
             auto comm_particles = Cabana::create_mirror_view_and_copy(
                 comm_memory_space(), particles );
             gather.apply( comm_particles );
-            Cabana::deep_copy( particles, comm_particles );
+            particles = Cabana::create_mirror_view_and_copy(
+                data_memory_space(), comm_particles );
             halo_buffer_aosoa_gather.stop( fraction );
         }
 
@@ -430,7 +435,8 @@ void performanceTest( std::ostream& stream, const std::size_t num_particle,
             auto s3 = Cabana::slice<3>( comm_particles );
             gather_s3.apply( s3 );
 
-            Cabana::deep_copy( particles, comm_particles );
+            particles = Cabana::create_mirror_view_and_copy(
+                data_memory_space(), comm_particles );
             halo_buffer_slice_gather.stop( fraction );
         }
 
@@ -463,7 +469,8 @@ void performanceTest( std::ostream& stream, const std::size_t num_particle,
             s3 = Cabana::slice<3>( comm_particles );
             scatter_s3.apply( s3 );
 
-            Cabana::deep_copy( particles, comm_particles );
+            particles = Cabana::create_mirror_view_and_copy(
+                data_memory_space(), comm_particles );
             halo_buffer_slice_scatter.stop( fraction );
         }
     }
