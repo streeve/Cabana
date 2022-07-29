@@ -1105,9 +1105,10 @@ class CommunicationData
     //! Get the communication receive buffer.
     buffer_type getReceiveBuffer() const { return _comm_data._recv_buffer; }
 
-    //! Perform the communication (migrate, gather, scatter).
+    //! Perform the communication in-place (migrate, gather, scatter).
     virtual void apply( particle_data_type& particles ) = 0;
 
+    //! Perform the communication (migrate, gather, scatter).
     virtual void apply( const particle_data_type& src,
                         particle_data_type& dst ) = 0;
 
