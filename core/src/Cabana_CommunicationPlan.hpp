@@ -1071,6 +1071,8 @@ class CommunicationData
     using plan_type = CommPlanType;
     //! Kokkos execution space.
     using execution_space = typename plan_type::execution_space;
+    //! Kokkos execution policy.
+    using policy_type = Kokkos::RangePolicy<execution_space>;
     //! Communication data type.
     using comm_data_type = CommDataType;
     //! Particle data type.
@@ -1094,6 +1096,8 @@ class CommunicationData
         , _overallocation( overallocation )
     {
         _comm_data = CommDataType();
+
+        updateRangePolicy();
     }
 
     //! Get the communication send buffer.
@@ -1126,6 +1130,7 @@ class CommunicationData
                      const std::size_t total_recv )
     {
         _comm_plan = comm_plan;
+        updateRangePolicy();
 
         std::size_t new_send_size = total_send * _overallocation;
         if ( new_send_size > _comm_data._send_buffer.extent( 0 ) )
@@ -1138,6 +1143,13 @@ class CommunicationData
     //! \endcond
 
   protected:
+    //! Update range policy based on new communication plan.
+    void updateRangePolicy()
+    {
+        _send_policy = policy_type( 0, _comm_plan.totalNumExport() );
+        _recv_policy = policy_type( 0, _comm_plan.totalNumImport() );
+    }
+
     //! Get the total number of components in the slice.
     auto getSliceComponents( particle_data_type slice )
     {
@@ -1146,6 +1158,10 @@ class CommunicationData
 
     //! Communication plan.
     plan_type _comm_plan;
+    //! Send range policy.
+    policy_type _send_policy;
+    //! Receive range policy.
+    policy_type _recv_policy;
     //! Communication plan.
     comm_data_type _comm_data;
     //! Overallocation factor.

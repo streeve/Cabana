@@ -299,11 +299,8 @@ class Gather<HaloType, AoSoAType,
         {
             send_buffer( i ) = aosoa.getTuple( steering( i ) );
         };
-        Kokkos::RangePolicy<execution_space> gather_send_buffer_policy(
-            0, _halo.totalNumExport() );
         Kokkos::parallel_for( "Cabana::gather::gather_send_buffer",
-                              gather_send_buffer_policy,
-                              gather_send_buffer_func );
+                              _send_policy, gather_send_buffer_func );
         Kokkos::fence();
 
         // The halo has it's own communication space so choose any mpi tag.
@@ -356,11 +353,8 @@ class Gather<HaloType, AoSoAType,
             std::size_t ghost_idx = i + num_local;
             aosoa.setTuple( ghost_idx, recv_buffer( i ) );
         };
-        Kokkos::RangePolicy<execution_space> extract_recv_buffer_policy(
-            0, _halo.totalNumImport() );
         Kokkos::parallel_for( "Cabana::gather::extract_recv_buffer",
-                              extract_recv_buffer_policy,
-                              extract_recv_buffer_func );
+                              _recv_policy, extract_recv_buffer_func );
         Kokkos::fence();
 
         // Barrier before completing to ensure synchronization.
@@ -406,6 +400,8 @@ class Gather<HaloType, AoSoAType,
 
   private:
     plan_type _halo = base_type::_comm_plan;
+    using base_type::_recv_policy;
+    using base_type::_send_policy;
 };
 
 /*!
@@ -494,11 +490,8 @@ class Gather<HaloType, SliceType,
                 send_buffer( i, n ) =
                     slice_data[slice_offset + n * SliceType::vector_length];
         };
-        Kokkos::RangePolicy<execution_space> gather_send_buffer_policy(
-            0, _halo.totalNumExport() );
         Kokkos::parallel_for( "Cabana::gather::gather_send_buffer",
-                              gather_send_buffer_policy,
-                              gather_send_buffer_func );
+                              _send_policy, gather_send_buffer_func );
         Kokkos::fence();
 
         // The halo has it's own communication space so choose any mpi tag.
@@ -558,11 +551,8 @@ class Gather<HaloType, SliceType,
                 slice_data[slice_offset + SliceType::vector_length * n] =
                     recv_buffer( i, n );
         };
-        Kokkos::RangePolicy<execution_space> extract_recv_buffer_policy(
-            0, _halo.totalNumImport() );
         Kokkos::parallel_for( "Cabana::gather::extract_recv_buffer",
-                              extract_recv_buffer_policy,
-                              extract_recv_buffer_func );
+                              _recv_policy, extract_recv_buffer_func );
         Kokkos::fence();
 
         // Barrier before completing to ensure synchronization.
@@ -608,6 +598,8 @@ class Gather<HaloType, SliceType,
 
   private:
     plan_type _halo = base_type::_comm_plan;
+    using base_type::_recv_policy;
+    using base_type::_send_policy;
 };
 
 //---------------------------------------------------------------------------//
@@ -747,11 +739,9 @@ class Scatter
                 send_buffer( i, n ) =
                     slice_data( slice_offset + SliceType::vector_length * n );
         };
-        Kokkos::RangePolicy<execution_space> extract_send_buffer_policy(
-            0, _halo.totalNumImport() );
+        // Use the receive policy here because the scatter is the reverse.
         Kokkos::parallel_for( "Cabana::scatter::extract_send_buffer",
-                              extract_send_buffer_policy,
-                              extract_send_buffer_func );
+                              _recv_policy, extract_send_buffer_func );
         Kokkos::fence();
 
         // The halo has it's own communication space so choose any mpi tag.
@@ -813,11 +803,9 @@ class Scatter
                     &slice_data( slice_offset + SliceType::vector_length * n ),
                     recv_buffer( i, n ) );
         };
-        Kokkos::RangePolicy<execution_space> scatter_recv_buffer_policy(
-            0, _halo.totalNumExport() );
+        // Use the send policy here because the scatter is the reverse.
         Kokkos::parallel_for( "Cabana::scatter::scatter_recv_buffer",
-                              scatter_recv_buffer_policy,
-                              scatter_recv_buffer_func );
+                              _send_policy, scatter_recv_buffer_func );
         Kokkos::fence();
 
         // Barrier before completing to ensure synchronization.
@@ -863,6 +851,8 @@ class Scatter
 
   private:
     plan_type _halo = base_type::_comm_plan;
+    using base_type::_recv_policy;
+    using base_type::_send_policy;
 };
 
 /*!
