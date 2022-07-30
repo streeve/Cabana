@@ -1092,9 +1092,9 @@ class CommunicationData
     */
     CommunicationData( const CommPlanType& comm_plan,
                        const double overallocation = 1.0 )
-        : _comm_plan( std::make_unique<comm_plan> )
-        , _overallocation( overallocation )
+        : _overallocation( overallocation )
     {
+        _comm_plan = std::make_unique<plan_type>( comm_plan );
         _comm_data = CommDataType();
 
         updateRangePolicy();
@@ -1125,12 +1125,12 @@ class CommunicationData
 
         updateImpl( comm_plan, particles, total_send, total_recv );
     }
-    void updateImpl( const std::unique_ptr<CommPlanType>& comm_plan,
+    void updateImpl( const CommPlanType& comm_plan,
                      const particle_data_type& particles,
                      const std::size_t total_send,
                      const std::size_t total_recv )
     {
-        _comm_plan = comm_plan;
+        _comm_plan = std::make_unique<plan_type>( comm_plan );
         updateRangePolicy();
 
         std::size_t new_send_size = total_send * _overallocation;

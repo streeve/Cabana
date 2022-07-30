@@ -206,12 +206,12 @@ struct is_distributor
 */
 template <class DistributorType, class ParticleData>
 bool distributorCheckValidSize(
-    const std::unique_ptr<DistributorType>& distributor,
+    const DistributorType& distributor,
     const ParticleData& particles,
     typename std::enable_if<( is_distributor<DistributorType>::value ),
                             int>::type* = 0 )
 {
-    return ( particles.size() == distributor->exportSize() );
+    return ( particles.size() == distributor.exportSize() );
 }
 /*!
   \brief Ensure the particle size matches the distributor size.
@@ -227,13 +227,13 @@ bool distributorCheckValidSize(
 */
 template <class DistributorType, class ParticleData>
 bool distributorCheckValidSize(
-    const std::unique_ptr<DistributorType>& distributor,
+    const DistributorType& distributor,
     const ParticleData& src, const ParticleData& dst,
     typename std::enable_if<( is_distributor<DistributorType>::value ),
                             int>::type* = 0 )
 {
     return ( distributorCheckValidSize( distributor, src ) &&
-             dst.size() == distributor->totalNumImport() );
+             dst.size() == distributor.totalNumImport() );
 }
 
 //---------------------------------------------------------------------------//
@@ -282,11 +282,11 @@ class Migrate<DistributorType, AoSoAType,
       \param overallocation An optional factor to keep extra space in the
       buffers to avoid frequent resizing.
     */
-    Migrate( std::unique_ptr<DistributorType>& distributor, AoSoAType aosoa,
+    Migrate( const DistributorType& distributor, AoSoAType aosoa,
              const double overallocation = 1.0 )
         : base_type( distributor, overallocation )
     {
-        update( _comm_plan, aosoa );
+        update( distributor, aosoa );
     }
 
     /*!
@@ -302,11 +302,11 @@ class Migrate<DistributorType, AoSoAType,
       \param overallocation An optional factor to keep extra space in the
       buffers to avoid frequent resizing.
     */
-    Migrate( const std::unique_ptr<DistributorType>& distributor, AoSoAType src,
+    Migrate( const DistributorType& distributor, AoSoAType src,
              AoSoAType dst, const double overallocation = 1.0 )
         : base_type( distributor, overallocation )
     {
-        update( _comm_plan, src, dst );
+        update( distributor, src, dst );
     }
 
     /*!
@@ -360,7 +360,7 @@ class Migrate<DistributorType, AoSoAType,
       \param overallocation An optional factor to keep extra space in the
       buffers to avoid frequent resizing.
     */
-    void update( const std::unique_ptr<DistributorType>& distributor,
+    void update( const DistributorType& distributor,
                  AoSoAType& aosoa, const double overallocation )
     {
         // Check that the AoSoA is the right size.
@@ -370,15 +370,15 @@ class Migrate<DistributorType, AoSoAType,
         // Determine if the source of destination decomposition has more data on
         // this rank.
         bool dst_is_bigger =
-            ( distributor->totalNumImport() > distributor->exportSize() );
+            ( distributor.totalNumImport() > distributor.exportSize() );
 
         // If the destination decomposition is bigger than the source
         // decomposition resize now so we have enough space to do the operation.
         if ( dst_is_bigger )
-            aosoa.resize( distributor->totalNumImport() );
+            aosoa.resize( distributor.totalNumImport() );
 
-        this->updateImpl( distributor, aosoa, distributor->totalSend(),
-                          distributor->totalReceive(), overallocation );
+        this->updateImpl( distributor, aosoa, distributor.totalSend(),
+                          distributor.totalReceive(), overallocation );
     }
     /*!
       \brief Update the distributor and AoSoA data for migration.
@@ -386,7 +386,7 @@ class Migrate<DistributorType, AoSoAType,
       \param distributor The Distributor to be used for the migrate.
       \param aosoa The AoSoA on which to perform the migrate.
     */
-    void update( const std::unique_ptr<DistributorType>& distributor,
+    void update( const DistributorType& distributor,
                  AoSoAType& aosoa )
     {
         // Check that the AoSoA is the right size.
@@ -396,15 +396,15 @@ class Migrate<DistributorType, AoSoAType,
         // Determine if the source of destination decomposition has more data on
         // this rank.
         bool dst_is_bigger =
-            ( distributor->totalNumImport() > distributor->exportSize() );
+            ( distributor.totalNumImport() > distributor.exportSize() );
 
         // If the destination decomposition is bigger than the source
         // decomposition resize now so we have enough space to do the operation.
         if ( dst_is_bigger )
-            aosoa.resize( distributor->totalNumImport() );
+            aosoa.resize( distributor.totalNumImport() );
 
-        this->updateImpl( distributor, aosoa, distributor->totalSend(),
-                          distributor->totalReceive() );
+        this->updateImpl( distributor, aosoa, distributor.totalSend(),
+                          distributor.totalReceive() );
     }
 
     /*!
@@ -419,7 +419,7 @@ class Migrate<DistributorType, AoSoAType,
       \param overallocation An optional factor to keep extra space in the
       buffers to avoid frequent resizing.
     */
-    void update( const std::unique_ptr<DistributorType>& distributor,
+    void update( const DistributorType& distributor,
                  const AoSoAType& src, AoSoAType& dst,
                  const double overallocation )
     {
@@ -427,8 +427,8 @@ class Migrate<DistributorType, AoSoAType,
         if ( !distributorCheckValidSize( distributor, src, dst ) )
             throw std::runtime_error( "AoSoA is the wrong size for migrate!" );
 
-        this->updateImpl( distributor, src, distributor->totalSend(),
-                          distributor->totalReceive(), overallocation );
+        this->updateImpl( distributor, src, distributor.totalSend(),
+                          distributor.totalReceive(), overallocation );
     }
     /*!
       \brief Update the distributor and AoSoA data for migration.
@@ -440,15 +440,15 @@ class Migrate<DistributorType, AoSoAType,
       the same size as the number of imports given by the distributor on this
       rank.
     */
-    void update( const std::unique_ptr<DistributorType>& distributor,
+    void update( const DistributorType& distributor,
                  const AoSoAType& src, AoSoAType& dst )
     {
         // Check that src and dst are the right size.
         if ( !distributorCheckValidSize( distributor, src, dst ) )
             throw std::runtime_error( "AoSoA is the wrong size for migrate!" );
 
-        this->updateImpl( distributor, src, distributor->totalSend(),
-                          distributor->totalReceive() );
+        this->updateImpl( distributor, src, distributor.totalSend(),
+                          distributor.totalReceive() );
     }
 
   private:
@@ -595,13 +595,13 @@ class Migrate<DistributorType, SliceType,
       \param overallocation An optional factor to keep extra space in the
       buffers to avoid frequent resizing.
     */
-    Migrate( const std::unique_ptr<DistributorType>& distributor,
+    Migrate( const DistributorType& distributor,
              const SliceType& src, SliceType& dst,
              const double overallocation = 1.0 )
         : base_type( distributor, overallocation )
     {
         _my_rank = _comm_plan->getRank();
-        update( _comm_plan, src, dst );
+        update( distributor, src, dst );
     }
 
     /*!
@@ -793,7 +793,7 @@ class Migrate<DistributorType, SliceType,
   avoid frequent resizing.
 */
 template <class DistributorType, class ParticleDataType>
-auto createMigrate( std::unique_ptr<DistributorType>& distributor,
+auto createMigrate( DistributorType& distributor,
                     ParticleDataType data, const double overallocation = 1.0 )
 {
     return Migrate<DistributorType, ParticleDataType>( distributor, data,
@@ -810,7 +810,7 @@ auto createMigrate( std::unique_ptr<DistributorType>& distributor,
   avoid frequent resizing.
 */
 template <class DistributorType, class ParticleDataType>
-auto createMigrate( const std::unique_ptr<DistributorType>& distributor,
+auto createMigrate( const DistributorType& distributor,
                     const ParticleDataType& src, ParticleDataType& dst,
                     const double overallocation = 1.0 )
 {
