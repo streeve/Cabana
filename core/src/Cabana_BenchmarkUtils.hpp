@@ -9,6 +9,9 @@
  * SPDX-License-Identifier: BSD-3-Clause                                    *
  ****************************************************************************/
 
+#ifndef CABANA_BENCHMARK_HPP
+#define CABANA_BENCHMARK_HPP
+
 #include <Cabana_Core.hpp>
 
 #include <algorithm>
@@ -183,4 +186,5 @@ void outputResults( std::ostream& stream, const std::string& data_point_name,
 } // end namespace Benchmark
 } // end namespace Cabana
 
+#endif
 //---------------------------------------------------------------------------//
