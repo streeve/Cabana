@@ -19,6 +19,7 @@
 #include <CabanaCore_config.hpp>
 
 #include <Cabana_AoSoA.hpp>
+#include <Cabana_BenchmarkUtils.hpp>
 #include <Cabana_DeepCopy.hpp>
 #include <Cabana_LinkedCellList.hpp>
 #include <Cabana_MemberTypes.hpp>

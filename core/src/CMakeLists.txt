@@ -13,6 +13,7 @@ configure_file(CabanaCore_config.hpp.cmakein CabanaCore_config.hpp)
 
 set(HEADERS_PUBLIC
   Cabana_AoSoA.hpp
+  Cabana_BenchmarkUtils.hpp
   Cabana_Core.hpp
   Cabana_DeepCopy.hpp
   Cabana_ExecutionPolicy.hpp
