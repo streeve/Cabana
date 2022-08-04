@@ -9,8 +9,10 @@
  * SPDX-License-Identifier: BSD-3-Clause                                    *
  ****************************************************************************/
 
+#include <Cajita_DynamicPartitioner.hpp>
 #include <Cajita_SparseIndexSpace.hpp>
 #include <Cajita_SparseMapDynamicPartitioner.hpp>
+
 #include <Kokkos_Core.hpp>
 
 #include <ctime>
@@ -140,8 +142,8 @@ void uniform_distribution_automatic_rank()
     Kokkos::fence();
 
     // compute workload and do partition optimization
-    auto smws = createSparseMapDynamicPartitionerWorkloadMeasurer<TEST_DEVICE>(
-        sis, MPI_COMM_WORLD );
+    auto smws =
+        createSparseMapWorkloadMeasurer<TEST_DEVICE>( sis, MPI_COMM_WORLD );
     partitioner.setLocalWorkload( &smws );
     partitioner.optimizePartition( MPI_COMM_WORLD );
 
@@ -349,8 +351,8 @@ void random_distribution_automatic_rank( int occupy_num_per_rank )
     Kokkos::fence();
 
     // compute workload from a sparseMap and do partition optimization
-    auto smws = createSparseMapDynamicPartitionerWorkloadMeasurer<TEST_DEVICE>(
-        sis, MPI_COMM_WORLD );
+    auto smws =
+        createSparseMapWorkloadMeasurer<TEST_DEVICE>( sis, MPI_COMM_WORLD );
     partitioner.setLocalWorkload( &smws );
     partitioner.optimizePartition( MPI_COMM_WORLD );
 

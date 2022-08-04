@@ -34,62 +34,45 @@ namespace Cajita
   \tparam Sparse map type
   \tparam Partitioner's device type
 */
-template <class SparseMapType, typename Device>
-class SparseMapDynamicPartitionerWorkloadMeasurer
-    : public DynamicPartitionerWorkloadMeasurer<Device>
+template <class SparseMapType>
+class SparseMapWorkload : public Workload
 {
-    using memory_space = typename Device::memory_space;
-    using execution_space = typename Device::execution_space;
-
-    const SparseMapType& sparseMap;
-    MPI_Comm comm;
+    using const SparseMapType& _sparse_map;
 
   public:
     /*!
      \brief Constructor.
-     \param sparseMap Sparse map used in workload computation.
+     \param sparse_map Sparse map used in workload computation.
      \param comm MPI communicator to use for computing workload.
     */
-    SparseMapDynamicPartitionerWorkloadMeasurer( const SparseMapType& sparseMap,
-                                                 MPI_Comm comm )
-        : sparseMap( sparseMap )
-        , comm( comm )
+    SparseMapWorkloadFunctor( const SparseMapType& sparse_map )
+        : _sparse_map( sparse_map )
     {
     }
 
-    //! \brief Called by DynamicPartitioner to compute workload
-    void compute( Kokkos::View<int***, memory_space>& workload ) override
+    void update( const SparseMapType& sparse_map ) { _sparse_map = sparse_map; }
+    int workloadSize() { return _sparse_map.capacity(); }
+
+    KOKKOS_INLINE_FUNCTION void
+    operator()( Kokkos::View<int***, memory_space>& workload, const int i )
     {
-        const SparseMapType& sparse_map_copy = sparseMap;
-        Kokkos::parallel_for(
-            "compute_local_workload_sparsmap",
-            Kokkos::RangePolicy<execution_space>( 0, sparseMap.capacity() ),
-            KOKKOS_LAMBDA( uint32_t i ) {
-                if ( sparse_map_copy.valid_at( i ) )
-                {
-                    auto key = sparse_map_copy.key_at( i );
-                    int ti, tj, tk;
-                    sparse_map_copy.key2ijk( key, ti, tj, tk );
-                    Kokkos::atomic_increment(
-                        &workload( ti + 1, tj + 1, tk + 1 ) );
-                }
-            } );
-        Kokkos::fence();
-        // Wait for other ranks' workload to be ready
-        MPI_Barrier( comm );
+        if ( sparse_map.valid_at( i ) )
+        {
+            auto key = sparse_map.key_at( i );
+            int ti, tj, tk;
+            sparse_map.key2ijk( key, ti, tj, tk );
+            Kokkos::atomic_increment( &workload( ti + 1, tj + 1, tk + 1 ) );
+        }
     }
+}
 };
 
 //---------------------------------------------------------------------------//
-//! Creation function for SparseMapDynamicPartitionerWorkloadMeasurer from
-//! SparseMap
-template <typename Device, class SparseMapType>
-SparseMapDynamicPartitionerWorkloadMeasurer<SparseMapType, Device>
-createSparseMapDynamicPartitionerWorkloadMeasurer(
-    const SparseMapType& sparseMap, MPI_Comm comm )
+//! Creation function for SparseMapWorkloadFunctor
+template <class SparseMapType>
+auto createSparseMapWorkloadFunctor( const SparseMapType& sparse_map )
 {
-    return SparseMapDynamicPartitionerWorkloadMeasurer<SparseMapType, Device>(
-        sparseMap, comm );
+    return SparseMapWorkloadFunctor<SparseMapType>( sparse_map );
 }
 
 } // end namespace Cajita

@@ -28,26 +28,30 @@
 namespace Cajita
 {
 
-template <typename Device>
-class DynamicPartitionerWorkloadMeasurer
+class WorkloadFunctor
 {
-    using memory_space = typename Device::memory_space;
-
   public:
-    virtual void compute( Kokkos::View<int***, memory_space>& ) = 0;
+    using workload_type = Kokkos::View<int***, memory_space>;
+    virtual int workloadSize() = 0;
+
+    // Any derived class should implement a functor with the following
+    // signature:
+    //   KOKKOS_INLINE_FUNCTION void
+    //  operator()( workload_type& workload, const int i )
+
+  protected:
+    workload_type _workload;
 };
 
 //---------------------------------------------------------------------------//
 /*!
-  Dynamic mesh block partitioner. (Current Version: Support 3D only) There
-  should be no instantiation for this class without implementing any workload
-  computation.
+  \brief Dynamic mesh block partitioner.
+  There should be no instantiation for this class without implementing any
+  workload computation.
 
   \tparam Device Kokkos device type.
-  \tparam CellPerTileDim Cells
-  per tile per dimension.
-  \tparam NumSpaceDim Dimemsion (The current version
-  support 3D only)
+  \tparam CellPerTileDim Cells per tile per dimension.
+  \tparam NumSpaceDim Dimemsion (The current version supports 3D only)
 */
 template <typename Device, unsigned long long CellPerTileDim = 4,
           std::size_t NumSpaceDim = 3>
@@ -68,14 +72,6 @@ class DynamicPartitioner : public BlockPartitioner<NumSpaceDim>
     using workload_view = Kokkos::View<int***, memory_space>;
     //! Partition device view.
     using partition_view = Kokkos::View<int* [num_space_dim], memory_space>;
-    //! Workload host view.
-    using workload_view_host =
-        Kokkos::View<int***, typename execution_space::array_layout,
-                     Kokkos::HostSpace>;
-    //! Partition host view.
-    using partition_view_host =
-        Kokkos::View<int* [num_space_dim],
-                     typename execution_space::array_layout, Kokkos::HostSpace>;
 
     //! Number of bits (per dimension) needed to index the cells inside a tile
     static constexpr unsigned long long cell_bits_per_tile_dim =
@@ -450,14 +446,21 @@ class DynamicPartitioner : public BlockPartitioner<NumSpaceDim>
     /*!
       \brief compute workload in each MPI rank
       \param measurer measurer defined by user to compute workload.
-      DynamicPartitionerWorkloadMeasurer is the base class and the user
+      WorkloadFunctor is the base class and the user
       should define a derived measurer class with compute() implemented.
     */
-    void
-    setLocalWorkload( DynamicPartitionerWorkloadMeasurer<Device>* measurer )
+    template <class WorkloadFunctorType>
+    void setLocalWorkload( WorkloadFunctorType functor )
     {
         resetWorkload();
-        measurer->compute( _workload_per_tile );
+        // FIXME: missing tag dispatch.
+        Kokkos::parallel_for(
+            "Cabana::DynamicPartitioner::ComputeLocalWorkload",
+            Kokkos::RangePolicy<execution_space>( 0, functor.workloadSize() ),
+            KOKKOS_LAMBDA( const int i ){ functor( _workload_per_tile, i ) } );
+        Kokkos::fence();
+        // Wait for other ranks' workload to be ready
+        MPI_Barrier( comm );
     }
 
     /*!
@@ -529,7 +532,7 @@ class DynamicPartitioner : public BlockPartitioner<NumSpaceDim>
             Kokkos::View<int*, memory_space> ave_workload(
                 "ave_workload", _ranks_per_dim[dj] * _ranks_per_dim[dk] );
             Kokkos::parallel_for(
-                "compute_average_workload",
+                "Cabana::DynamicPartitioner::ComputeAverageWorkload",
                 Kokkos::RangePolicy<execution_space>(
                     0, _ranks_per_dim[dj] * _ranks_per_dim[dk] ),
                 KOKKOS_LAMBDA( uint32_t jnk ) {
