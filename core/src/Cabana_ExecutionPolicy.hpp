@@ -146,6 +146,97 @@ class SimdPolicy : public Kokkos::TeamPolicy<Properties...,
 };
 
 //---------------------------------------------------------------------------//
+// Neighbor Parallel For
+//---------------------------------------------------------------------------//
+// Algorithm tags.
+
+//! Loop over particle neighbors.
+class FirstNeighborsTag
+{
+};
+
+//! Loop over particle neighbors (first) and neighbor's neighbors (second)
+class SecondNeighborsTag
+{
+};
+
+//! Neighbor operations are executed in serial on each particle thread.
+class SerialOpTag
+{
+};
+
+//! Neighbor operations are executed with team parallelism.
+class TeamOpTag
+{
+};
+
+//! Neighbor operations are executed with team vector parallelism.
+class TeamVectorOpTag
+{
+};
+
+template <class NeighborTag, class ParallelTag, class... Properties>
+class NeighborPolicy;
+
+template <class NeighborTag, class... Properties>
+class NeighborPolicy<NeighborTag, SerialOpTag, Properties...>
+    : public Kokkos::RangePolicy<Properties...>
+{
+  public:
+    //! Base Kokkos range policy.
+    using base_type = Kokkos::RangePolicy<Properties...>;
+    //! Kokkos range policy.
+    using range_policy = Kokkos::RangePolicy<SerialOpTag, Properties...>;
+    //! Index type.
+    using index_type = typename base_type::index_type;
+    //! Tag indicating level of particle neighbors (first or second).
+    using neighbor_tag = NeighborTag;
+    //! Tag indicating a serial loop strategy over neighbors.
+    using parallel_tag = SerialOpTag;
+
+    //! Base constructor.
+    using base_type::base_type;
+};
+
+template <class NeighborTag, class... Properties>
+class NeighborPolicy<NeighborTag, TeamOpTag, Properties...>
+    : public Kokkos::TeamPolicy<Properties...,
+                                Kokkos::Schedule<Kokkos::Dynamic>>
+{
+  public:
+    //! Base Kokkos team policy.
+    using base_type =
+        Kokkos::TeamPolicy<Properties..., Kokkos::Schedule<Kokkos::Dynamic>>;
+    //! Base Kokkos team policy.
+    using range_policy =
+        Kokkos::TeamPolicy<TeamOpTag, Kokkos::Schedule<Kokkos::Dynamic>,
+                           Properties...>;
+    //! Index type.
+    using index_type = typename base_type::index_type;
+    //! Tag indicating level of particle neighbors (first or second).
+    using neighbor_tag = NeighborTag;
+    //! Tag indicating a team parallel strategy over neighbors.
+    using parallel_tag = TeamOpTag;
+
+    //! Base constructor.
+    using base_type::base_type; // Would conflict?
+    /*
+    //! Constructor using default team policy settings.
+    NeighborPolicy( const index_type begin, const index_type end )
+        : base_type( end - begin, Kokkos::AUTO )
+    {
+    }
+
+    //! Constructor using team size.
+    NeighborPolicy( const index_type begin, const index_type end,
+                    const index_type team_size )
+        : base_type( end - begin, team_size )
+    {
+    }
+    */
+};
+
+//---------------------------------------------------------------------------//
 
 } // end namespace Cabana
 

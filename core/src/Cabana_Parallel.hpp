@@ -124,6 +124,75 @@ struct ParallelFor<SimdPolicy<VectorLength, Properties...>, Functor>
     }
 };
 
+template <class ExecutionPolicy, class Functor, class NeighborListType>
+struct NeighborParallelFor;
+
+template <class Functor, class NeighborListType, class... Properties>
+struct NeighborParallelFor<NeighborPolicy<Properties...>, Functor,
+                           NeighborListType>
+{
+    using neighbor_policy = NeighborPolicy<Properties...>;
+    using range_policy = typename neighbor_policy::range_policy;
+    using work_tag = typename range_policy::work_tag;
+    using index_type = typename range_policy::index_type;
+    using member_type = typename range_policy::member_type;
+    // using execution_space = typename range_policy::execution_space;
+
+    using neighbor_list_traits = NeighborList<NeighborListType>;
+    using memory_space = typename neighbor_list_traits::memory_space;
+
+    // static_assert( is_accessible_from<memory_space, execution_space>{}, "" );
+
+    neighbor_policy _exec_policy;
+    Functor _functor;
+    NeighborListType _list;
+
+    NeighborParallelFor( std::string label, neighbor_policy exec_policy,
+                         Functor functor, const NeighborListType& list )
+        : _exec_policy( std::move( exec_policy ) )
+        , _functor( std::move( functor ) )
+        , _list( std::move( list ) )
+    {
+        if ( label.empty() )
+            Kokkos::parallel_for(
+                dynamic_cast<const range_policy&>( _exec_policy ), *this );
+        else
+            Kokkos::parallel_for(
+                label, dynamic_cast<const range_policy&>( _exec_policy ),
+                *this );
+    }
+
+    KOKKOS_FUNCTION void operator()( FirstNeighborsTag,
+                                     const index_type i ) const
+    {
+        for ( index_type n = 0;
+              n < neighbor_list_traits::numNeighbor( _list, i ); ++n )
+            Impl::functorTagDispatch<work_tag>(
+                _functor, i,
+                static_cast<index_type>(
+                    neighbor_list_traits::getNeighbor( _list, i, n ) ) );
+    }
+
+    KOKKOS_FUNCTION void operator()( SecondNeighborsTag,
+                                     const index_type i ) const
+    {
+        const index_type nn = neighbor_list_traits::numNeighbor( _list, i );
+
+        for ( index_type n = 0; n < nn; ++n )
+        {
+            const index_type j =
+                neighbor_list_traits::getNeighbor( _list, i, n );
+
+            for ( index_type a = n + 1; a < nn; ++a )
+            {
+                const index_type k =
+                    neighbor_list_traits::getNeighbor( _list, i, a );
+                Impl::functorTagDispatch<work_tag>( _functor, i, j, k );
+            }
+        }
+    }
+};
+
 //! \endcond
 } // end namespace Impl
 
@@ -184,34 +253,6 @@ inline void simd_parallel_for(
 //---------------------------------------------------------------------------//
 // Neighbor Parallel For
 //---------------------------------------------------------------------------//
-// Algorithm tags.
-
-//! Loop over particle neighbors.
-class FirstNeighborsTag
-{
-};
-
-//! Loop over particle neighbors (first) and neighbor's neighbors (second)
-class SecondNeighborsTag
-{
-};
-
-//! Neighbor operations are executed in serial on each particle thread.
-class SerialOpTag
-{
-};
-
-//! Neighbor operations are executed with team parallelism.
-class TeamOpTag
-{
-};
-
-//! Neighbor operations are executed with team vector parallelism.
-class TeamVectorOpTag
-{
-};
-
-//---------------------------------------------------------------------------//
 /*!
   \brief Execute functor in parallel according to the execution policy over
   particles with a thread-local serial loop over particle first neighbors.
@@ -220,6 +261,7 @@ class TeamVectorOpTag
   \tparam NeighborListType The neighbor list type.
   \tparam ExecParams The Kokkos range policy parameters.
 
+  \param str Name for the functor.
   \param exec_policy The policy over which to execute the functor.
   \param functor The functor to execute in parallel
   \param list The neighbor list over which to execute the neighbor operations.
@@ -248,48 +290,38 @@ class TeamVectorOpTag
   <tt>idx=[begin,end]</tt>.  This compares to a single iteration \c idx of a
   \c for loop.
 */
-template <class FunctorType, class NeighborListType, class... ExecParameters>
+template <class FunctorType, class NeighborTag, class ParallelTag,
+          class NeighborListType, class... ExecParameters>
 inline void neighbor_parallel_for(
-    const Kokkos::RangePolicy<ExecParameters...>& exec_policy,
+    const std::string& str,
+    const Cabana::NeighborPolicy<NeighborTag, ParallelTag, ExecParameters...>&
+        neighbor_policy,
     const FunctorType& functor, const NeighborListType& list,
-    const FirstNeighborsTag, const SerialOpTag, const std::string& str = "",
     typename std::enable_if<( !is_linked_cell_list<NeighborListType>::value ),
                             int>::type* = 0 )
 {
     Kokkos::Profiling::ScopedRegion region( "Cabana::neighbor_parallel_for" );
 
-    using work_tag = typename Kokkos::RangePolicy<ExecParameters...>::work_tag;
+    Impl::NeighborParallelFor<
+        NeighborPolicy<NeighborTag, ParallelTag, ExecParameters...>,
+        FunctorType, NeighborListType>( str, neighbor_policy, functor, list );
+}
 
-    using execution_space =
-        typename Kokkos::RangePolicy<ExecParameters...>::execution_space;
-
-    using index_type =
-        typename Kokkos::RangePolicy<ExecParameters...>::index_type;
-
-    using neighbor_list_traits = NeighborList<NeighborListType>;
-
-    using memory_space = typename neighbor_list_traits::memory_space;
-
+template <class FunctorType, class NeighborListType, class NeighborTag,
+          class ParallelTag, class... ExecParameters>
+[[deprecated]] inline void neighbor_parallel_for(
+    const Kokkos::RangePolicy<ExecParameters...>& exec_policy,
+    const FunctorType& functor, const NeighborListType& list, const NeighborTag,
+    const ParallelTag, const std::string& str = "",
+    typename std::enable_if<( !is_linked_cell_list<NeighborListType>::value ),
+                            int>::type* = 0 )
+{
     auto begin = exec_policy.begin();
     auto end = exec_policy.end();
-    using linear_policy_type = Kokkos::RangePolicy<execution_space, void, void>;
-    linear_policy_type linear_exec_policy( begin, end );
+    Cabana::NeighborPolicy<NeighborTag, ParallelTag, ExecParameters...>
+        neigh_policy( begin, end );
 
-    static_assert( is_accessible_from<memory_space, execution_space>{}, "" );
-
-    auto neigh_func = KOKKOS_LAMBDA( const index_type i )
-    {
-        for ( index_type n = 0;
-              n < neighbor_list_traits::numNeighbor( list, i ); ++n )
-            Impl::functorTagDispatch<work_tag>(
-                functor, i,
-                static_cast<index_type>(
-                    neighbor_list_traits::getNeighbor( list, i, n ) ) );
-    };
-    if ( str.empty() )
-        Kokkos::parallel_for( linear_exec_policy, neigh_func );
-    else
-        Kokkos::parallel_for( str, linear_exec_policy, neigh_func );
+    neighbor_parallel_for( str, neigh_policy, functor, list );
 }
 
 //---------------------------------------------------------------------------//
