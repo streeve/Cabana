@@ -27,7 +27,8 @@ GlobalGrid<MeshType>::GlobalGrid(
     MPI_Comm comm, const std::shared_ptr<GlobalMesh<MeshType>>& global_mesh,
     const std::array<bool, num_space_dim>& periodic,
     const BlockPartitioner<num_space_dim>& partitioner )
-    : _global_mesh( global_mesh )
+    : GlobalGridBase<MeshType>( global_mesh, periodic )
+    , _global_mesh( global_mesh )
     , _periodic( periodic )
 {
     // Partition the problem.

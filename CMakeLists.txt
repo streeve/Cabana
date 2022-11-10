@@ -247,11 +247,7 @@ if (Cabana_ENABLE_CAJITA)
 endif()
 
 if(Cabana_ENABLE_GRID)
-  if(MPI_FOUND)
-    add_subdirectory(grid)
-  else()
-    message(FATAL_ERROR "Grid subpackage requires MPI")
-  endif()
+  add_subdirectory(grid)
 endif()
 
 option(Cabana_ENABLE_EXAMPLES "Build examples" OFF)

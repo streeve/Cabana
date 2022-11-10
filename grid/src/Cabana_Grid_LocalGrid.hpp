@@ -16,7 +16,10 @@
 #ifndef CABANA_GRID_LOCALGRID_HPP
 #define CABANA_GRID_LOCALGRID_HPP
 
+#ifdef Cabana_ENABLE_MPI
 #include <Cabana_Grid_GlobalGrid.hpp>
+#endif
+#include <Cabana_Grid_GlobalGridNonMPI.hpp>
 #include <Cabana_Grid_IndexSpace.hpp>
 #include <Cabana_Grid_Types.hpp>
 #include <Cabana_Utils.hpp> // FIXME: remove after next release.
@@ -52,14 +55,14 @@ class LocalGrid
       \param halo_cell_width The number of halo cells surrounding the locally
       owned cells.
     */
-    LocalGrid( const std::shared_ptr<GlobalGrid<MeshType>>& global_grid,
+    LocalGrid( const std::shared_ptr<GlobalGridBase<MeshType>>& global_grid,
                const int halo_cell_width );
 
     //! \brief Get the global grid that owns the local grid.
-    const GlobalGrid<MeshType>& globalGrid() const;
+    const GlobalGridBase<MeshType>& globalGrid() const;
 
     //! \brief Get a mutable version of the global grid that own the local grid
-    GlobalGrid<MeshType>& globalGrid();
+    GlobalGridBase<MeshType>& globalGrid();
 
     //! \brief Get the number of cells in the halo.
     int haloCellWidth() const;
@@ -588,7 +591,7 @@ class LocalGrid
                             const int halo_width ) const;
 
   private:
-    std::shared_ptr<GlobalGrid<MeshType>> _global_grid;
+    std::shared_ptr<GlobalGridBase<MeshType>> _global_grid;
     int _halo_cell_width;
 };
 
@@ -605,7 +608,7 @@ class LocalGrid
 */
 template <class MeshType>
 std::shared_ptr<LocalGrid<MeshType>>
-createLocalGrid( const std::shared_ptr<GlobalGrid<MeshType>>& global_grid,
+createLocalGrid( const std::shared_ptr<GlobalGridBase<MeshType>>& global_grid,
                  const int halo_cell_width )
 {
     return std::make_shared<LocalGrid<MeshType>>( global_grid,

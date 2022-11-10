@@ -82,4 +82,6 @@ endif()
 
 Cabana_add_tests(PACKAGE Grid NAMES ${SERIAL_TESTS})
 
-Cabana_add_tests(MPI PACKAGE Grid NAMES ${MPI_TESTS})
+if(Cabana_ENABLE_MPI)
+  Cabana_add_tests(MPI PACKAGE Grid NAMES ${MPI_TESTS})
+endif()

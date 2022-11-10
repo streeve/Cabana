@@ -29,7 +29,11 @@
 #include <type_traits>
 #include <vector>
 
+#ifdef Cabana_ENABLE_MPI
+#include <Cabana_Grid_GlobalGrid.hpp>
 #include <mpi.h>
+#endif
+#include <Cabana_Grid_GlobalGridNonMPI.hpp>
 
 namespace Cabana
 {
@@ -206,9 +210,20 @@ createArrayLayout( const std::shared_ptr<LocalGrid<MeshType>>& local_grid,
   \return Shared pointer to an ArrayLayout.
   \note EntityType The entity: Cell, Node, Face, or Edge
 */
+#ifdef Cabana_ENABLE_MPI
 template <class EntityType, class MeshType>
 std::shared_ptr<ArrayLayout<EntityType, MeshType>>
 createArrayLayout( const std::shared_ptr<GlobalGrid<MeshType>>& global_grid,
+                   const int halo_cell_width, const int dofs_per_entity,
+                   EntityType )
+{
+    return std::make_shared<ArrayLayout<EntityType, MeshType>>(
+        createLocalGrid( global_grid, halo_cell_width ), dofs_per_entity );
+}
+#endif
+template <class EntityType, class MeshType>
+std::shared_ptr<ArrayLayout<EntityType, MeshType>>
+createArrayLayout( const std::shared_ptr<GlobalGridBase<MeshType>>& global_grid,
                    const int halo_cell_width, const int dofs_per_entity,
                    EntityType )
 {
@@ -799,11 +814,14 @@ void dot( const Array_t& a, const Array_t& b,
         functor,
         Kokkos::View<typename Array_t::value_type*, Kokkos::HostSpace>(
             products.data(), products.size() ) );
+
+#if Cabana_ENABLE_MPI
     exec_space.fence( "ArrayOp::dot before MPI_Allreduce" );
 
     MPI_Allreduce( MPI_IN_PLACE, products.data(), products.size(),
                    MpiTraits<typename Array_t::value_type>::type(), MPI_SUM,
                    a.layout()->localGrid()->globalGrid().comm() );
+#endif
 }
 
 //---------------------------------------------------------------------------//
@@ -905,11 +923,14 @@ void normInf( const Array_t& array,
         functor,
         Kokkos::View<typename Array_t::value_type*, Kokkos::HostSpace>(
             norms.data(), norms.size() ) );
+
+#if Cabana_ENABLE_MPI
     exec_space.fence( "ArrayOp::normInf before MPI_Allreduce" );
 
     MPI_Allreduce( MPI_IN_PLACE, norms.data(), norms.size(),
                    MpiTraits<typename Array_t::value_type>::type(), MPI_MAX,
                    array.layout()->localGrid()->globalGrid().comm() );
+#endif
 }
 
 //---------------------------------------------------------------------------//
@@ -1005,11 +1026,14 @@ void norm1( const Array_t& array,
         functor,
         Kokkos::View<typename Array_t::value_type*, Kokkos::HostSpace>(
             norms.data(), norms.size() ) );
+
+#if Cabana_ENABLE_MPI
     exec_space.fence( "ArrayOp::norm1 before MPI_Allreduce" );
 
     MPI_Allreduce( MPI_IN_PLACE, norms.data(), norms.size(),
                    MpiTraits<typename Array_t::value_type>::type(), MPI_SUM,
                    array.layout()->localGrid()->globalGrid().comm() );
+#endif
 }
 
 //---------------------------------------------------------------------------//
@@ -1105,11 +1129,14 @@ void norm2( const Array_t& array,
         functor,
         Kokkos::View<typename Array_t::value_type*, Kokkos::HostSpace>(
             norms.data(), norms.size() ) );
+
+#if Cabana_ENABLE_MPI
     exec_space.fence( "ArrayOp::norm2 before MPI_Allreduce" );
 
     MPI_Allreduce( MPI_IN_PLACE, norms.data(), norms.size(),
                    MpiTraits<typename Array_t::value_type>::type(), MPI_SUM,
                    array.layout()->localGrid()->globalGrid().comm() );
+#endif
 
     for ( auto& n : norms )
         n = std::sqrt( n );

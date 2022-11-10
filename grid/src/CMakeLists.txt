@@ -15,34 +15,40 @@ set(HEADERS_PUBLIC
   Cabana_Grid.hpp
   Cajita.hpp # FIXME: remove in next release
   Cabana_Grid_Array.hpp
-  Cabana_Grid_BovWriter.hpp
-  Cabana_Grid_GlobalGrid.hpp
-  Cabana_Grid_GlobalGrid_impl.hpp
+  Cabana_Grid_GlobalGridNonMPI.hpp
   Cabana_Grid_GlobalMesh.hpp
-  Cabana_Grid_GlobalParticleComm.hpp
-  Cabana_Grid_Halo.hpp
   Cabana_Grid_IndexConversion.hpp
   Cabana_Grid_IndexSpace.hpp
   Cabana_Grid_Interpolation.hpp
   Cabana_Grid_LocalGrid.hpp
   Cabana_Grid_LocalGrid_impl.hpp
   Cabana_Grid_LocalMesh.hpp
-  Cabana_Grid_MpiTraits.hpp
   Cabana_Grid_Parallel.hpp
   Cabana_Grid_ParticleDistributor.hpp
   Cabana_Grid_ParticleInit.hpp
   Cabana_Grid_ParticleList.hpp
-  Cabana_Grid_Partitioner.hpp
   Cabana_Grid_ReferenceStructuredSolver.hpp
-  Cabana_Grid_SparseArray.hpp
-  Cabana_Grid_SparseDimPartitioner.hpp
-  Cabana_Grid_SparseHalo.hpp
-  Cabana_Grid_SparseIndexSpace.hpp
-  Cabana_Grid_SparseLocalGrid.hpp
-  Cabana_Grid_SparseLocalGrid_impl.hpp
   Cabana_Grid_Splines.hpp
   Cabana_Grid_Types.hpp
   )
+
+if(Cabana_ENABLE_MPI)
+  list(APPEND HEADERS_PUBLIC
+    Cabana_Grid_BovWriter.hpp
+    Cabana_Grid_GlobalGrid.hpp
+    Cabana_Grid_GlobalGrid_impl.hpp
+    Cabana_Grid_GlobalParticleComm.hpp
+    Cabana_Grid_Halo.hpp
+    Cabana_Grid_MpiTraits.hpp
+    Cabana_Grid_Partitioner.hpp
+    Cabana_Grid_SparseArray.hpp
+    Cabana_Grid_SparseDimPartitioner.hpp
+    Cabana_Grid_SparseHalo.hpp
+    Cabana_Grid_SparseIndexSpace.hpp
+    Cabana_Grid_SparseLocalGrid.hpp
+    Cabana_Grid_SparseLocalGrid_impl.hpp
+  )  
+endif()
 
 if(Cabana_ENABLE_HYPRE)
   list(APPEND HEADERS_PUBLIC
@@ -87,6 +93,11 @@ target_link_libraries(Grid INTERFACE
   Kokkos::kokkos
   MPI::MPI_CXX
   )
+
+if(Cabana_ENABLE_MPI)
+  target_link_libraries(Grid INTERFACE MPI::MPI_CXX)
+endif()
+
 
 if(Cabana_ENABLE_HYPRE)
   target_link_libraries(Grid INTERFACE HYPRE::HYPRE)

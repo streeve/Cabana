@@ -20,7 +20,7 @@ namespace Grid
 // Constructor.
 template <class MeshType>
 LocalGrid<MeshType>::LocalGrid(
-    const std::shared_ptr<GlobalGrid<MeshType>>& global_grid,
+    const std::shared_ptr<GlobalGridBase<MeshType>>& global_grid,
     const int halo_cell_width )
     : _global_grid( global_grid )
     , _halo_cell_width( halo_cell_width )
@@ -30,7 +30,7 @@ LocalGrid<MeshType>::LocalGrid(
 //---------------------------------------------------------------------------//
 // Get the global grid that owns the local grid.
 template <class MeshType>
-const GlobalGrid<MeshType>& LocalGrid<MeshType>::globalGrid() const
+const GlobalGridBase<MeshType>& LocalGrid<MeshType>::globalGrid() const
 {
     return *_global_grid;
 }
@@ -38,7 +38,7 @@ const GlobalGrid<MeshType>& LocalGrid<MeshType>::globalGrid() const
 //---------------------------------------------------------------------------//
 // Get a mutable version of the global grid that own the local grid.
 template <class MeshType>
-GlobalGrid<MeshType>& LocalGrid<MeshType>::globalGrid()
+GlobalGridBase<MeshType>& LocalGrid<MeshType>::globalGrid()
 {
     return *_global_grid;
 }
