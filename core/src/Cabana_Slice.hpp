@@ -537,7 +537,7 @@ class Slice
     //! Maximum supported rank.
     static constexpr std::size_t max_supported_rank = 3;
 
-    //! Maximum label length.
+    //! Maximum label length. Should be deprecated.
     static constexpr std::size_t max_label_length = 128;
 
     //! Kokkos view wrapper.
@@ -601,14 +601,26 @@ class Slice
       \param data Pointer to the first member of the slice.
       \param size The number of tuples in the slice.
       \param num_soa The number of structs in the slice.
-      \param label An optional label for the slice.
+      \param label A label for the slice.
     */
     Slice( const pointer_type data, const size_type size,
            const size_type num_soa, const std::string& label = "" )
-        : _view( data, view_wrapper::createLayout( num_soa ) )
+        : _view( label, data, view_wrapper::createLayout( num_soa ) )
         , _size( size )
     {
-        std::strcpy( _label, label.c_str() );
+    }
+
+    /*!
+      \brief Constructor without label.
+      \param data Pointer to the first member of the slice.
+      \param size The number of tuples in the slice.
+      \param num_soa The number of structs in the slice.
+    */
+    Slice( const pointer_type data, const size_type size,
+           const size_type num_soa )
+        : _view( "slice", data, view_wrapper::createLayout( num_soa ) )
+        , _size( size )
+    {
     }
 
     /*!
@@ -623,7 +635,6 @@ class Slice
         : _view( rhs._view )
         , _size( rhs._size )
     {
-        std::strcpy( _label, rhs._label );
     }
 
     /*!
@@ -641,7 +652,6 @@ class Slice
     {
         _view = rhs._view;
         _size = rhs._size;
-        std::strcpy( _label, rhs._label );
         return *this;
     }
 
@@ -650,7 +660,7 @@ class Slice
 
       \return A string identifying the data structure.
     */
-    std::string label() const { return std::string( _label ); }
+    std::string label() const { return std::string( _view.label() ); }
 
     /*!
       \brief Returns the total number tuples in the slice.
@@ -828,9 +838,6 @@ class Slice
 
     // Number of tuples in the slice.
     size_type _size;
-
-    // Slice label.
-    char _label[max_label_length];
 };
 
 //---------------------------------------------------------------------------//
