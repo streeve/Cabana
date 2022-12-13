@@ -497,7 +497,7 @@ struct KokkosViewWrapper
 //---------------------------------------------------------------------------//
 template <typename DataType, typename DeviceType, typename MemoryAccessType,
           int VectorLength, int Stride>
-class Slice
+class SliceUnlabeled
 {
   public:
     // Ensure the vector length is valid.
@@ -505,8 +505,8 @@ class Slice
                    "Vector length must be valid" );
 
     //! Slice type.
-    using slice_type =
-        Slice<DataType, DeviceType, MemoryAccessType, VectorLength, Stride>;
+    using slice_type = SliceUnlabeled<DataType, DeviceType, MemoryAccessType,
+                                      VectorLength, Stride>;
 
     //! Device type
     using device_type = DeviceType;
@@ -537,9 +537,6 @@ class Slice
     //! Maximum supported rank.
     static constexpr std::size_t max_supported_rank = 3;
 
-    //! Maximum label length.
-    static constexpr std::size_t max_label_length = 128;
-
     //! Kokkos view wrapper.
     using view_wrapper =
         Impl::KokkosViewWrapper<DataType, vector_length, soa_stride>;
@@ -561,15 +558,24 @@ class Slice
 
     //! Default memory access slice type.
     using default_access_slice =
-        Slice<DataType, DeviceType, DefaultAccessMemory, VectorLength, Stride>;
+        SliceUnlabeled<DataType, DeviceType, DefaultAccessMemory, VectorLength,
+                       Stride>;
     //! Atomic memory access slice type.
     using atomic_access_slice =
-        Slice<DataType, DeviceType, AtomicAccessMemory, VectorLength, Stride>;
+        SliceUnlabeled<DataType, DeviceType, AtomicAccessMemory, VectorLength,
+                       Stride>;
     //! Random memory access slice type.
     using random_access_slice =
-        Slice<DataType, DeviceType, RandomAccessMemory, VectorLength, Stride>;
+        SliceUnlabeled<DataType, DeviceType, RandomAccessMemory, VectorLength,
+                       Stride>;
 
     // Declare slices of different memory access types to be friends.
+    friend class SliceUnlabeled<DataType, DeviceType, DefaultAccessMemory,
+                                VectorLength, Stride>;
+    friend class SliceUnlabeled<DataType, DeviceType, AtomicAccessMemory,
+                                VectorLength, Stride>;
+    friend class SliceUnlabeled<DataType, DeviceType, RandomAccessMemory,
+                                VectorLength, Stride>;
     friend class Slice<DataType, DeviceType, DefaultAccessMemory, VectorLength,
                        Stride>;
     friend class Slice<DataType, DeviceType, AtomicAccessMemory, VectorLength,
@@ -604,11 +610,10 @@ class Slice
       \param label An optional label for the slice.
     */
     Slice( const pointer_type data, const size_type size,
-           const size_type num_soa, const std::string& label = "" )
+           const size_type num_soa )
         : _view( data, view_wrapper::createLayout( num_soa ) )
         , _size( size )
     {
-        std::strcpy( _label, label.c_str() );
     }
 
     /*!
@@ -623,7 +628,6 @@ class Slice
         : _view( rhs._view )
         , _size( rhs._size )
     {
-        std::strcpy( _label, rhs._label );
     }
 
     /*!
@@ -641,16 +645,8 @@ class Slice
     {
         _view = rhs._view;
         _size = rhs._size;
-        std::strcpy( _label, rhs._label );
         return *this;
     }
-
-    /*!
-      \brief Returns the data structure label.
-
-      \return A string identifying the data structure.
-    */
-    std::string label() const { return std::string( _label ); }
 
     /*!
       \brief Returns the total number tuples in the slice.
@@ -828,6 +824,166 @@ class Slice
 
     // Number of tuples in the slice.
     size_type _size;
+};
+
+//---------------------------------------------------------------------------//
+template <typename DataType, typename DeviceType, typename MemoryAccessType,
+          int VectorLength, int Stride>
+class Slice : public SliceUnlabeled
+{
+  public:
+    //! Self type.
+    using slice_type = SliceLabeled<DataType, DeviceType, MemoryAccessType,
+                                    VectorLength, Stride>;
+    //! Base type.
+    using base_type =
+        Slice<DataType, DeviceType, MemoryAccessType, VectorLength, Stride>;
+
+    //! Device type
+    using device_type = typename base_type::device_type;
+    //! Memory space.
+    using memory_space = typename base_type::memory_space;
+    //! Execution space.
+    using execution_space = typename base_type::execution_space;
+
+    //! Memory access type.
+    using memory_access_type = typename base_type::memory_access_type;
+
+    //! Vector length.
+    using base_type::vector_length;
+    //! SoA stride.
+    using base_type::soa_stride;
+
+    //! Size type.
+    using size_type = typename base_type::size_type;
+    //! Index type.
+    using index_type = typename base_type::index_type;
+
+    //! Maximum supported rank.
+    using base_type::max_supported_rank;
+
+    //! Kokkos view wrapper.
+    using view_wrapper = typename base_type::view_wrapper;
+
+    //! Kokkos view type.
+    using kokkos_view = typename base_type::view_type;
+
+    //! View reference type alias.
+    using reference_type = typename base_type::reference_type;
+    //! View value type alias.
+    using value_type = typename base_type::value_type;
+    //! View pointer type alias.
+    using pointer_type = typename base_type::pointer_type;
+    //! View array layout type alias.
+    using view_layout = typename base_type::array_layout;
+
+    //! Default memory access slice type.
+    using default_access_slice =
+        SliceLabeled<DataType, DeviceType, DefaultAccessMemory, VectorLength,
+                     Stride>;
+    //! Atomic memory access slice type.
+    using atomic_access_slice =
+        SliceLabeled<DataType, DeviceType, AtomicAccessMemory, VectorLength,
+                     Stride>;
+    //! Random memory access slice type.
+    using random_access_slice =
+        SliceLabeled<DataType, DeviceType, RandomAccessMemory, VectorLength,
+                     Stride>;
+
+    // Declare slices of different memory access types to be friends.
+    friend class default_access_slice;
+    friend class atomic_access_slice;
+    friend class random_access_slice;
+    friend class typename base_type::default_access_slice;
+    friend class typename base_type::atomic_access_slice;
+    friend class typename base_type::random_access_slice;
+
+    //! Maximum label length.
+    static constexpr std::size_t max_label_length = 128;
+
+    // Equivalent Kokkos view rank. This rank assumes that the struct and
+    // array dimension are merged. For the true rank of the raw AoSoA data use
+    // the rank() function below which will account for the extra dimension
+    // from separate struct and array indices. This enumeration is for
+    // compatibility with Kokkos views.
+    enum
+    {
+        Rank = std::rank<DataType>::value + 1
+    };
+
+  public:
+    /*!
+      \brief Default constructor.
+    */
+    SliceLabeled()
+        : _size( 0 )
+    {
+    }
+
+    /*!
+      \brief Constructor.
+      \param data Pointer to the first member of the slice.
+      \param size The number of tuples in the slice.
+      \param num_soa The number of structs in the slice.
+      \param label An optional label for the slice.
+    */
+    SliceLabeled( const pointer_type data, const size_type size,
+                  const size_type num_soa, const std::string& label = "" )
+        : _view( data, view_wrapper::createLayout( num_soa ) )
+        , _size( size )
+    {
+        std::strcpy( _label, label.c_str() );
+    }
+
+    /*!
+      \brief Shallow copy constructor for different memory spaces for
+      assigning new memory access traits to the view.
+      \tparam MAT Memory access type.
+      \param rhs The slice to shallow copy with a potentially different memory
+      space.
+    */
+    template <class MAT>
+    SliceLabeled(
+        const Slice<DataType, DeviceType, MAT, VectorLength, Stride>& rhs )
+        : _view( rhs._view )
+        , _size( rhs._size )
+    {
+        std::strcpy( _label, rhs._label );
+    }
+
+    /*!
+      \brief Assignement operator for different memory spaces for assigning
+      new memory access traits to the view.
+      \tparam MAT Memory access type
+      \param rhs The slice to shallow copy with a potentially different memory
+      space.
+      \return A reference to a new slice with a potentially different memory
+      space.
+     */
+    template <class MAT>
+    Slice& operator=(
+        const Slice<DataType, DeviceType, MAT, VectorLength, Stride>& rhs )
+    {
+        _view = rhs._view;
+        _size = rhs._size;
+        std::strcpy( _label, rhs._label );
+        return *this;
+    }
+
+    /*!
+      \brief Returns the data structure label.
+
+      \return A string identifying the data structure.
+    */
+    std::string label() const { return std::string( _label ); }
+
+  private:
+    // The data view. This view is unmanaged and has access traits specified
+    // by the template parameters of this class.
+    using base_type::kokkos_view;
+
+    // Number of tuples in the slice.
+    using base_type::_size;
 
     // Slice label.
     char _label[max_label_length];

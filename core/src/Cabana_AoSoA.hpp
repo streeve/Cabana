@@ -72,7 +72,7 @@ struct is_aosoa : public is_aosoa_impl<typename std::remove_cv<T>::type>::type
 */
 template <std::size_t M, class AoSoA_t>
 typename AoSoA_t::template member_slice_type<M>
-slice( const AoSoA_t& aosoa, const std::string& slice_label = "" )
+slice( const AoSoA_t& aosoa, const std::string& slice_label )
 {
     static_assert(
         0 == sizeof( typename AoSoA_t::soa_type ) %
@@ -80,6 +80,20 @@ slice( const AoSoA_t& aosoa, const std::string& slice_label = "" )
         "Slice stride cannot be calculated for misaligned memory!" );
 
     return typename AoSoA_t::template member_slice_type<M>(
+        Impl::soaMemberPtr<M>( aosoa.data() ), aosoa.size(), aosoa.numSoA(),
+        slice_label );
+}
+
+template <std::size_t M, class AoSoA_t>
+typename AoSoA_t::template member_slice_unlabeled_type<M>
+slice( const AoSoA_t& aosoa )
+{
+    static_assert(
+        0 == sizeof( typename AoSoA_t::soa_type ) %
+                 sizeof( typename AoSoA_t::template member_value_type<M> ),
+        "Slice stride cannot be calculated for misaligned memory!" );
+
+    return typename AoSoA_t::template member_slice_unlabeled_type<M>(
         Impl::soaMemberPtr<M>( aosoa.data() ), aosoa.size(), aosoa.numSoA(),
         slice_label );
 }
@@ -191,6 +205,13 @@ class AoSoA
         Slice<member_data_type<M>, device_type, DefaultAccessMemory,
               vector_length,
               sizeof( soa_type ) / sizeof( member_value_type<M> )>;
+
+    //! Member slice type at a given member index M.
+    template <std::size_t M>
+    using member_slice_unlabeled_type =
+        SliceUnlabeled<member_data_type<M>, device_type, DefaultAccessMemory,
+                       vector_length,
+                       sizeof( soa_type ) / sizeof( member_value_type<M> )>;
 
   public:
     /*!
