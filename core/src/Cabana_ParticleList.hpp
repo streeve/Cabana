@@ -205,6 +205,12 @@ class ParticleList
     {
     }
 
+    //! AoSoA constructor.
+    ParticleList( aosoa_type aosoa )
+        : _aosoa( aosoa )
+    {
+    }
+
     //! Get the number of particles in the list.
     std::size_t size() const { return _aosoa.size(); }
 

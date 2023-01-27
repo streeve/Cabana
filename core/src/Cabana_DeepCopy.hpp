@@ -17,6 +17,7 @@
 #define CABANA_DEEPCOPY_HPP
 
 #include <Cabana_AoSoA.hpp>
+#include <Cabana_ParticleList.hpp>
 #include <Cabana_Slice.hpp>
 #include <impl/Cabana_TypeTraits.hpp>
 
@@ -27,6 +28,8 @@
 
 namespace Cabana
 {
+//---------------------------------------------------------------------------//
+// Mirror functions.
 //---------------------------------------------------------------------------//
 /*!
   \brief Allocate a mirror of the given AoSoA in the given space.
@@ -99,15 +102,15 @@ create_mirror_view(
   is different from that of the input AoSoA. If they are the same, the
   original AoSoA (e.g. a view of that AoSoA) is returned.
  */
-template <class Space, class SrcAoSoA>
-inline SrcAoSoA create_mirror_view_and_copy(
-    const Space&, const SrcAoSoA& src,
+template <class DstSpace, class DataTypes, class SrcSpace, int VectorLength,
+          class MemoryTraits>
+inline auto create_mirror_view_and_copy(
+    const DstSpace&,
+    const AoSoA<DataTypes, SrcSpace, VectorLength, MemoryTraits>& src,
     typename std::enable_if<
-        ( std::is_same<typename SrcAoSoA::memory_space,
-                       typename Space::memory_space>::value )>::type* = 0 )
+        ( std::is_same<typename SrcSpace::memory_space,
+                       typename DstSpace::memory_space>::value )>::type* = 0 )
 {
-    static_assert( is_aosoa<SrcAoSoA>::value,
-                   "create_mirror_view_and_copy() requires an AoSoA" );
     return src;
 }
 
@@ -121,26 +124,52 @@ inline SrcAoSoA create_mirror_view_and_copy(
   memory space is different from that of the input AoSoA. If they are the
   same, the original AoSoA (e.g. a view of that AoSoA) is returned.
  */
-template <class Space, class SrcAoSoA>
-inline AoSoA<typename SrcAoSoA::member_types, Space, SrcAoSoA::vector_length>
-create_mirror_view_and_copy(
-    const Space& space, const SrcAoSoA& src,
+template <class DstSpace, class DataTypes, class SrcSpace, int VectorLength,
+          class MemoryTraits>
+inline auto create_mirror_view_and_copy(
+    const DstSpace& space,
+    const AoSoA<DataTypes, SrcSpace, VectorLength, MemoryTraits>& src,
     typename std::enable_if<
-        ( !std::is_same<typename SrcAoSoA::memory_space,
-                        typename Space::memory_space>::value )>::type* = 0 )
+        ( !std::is_same<typename SrcSpace::memory_space,
+                        typename DstSpace::memory_space>::value )>::type* = 0 )
 {
-    static_assert( is_aosoa<SrcAoSoA>::value,
-                   "create_mirror_view_and_copy() requires an AoSoA" );
-
     auto dst = create_mirror( space, src );
 
     Kokkos::deep_copy(
         typename decltype( dst )::soa_view( dst.data(), dst.numSoA() ),
-        typename SrcAoSoA::soa_view( src.data(), src.numSoA() ) );
+        typename decltype( src )::soa_view( src.data(), src.numSoA() ) );
 
     return dst;
 }
 
+template <class DstSpace, class SrcSpace, class... FieldTypes>
+inline auto create_mirror_view_and_copy(
+    const DstSpace, const ParticleList<SrcSpace, FieldTypes...>& src,
+    typename std::enable_if<
+        ( std::is_same<typename SrcSpace::memory_space,
+                       typename DstSpace::memory_space>::value )>::type* = 0 )
+{
+    return src;
+}
+
+template <class DstSpace, class SrcSpace, class... FieldTypes>
+inline auto create_mirror_view_and_copy(
+    const DstSpace space, const ParticleList<SrcSpace, FieldTypes...>& src,
+    typename std::enable_if<
+        ( !std::is_same<typename SrcSpace::memory_space,
+                        typename DstSpace::memory_space>::value )>::type* = 0 )
+
+{
+    // Copy to new space.
+    auto& aosoa_src = src.aosoa();
+    auto aosoa_dst = Cabana::create_mirror_view_and_copy( space, aosoa_src );
+
+    ParticleList<DstSpace, FieldTypes...> dst( aosoa_dst );
+    return dst;
+}
+
+//---------------------------------------------------------------------------//
+// Deep copy functions.
 //---------------------------------------------------------------------------//
 /*!
   \brief Deep copy data between compatible AoSoA objects.

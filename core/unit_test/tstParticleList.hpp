@@ -31,6 +31,11 @@ TEST( TEST_CATEGORY, particle_test )
         Cabana::createParticleList<TEST_MEMSPACE>( "test_particles", fields );
 
     particleListTest( plist );
+
+    // Test mirror.
+    auto plist_host =
+        Cabana::create_mirror_view_and_copy( Kokkos::HostSpace(), plist );
+    particleListTest( plist_host );
 }
 
 TEST( TEST_CATEGORY, particle_view_test )
