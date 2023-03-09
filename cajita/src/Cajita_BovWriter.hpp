@@ -175,9 +175,10 @@ reorderView( TargetView& target, const SourceView& source,
   \param gather_array Gather the array before writing to make parallel
   consistent.
 */
-template <class Array_t>
+template <class Array_t, class Decomposition>
 void writeTimeStep( const int time_step_index, const double time,
-                    const Array_t& array, const bool gather_array = true )
+                    const Array_t& array, const bool gather_array = true,
+                    const Decomposition decomposition = Own() )
 {
     static_assert( isUniformMesh<typename Array_t::mesh_type>::value,
                    "ViSIT BOV writer can only be used with uniform mesh" );
@@ -211,7 +212,8 @@ void writeTimeStep( const int time_step_index, const double time,
     }
     global_extents[num_space_dim] = array.layout()->dofsPerEntity();
 
-    auto owned_index_space = array.layout()->indexSpace( Own(), Local() );
+    auto owned_index_space =
+        array.layout()->indexSpace( decomposition, Local() );
     std::array<long, num_space_dim + 1> owned_extents;
     for ( std::size_t i = 0; i < num_space_dim + 1; ++i )
     {
