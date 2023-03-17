@@ -140,17 +140,8 @@ class LoadBalancer<UniformMesh<Scalar, NumSpaceDim>>
         std::array<int, NumSpaceDim> num_cell;
         for ( std::size_t d = 0; d < NumSpaceDim; ++d )
             num_cell[d] = cell_index_hi[d] - cell_index_lo[d];
-        // Create new global grid
-        // todo(sschulz): Can GlobalGrid be constructed with an already
-        // cartesian communicator? MPI_Cart_Create is called with the given
-        // comm.
-        std::array<bool, NumSpaceDim> periodic;
-        for ( std::size_t d = 0; d < NumSpaceDim; ++d )
-            periodic[d] = _global_grid->isPeriodic( d );
-        std::shared_ptr<GlobalGrid<mesh_type>> global_grid =
-            createGlobalGrid( _comm, global_mesh, periodic, partitioner );
+            updateGlobalGrid( _comm, global_mesh );
         global_grid->setNumCellAndOffset( num_cell, cell_index_lo );
-        _global_grid = global_grid;
 
         Kokkos::Profiling::popRegion();
         return _global_grid;
@@ -245,7 +236,6 @@ class LoadBalancer<UniformMesh<Scalar, NumSpaceDim>>
 
     std::shared_ptr<ALL::ALL<double, double>> _liball;
     std::shared_ptr<GlobalGrid<mesh_type>> _global_grid;
-    MPI_Comm _comm;
 };
 
 //---------------------------------------------------------------------------//
