@@ -120,8 +120,8 @@ class FastFourierTransformParams
     */
     void setReorder( bool value ) { reorder = value; }
     /*!
-      \brief getAllToAll Get MPI communication.
-      \return Using all to all MPI communication or not.
+      \brief Get MPI communication strategy.
+      \return Using AllToAll or not.
     */
     bool getAllToAll() const { return alltoall; }
     /*!
@@ -344,6 +344,13 @@ template <class ExecutionSpace, class BackendType>
 struct HeffteBackendTraits
 {
 };
+#ifdef Heffte_ENABLE_MKL
+template <class ExecutionSpace>
+struct HeffteBackendTraits<ExecutionSpace, FFTBackendMKL>
+{
+    using backend_type = heffte::backend::mkl;
+};
+#endif
 #ifdef Heffte_ENABLE_FFTW
 template <class ExecutionSpace>
 struct HeffteBackendTraits<ExecutionSpace, FFTBackendFFTW>
@@ -355,19 +362,15 @@ struct HeffteBackendTraits<ExecutionSpace, Impl::FFTBackendDefault>
 {
     using backend_type = heffte::backend::fftw;
 };
-#endif
+#else
 #ifdef Heffte_ENABLE_MKL
-template <class ExecutionSpace>
-struct HeffteBackendTraits<ExecutionSpace, FFTBackendMKL>
-{
-    using backend_type = heffte::backend::mkl;
-};
-#ifndef Heffte_ENABLE_FFTW
 template <class ExecutionSpace>
 struct HeffteBackendTraits<ExecutionSpace, Impl::FFTBackendDefault>
 {
     using backend_type = heffte::backend::mkl;
 };
+#else
+throw std::runtime_error( "Must enable at least one host heFFTe backend." );
 #endif
 #endif
 #ifdef Heffte_ENABLE_CUDA
@@ -388,6 +391,16 @@ struct HeffteBackendTraits<Kokkos::Experimental::HIP, Impl::FFTBackendDefault>
 };
 #endif
 #endif
+#ifdef Heffte_ENABLE_ONEAPI
+#ifdef KOKKOS_ENABLE_SYCL
+template <>
+struct HeffteBackendTraits<Kokkos::Experimental::SYCL, Impl::FFTBackendDefault>
+{
+    using backend_type = heffte::backend::onemkl;
+};
+#endif
+#endif
+
 template <class ScaleType>
 struct HeffteScalingTraits
 {
@@ -407,6 +420,40 @@ struct HeffteScalingTraits<FFTScaleSymmetric>
 {
     static const auto scaling_type = heffte::scale::symmetric;
 };
+
+#ifdef KOKKOS_ENABLE_SYCL
+// Overload for SYCL.
+template <class HeffteBackendType>
+auto createHeffte(
+    HeffteBackendType, heffte::box3d<> inbox, heffte::box3d<> outbox,
+    MPI_Comm comm, heffte::plan_options params,
+    typename std::enable_if<
+        std::is_same<HeffteBackendType, heffte::backend::onemkl>::value,
+        int>::type* = 0 )
+{
+    // Set FFT options from given parameters
+    // heFFTe correctly handles 2D or 3D FFTs within "fft3d"
+    // FIXME: get SYCL queue from Kokkos.
+    sycl::queue q;
+    return std::make_shared<heffte::fft3d<HeffteBackendType>>( q, inbox, outbox,
+                                                               comm, params );
+}
+#endif
+
+template <class HeffteBackendType>
+auto createHeffte(
+    HeffteBackendType, heffte::box3d<> inbox, heffte::box3d<> outbox,
+    MPI_Comm comm, heffte::plan_options params,
+    typename std::enable_if<
+        !std::is_same<HeffteBackendType, heffte::backend::onemkl>::value,
+        int>::type* = 0 )
+{
+    // Set FFT options from given parameters
+    // heFFTe correctly handles 2D or 3D FFTs within "fft3d"
+    return std::make_shared<heffte::fft3d<HeffteBackendType>>( inbox, outbox,
+                                                               comm, params );
+}
+
 //! \endcond
 } // namespace Impl
 
@@ -460,16 +507,20 @@ class HeffteFastFourierTransform
 
         heffte::plan_options heffte_params =
             heffte::default_options<heffte_backend_type>();
-        heffte_params.use_alltoall = params.getAllToAll();
+        // TODO: use all three heffte options for algorithm
+        bool alltoall = params.getAllToAll();
+        if ( alltoall )
+            heffte_params.algorithm = heffte::reshape_algorithm::alltoallv;
+        else
+            heffte_params.algorithm = heffte::reshape_algorithm::p2p;
         heffte_params.use_pencils = params.getPencils();
         heffte_params.use_reorder = params.getReorder();
 
-        // Set FFT options from given parameters
-        // heFFTe correctly handles 2D or 3D FFTs within "fft3d"
-        _fft = std::make_shared<heffte::fft3d<heffte_backend_type>>(
-            inbox, outbox, layout.localGrid()->globalGrid().comm(),
-            heffte_params );
-
+        // Create the heFFTe main class (separated to handle SYCL queue
+        // correctly).
+        _fft = Impl::createHeffte( heffte_backend_type{}, inbox, outbox,
+                                   layout.localGrid()->globalGrid().comm(),
+                                   heffte_params );
         int fftsize = std::max( _fft->size_outbox(), _fft->size_inbox() );
 
         // Check the size.
@@ -613,7 +664,8 @@ auto createHeffteFastFourierTransform(
     const heffte::plan_options heffte_params =
         heffte::default_options<heffte_backend_type>();
     FastFourierTransformParams params;
-    params.setAllToAll( heffte_params.use_alltoall );
+    // TODO: set appropriate default for AllToAll
+    params.setAllToAll( true );
     params.setPencils( heffte_params.use_pencils );
     params.setReorder( heffte_params.use_reorder );
 
