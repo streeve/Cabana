@@ -529,7 +529,10 @@ class HeffteFastFourierTransform
         // Copy to the work array. The work array only contains owned data.
         auto localghost_view = x.view();
 
-        this->copyToLocal( own_space, local_view, localghost_view );
+        if ( *local_grid.haloWidth() > 0 )
+            this->copyToLocal( own_space, local_view, localghost_view );
+        else
+            local_view = localghost_view;
 
         if ( flag == 1 )
         {
