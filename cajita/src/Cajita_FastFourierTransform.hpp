@@ -357,6 +357,8 @@ struct HeffteBackendTraits<ExecutionSpace, FFTBackendFFTW>
 {
     using backend_type = heffte::backend::fftw;
 };
+#endif
+#ifdef Heffte_ENABLE_FFTW
 template <class ExecutionSpace>
 struct HeffteBackendTraits<ExecutionSpace, Impl::FFTBackendDefault>
 {
@@ -370,7 +372,7 @@ struct HeffteBackendTraits<ExecutionSpace, Impl::FFTBackendDefault>
     using backend_type = heffte::backend::mkl;
 };
 #else
-throw std::runtime_error( "Must enable at least one host heFFTe backend." );
+throw std::runtime_error( "Must enable at least one heFFTe backend." );
 #endif
 #endif
 #ifdef Heffte_ENABLE_CUDA
@@ -423,8 +425,9 @@ struct HeffteScalingTraits<FFTScaleSymmetric>
 
 #ifdef KOKKOS_ENABLE_SYCL
 // Overload for SYCL.
-template <class HeffteBackendType>
+  template <class ExecSpace, class HeffteBackendType>
 auto createHeffte(
+		  ExecSpace exec_space,
     HeffteBackendType, heffte::box3d<> inbox, heffte::box3d<> outbox,
     MPI_Comm comm, heffte::plan_options params,
     typename std::enable_if<
@@ -434,14 +437,14 @@ auto createHeffte(
     // Set FFT options from given parameters
     // heFFTe correctly handles 2D or 3D FFTs within "fft3d"
     // FIXME: get SYCL queue from Kokkos.
-    sycl::queue q;
+    sycl::queue& q = exec_space.sycl_queue();
     return std::make_shared<heffte::fft3d<HeffteBackendType>>( q, inbox, outbox,
                                                                comm, params );
 }
 #endif
 
-template <class HeffteBackendType>
-auto createHeffte(
+  template <class ExecSpace, class HeffteBackendType>
+auto createHeffte( ExecSpace,
     HeffteBackendType, heffte::box3d<> inbox, heffte::box3d<> outbox,
     MPI_Comm comm, heffte::plan_options params,
     typename std::enable_if<
@@ -518,7 +521,7 @@ class HeffteFastFourierTransform
 
         // Create the heFFTe main class (separated to handle SYCL queue
         // correctly).
-        _fft = Impl::createHeffte( heffte_backend_type{}, inbox, outbox,
+        _fft = Impl::createHeffte( exec_space{}, heffte_backend_type{}, inbox, outbox,
                                    layout.localGrid()->globalGrid().comm(),
                                    heffte_params );
         int fftsize = std::max( _fft->size_outbox(), _fft->size_inbox() );
