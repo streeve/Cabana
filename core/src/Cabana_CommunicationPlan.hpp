@@ -1048,7 +1048,7 @@ struct CommunicationDataSlice
     auto getSliceComponents( SliceType slice )
     {
         std::size_t num_comp = 1;
-        for ( std::size_t d = 2; d < slice.rank(); ++d )
+        for ( std::size_t d = 2; d < slice.viewRank(); ++d )
             num_comp *= slice.extent( d );
         return num_comp;
     }
