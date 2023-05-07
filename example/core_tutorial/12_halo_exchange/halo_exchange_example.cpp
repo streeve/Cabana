@@ -176,7 +176,7 @@ void haloExchangeExample()
     */
     if ( comm_rank == 0 )
     {
-        std::cout << "AFTER gather" << std::endl
+        std::cout << "AFTER gather()" << std::endl
                   << "(Rank " << comm_rank << ") ";
         for ( std::size_t i = 0; i < slice_ranks.size(); ++i )
             std::cout << slice_ranks( i ) << " ";
@@ -211,7 +211,7 @@ void haloExchangeExample()
     */
     if ( comm_rank == 0 )
     {
-        std::cout << "AFTER scatter" << std::endl
+        std::cout << "AFTER scatter()" << std::endl
                   << "(Rank " << comm_rank << ") ";
         for ( std::size_t i = 0; i < slice_ranks.size(); ++i )
             std::cout << slice_ranks( i ) << " ";
@@ -225,6 +225,42 @@ void haloExchangeExample()
                   << "(" << slice_ids.size() << " IDs after scatter)"
                   << std::endl;
     }
+
+    /*
+      If we were to use the gather/scatter functions above repeatedly throughout
+      a simulation, every iteration would require a new allocation of memory for
+      the communication buffers. To avoid this and to achieve significantly
+      better performance, we can instead use the Gather/Scatter objects which
+      hold both the Halo and persistent buffers.
+
+      Instead of the free functions above we first create the objects. The
+      overallocation factor creates buffers larger than necessary for the
+      current communication in order to avoid some resizing of the buffers in
+      the future.
+    */
+    double overalloc = 1.5; // choose 50% for this example
+    auto gather = Cabana::createGather( halo, aosoa, overalloc );
+
+    /*
+      We communicate the data now with the apply() function.
+    */
+    gather.apply();
+
+    /*
+      Just as we did above we can communicate slices separately as well.
+    */
+    auto gather_ranks = Cabana::createGather( halo, slice_ranks, overalloc );
+    gather_ranks.apply();
+    auto gather_ids = Cabana::createGather( halo, slice_ids, overalloc );
+    gather_ids.apply();
+
+    /*
+      The scatter operation looks very similar.
+    */
+    auto scatter_ranks = Cabana::createScatter( halo, slice_ranks, overalloc );
+    scatter_ranks.apply();
+    auto scatter_ids = Cabana::createScatter( halo, slice_ids, overalloc );
+    scatter_ids.apply();
 }
 
 //---------------------------------------------------------------------------//
