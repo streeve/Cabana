@@ -9,10 +9,7 @@
 # SPDX-License-Identifier: BSD-3-Clause                                    #
 ############################################################################
 
-add_subdirectory(core_tutorial)
-
-if(Cabana_ENABLE_CAJITA)
-  add_subdirectory(cajita_tutorial)
-
-  add_subdirectory(methods)
-endif()
+add_executable(FiniteDifference finite_difference.cpp)
+target_link_libraries(FiniteDifference Cajita)
+add_test(NAME Cajita_methods_finite_difference COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} ${MPIEXEC_MAX_NUMPROCS} ${MPIEXEC_PREFLAGS} FiniteDifference ${MPIEXEC_POSTFLAGS})
+set_tests_properties(Cajita_methods_finite_difference PROPERTIES PROCESSORS ${MPIEXEC_MAX_NUMPROCS})

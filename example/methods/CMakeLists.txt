@@ -9,10 +9,4 @@
 # SPDX-License-Identifier: BSD-3-Clause                                    #
 ############################################################################
 
-add_subdirectory(core_tutorial)
-
-if(Cabana_ENABLE_CAJITA)
-  add_subdirectory(cajita_tutorial)
-
-  add_subdirectory(methods)
-endif()
+add_subdirectory(finite_difference)
