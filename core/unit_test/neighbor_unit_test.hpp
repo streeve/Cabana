@@ -979,4 +979,54 @@ struct NeighborListTestData
 };
 
 //---------------------------------------------------------------------------//
+// Uniform test settings.
+struct NeighborListUniformTestData
+{
+    int particles_per_dim = 10;
+    int num_particle =
+        particles_per_dim * particles_per_dim * particles_per_dim;
+    int num_ignore = 0;
+    double box_min = -0.005;
+    double box_max = 0.0074;
+    double box_spacing = ( box_max - box_min ) / particles_per_dim;
+    double test_radius = box_spacing * 3 + 1e-6;
+    // This value is directly related to the ratio of the cutoff to the particle
+    // spacing (3).
+    int exact_neighbor_count = 122;
+
+    double cell_size_ratio = 0.5;
+    double grid_min[3] = { box_min, box_min, box_min };
+    double grid_max[3] = { box_max, box_max, box_max };
+
+    using DataTypes = Cabana::MemberTypes<double[3]>;
+    using AoSoA_t = Cabana::AoSoA<DataTypes, TEST_MEMSPACE>;
+    AoSoA_t aosoa;
+
+    NeighborListUniformTestData()
+    {
+        // Create the AoSoA and fill with random particle positions.
+        aosoa = AoSoA_t( "random", num_particle );
+        auto positions = Cabana::slice<0>( aosoa, "name" );
+
+        // Create uniform grid of particles.
+        Kokkos::MDRangePolicy<TEST_EXECSPACE, Kokkos::Rank<3>> policy(
+            { 0, 0, 0 },
+            { particles_per_dim, particles_per_dim, particles_per_dim } );
+        double min = box_min;
+        double spacing = box_spacing;
+        Kokkos::parallel_for(
+            "test_create_uniform", policy,
+            KOKKOS_LAMBDA( const int i, const int j, const int k ) {
+                // Compute the owned local cell id.
+                int pid = i + particles_per_dim * ( j + k * particles_per_dim );
+
+                // Set the particle position in logical coordinates.
+                positions( pid, 0 ) = ( i + 0.5 ) * spacing + min;
+                positions( pid, 1 ) = ( j + 0.5 ) * spacing + min;
+                positions( pid, 2 ) = ( k + 0.5 ) * spacing + min;
+            } );
+    }
+};
+
+//---------------------------------------------------------------------------//
 } // end namespace Test

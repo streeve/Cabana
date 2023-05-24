@@ -306,6 +306,45 @@ void testNeighborArborXParallelReduce()
     }
 }
 
+void testStructuredNeighbors()
+{
+    // Create the AoSoA and fill with structured grid of particles.
+    NeighborListUniformTestData test_data;
+    auto position = Cabana::slice<0>( test_data.aosoa );
+
+    // Create the neighbor list.
+    using device_type = TEST_MEMSPACE; // sigh...
+    auto const nlist = Cabana::Experimental::makeNeighborList<device_type>(
+        Cabana::FullNeighborTag{}, position, 0, position.size(),
+        test_data.test_radius );
+
+    // Create the host copy.
+    auto list_copy = copyListToHost( nlist, test_data.num_particle,
+                                     test_data.exact_neighbor_count );
+
+    // Check the results: each interior particle should have the same number of
+    // neighbors.
+    // m=1 --> 6 (first) nearest neighbors;
+    // m=3 --> 122 nearest neighbors
+    int test_count = 0;
+    double boundary = test_data.test_radius * 1.1;
+    for ( int p = 0; p < test_data.num_particle; ++p )
+    {
+        // Ignore the boundaries which do not have full neighbor lists.
+        if ( position( p, 0 ) > test_data.box_min + boundary &&
+             position( p, 0 ) < test_data.box_max - boundary &&
+             position( p, 1 ) > test_data.box_min + boundary &&
+             position( p, 1 ) < test_data.box_max - boundary &&
+             position( p, 2 ) > test_data.box_min + boundary &&
+             position( p, 2 ) < test_data.box_max - boundary )
+        {
+            test_count++;
+            EXPECT_EQ( list_copy.counts( p ), test_data.exact_neighbor_count );
+        }
+    }
+    std::cout << "Particles compared: " << test_count << std::endl;
+}
+
 //---------------------------------------------------------------------------//
 // TESTS
 //---------------------------------------------------------------------------//
@@ -328,6 +367,10 @@ TEST( TEST_CATEGORY, parallel_reduce_test )
 {
     testNeighborArborXParallelReduce();
 }
+
+//---------------------------------------------------------------------------//
+TEST( TEST_CATEGORY, structured_test ) { testStructuredNeighbors(); }
+
 //---------------------------------------------------------------------------//
 
 } // end namespace Test
