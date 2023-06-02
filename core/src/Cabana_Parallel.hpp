@@ -105,19 +105,77 @@ struct ParallelFor<SimdPolicy<VectorLength, Properties...>, Functor>
     template <class WorkTag>
     KOKKOS_FUNCTION std::enable_if_t<!std::is_void<WorkTag>::value &&
                                      std::is_same<WorkTag, work_tag>::value>
-    operator()( WorkTag, member_type const& team ) const
+    operator()( WorkTag, member_type const& team, ReduceType& reduce_val ) const
     {
-        this->operator()( team );
+        this->operator()( team, reduce_val );
     }
 
-    KOKKOS_FUNCTION void operator()( member_type const& team ) const
+    KOKKOS_FUNCTION void operator()( member_type const& team,
+                                     ReduceType& reduce_val ) const
+    {
+        index_type s = team.league_rank() + exec_policy_.structBegin();
+        Kokkos::parallel_reduce(
+            Kokkos::ThreadVectorRange( team, exec_policy_.arrayBegin( s ),
+                                       exec_policy_.arrayEnd( s ) ),
+            [&]( index_type a, ReduceType& aval ) {
+                Impl::functorTagDispatch<work_tag>( functor_, s, a,
+                                                    reduce_val );
+            },
+            reduce_a );
+    }
+};
+
+template <class ExecutionPolicy, class Functor, class ReduceType>
+struct ParallelReduce;
+
+template <class Functor, int VectorLength, class ReduceType,
+          class... Properties>
+struct ParallelReduce<SimdPolicy<VectorLength, Properties...>, Functor,
+                      ReduceType>
+{
+    using simd_policy = SimdPolicy<VectorLength, Properties...>;
+    using team_policy = typename simd_policy::base_type;
+    using work_tag = typename team_policy::work_tag;
+    using index_type = typename team_policy::index_type;
+    using member_type = typename team_policy::member_type;
+
+    simd_policy exec_policy_;
+    Functor functor_;
+
+    ParallelReduce( std::string label, simd_policy exec_policy, Functor functor,
+                    ReduceType& reduce_val )
+        : exec_policy_( std::move( exec_policy ) )
+        , functor_( std::move( functor ) )
+    {
+        if ( label.empty() )
+            Kokkos::parallel_reduce(
+                dynamic_cast<const team_policy&>( exec_policy_ ), *this,
+                reduce_val );
+        else
+            Kokkos::parallel_for(
+                label, dynamic_cast<const team_policy&>( exec_policy_ ), *this,
+                reduce_val );
+    }
+
+    template <class WorkTag>
+    KOKKOS_FUNCTION std::enable_if_t<!std::is_void<WorkTag>::value &&
+                                     std::is_same<WorkTag, work_tag>::value>
+    operator()( WorkTag, member_type const& team, ReduceType& reduce_val ) const
+    {
+        this->operator()( team, reduce_val );
+    }
+
+    KOKKOS_FUNCTION void operator()( member_type const& team,
+                                     ReduceType& reduce_val ) const
     {
         index_type s = team.league_rank() + exec_policy_.structBegin();
         Kokkos::parallel_for(
             Kokkos::ThreadVectorRange( team, exec_policy_.arrayBegin( s ),
                                        exec_policy_.arrayEnd( s ) ),
-            [&]( index_type a )
-            { Impl::functorTagDispatch<work_tag>( functor_, s, a ); } );
+            [&]( index_type a, ReduceType& aval ) {
+                Impl::functorTagDispatch<work_tag>( functor_, s, a,
+                                                    reduce_val );
+            } );
     }
 };
 
@@ -176,6 +234,62 @@ inline void simd_parallel_for(
 
     Impl::ParallelFor<SimdPolicy<VectorLength, ExecParameters...>, FunctorType>(
         str, exec_policy, functor );
+
+    Kokkos::Profiling::popRegion();
+}
+
+//---------------------------------------------------------------------------//
+// SIMD Parallel Reduce
+//---------------------------------------------------------------------------//
+/*!
+  \brief Execute a vectorized functor in parallel with a 2d execution policy.
+
+  \tparam FunctorType The functor type to execute.
+
+  \tparam VectorLength The length of the vector over which to execute the
+  vectorized code.
+
+  \tparam ExecParameters Execution policy parameters.
+
+  \param exec_policy The 2D range policy over which to execute the functor.
+
+  \param functor The vectorized functor to execute in parallel. Must accept
+  both a struct and array index.
+
+  \param str Optional name for the functor. Will be forwarded if non-empty to
+  the Kokkos::parallel_for called by this code and can be used for
+  identification and profiling purposes.
+
+  A "functor" is a callable object containing the function to execute in
+  parallel, data needed for that execution, and an optional \c execution_space
+  typedef.  Here is an example functor for parallel_for:
+
+  \code
+  class FunctorType {
+  public:
+  typedef  ...  execution_space ;
+  void operator() ( const int struct, const int array ) const ;
+  };
+  \endcode
+
+  In the above example, \c struct defines an index to a given AoSoA/Slice
+  struct and array defines and index to the given array element in that struct.
+  Its <tt>operator()</tt> method defines the operation to parallelize, over
+  the range of indices <tt>idx=[begin,end]</tt>. The kernel represented by the
+  functor is intended to vectorize of the array index.
+
+  \note The work tag gets applied at the user functor level, not at the level
+  of the functor in this implementation that wraps the user functor.
+*/
+template <class FunctorType, int VectorLength, class... ExecParameters>
+inline void simd_parallel_reduce(
+    const SimdPolicy<VectorLength, ExecParameters...>& exec_policy,
+    const FunctorType& functor, const std::string& str = "" )
+{
+    Kokkos::Profiling::pushRegion( "Cabana::simd_parallel_reduce" );
+
+    Impl::ParallelReduce<SimdPolicy<VectorLength, ExecParameters...>,
+                         FunctorType>( str, exec_policy, functor );
 
     Kokkos::Profiling::popRegion();
 }
