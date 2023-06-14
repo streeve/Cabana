@@ -689,8 +689,9 @@ class CommunicationPlan
         const int mpi_tag = 1221;
 
         // Bin the elements based on input keys
-        const int num_bin = comm_size + 2; // Extra initial bin for particles remaining on rank
-                                           // Extra final bin for particles being removed
+        // Extra initial bin for particles remaining on rank
+        // Extra final bin for particles being removed
+        const int num_bin = comm_size + 2;
         auto bin_data = Cabana::binByKey( keys, num_bin );
 
         // Copy the bin counts to the host.
@@ -699,15 +700,15 @@ class CommunicationPlan
 
         // Determine exports from bin counts.
         _num_export.assign( comm_size );
-        for(int i=0; i<comm_size; i++)
-            _num_export[i] = bin_counts_host(i+1);
+        for ( int i = 0; i < comm_size; i++ )
+            _num_export[i] = bin_counts_host( i + 1 );
 
         // Initialize imports
         _num_import.assign( comm_size );
 
         // Determine number of imports via all-to-all communication
-        MPI_Alltoall(_num_export.data(), 1, MPI_UNSIGNED_LONG,
-                     _num_import.data(), 1, MPI_UNSIGNED_LONG, comm);
+        MPI_Alltoall( _num_export.data(), 1, MPI_UNSIGNED_LONG,
+                      _num_import.data(), 1, MPI_UNSIGNED_LONG, comm );
 
         // Compute the total number of exports.
         _total_num_export =
