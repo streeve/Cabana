@@ -37,15 +37,6 @@ endmacro()
 ##--------------------------------------------------------------------------##
 ## On-node tests with and without MPI.
 ##--------------------------------------------------------------------------##
-set(CABANA_TEST_DEVICES)
-foreach(_device ${CABANA_SUPPORTED_DEVICES})
-  if(Kokkos_ENABLE_${_device})
-    list(APPEND CABANA_TEST_DEVICES ${_device})
-    if(_device STREQUAL CUDA)
-      list(APPEND CABANA_TEST_DEVICES CUDA_UVM)
-    endif()
-  endif()
-endforeach()
 
 macro(Cabana_add_tests)
   cmake_parse_arguments(CABANA_UNIT_TEST "MPI" "PACKAGE" "NAMES" ${ARGN})
@@ -69,13 +60,25 @@ macro(Cabana_add_tests)
   else()
     set(CABANA_UNIT_TEST_MAIN ${TEST_HARNESS_DIR}/unit_test_main.cpp)
   endif()
+
+  set(CABANA_TEST_DEVICES)
+  foreach(_device ${CABANA_SUPPORTED_DEVICES})
+    if(Kokkos_ENABLE_${_device})
+      list(APPEND CABANA_TEST_DEVICES ${_device})
+      if(_device STREQUAL CUDA)
+        list(APPEND CABANA_TEST_DEVICES CUDA_UVM)
+      endif()
+    endif()
+  endforeach()
+
   foreach(_device ${CABANA_TEST_DEVICES})
     set(_dir ${CMAKE_CURRENT_BINARY_DIR}/${_device})
     file(MAKE_DIRECTORY ${_dir})
     foreach(_test ${CABANA_UNIT_TEST_NAMES})
+      message(STATUS ${_test})
       set(_file ${_dir}/tst${_test}_${_device}.cpp)
       file(WRITE ${_file}
-        "#include <Test${_device}_Category.hpp>\n"
+        "#include <unit_test/Test${_device}_Category.hpp>\n"
         "#include <tst${_test}.hpp>\n"
       )
       if(${CABANA_UNIT_TEST_PACKAGE} STREQUAL cabanacore)
@@ -90,7 +93,7 @@ macro(Cabana_add_tests)
       add_executable(${_target} ${_file} ${CABANA_UNIT_TEST_MAIN})
       target_include_directories(${_target} PRIVATE ${_dir}
         ${TEST_HARNESS_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
-      target_link_libraries(${_target} PRIVATE ${CABANA_UNIT_TEST_PACKAGE} ${gtest_target})
+      target_link_libraries(${_target} PRIVATE ${CABANA_UNIT_TEST_PACKAGE} Cabana::unittest ${gtest_target})
       if(CABANA_UNIT_TEST_MPI)
         foreach(_np ${CABANA_UNIT_TEST_MPIEXEC_NUMPROCS})
           add_test(NAME ${_target}_np_${_np} COMMAND

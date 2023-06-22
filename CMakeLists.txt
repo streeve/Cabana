@@ -212,6 +212,7 @@ MESSAGE(STATUS "Cabana Revision = '${Cabana_GIT_COMMIT_HASH}'")
 #------------------------------------------------------------------------------#
 # enable unit tests
 option(Cabana_ENABLE_TESTING "Build tests" OFF)
+set(TEST_HARNESS_DIR ${CMAKE_SOURCE_DIR}/cmake/test_harness)
 if(Cabana_ENABLE_TESTING)
   find_package(GTest 1.10 REQUIRED)
   # Workaround for FindGTest module in CMake older than 3.20
@@ -222,10 +223,17 @@ if(Cabana_ENABLE_TESTING)
   else()
     message(FATAL_ERROR "bug in GTest find module workaround")
   endif()
-  set(TEST_HARNESS_DIR ${CMAKE_SOURCE_DIR}/cmake/test_harness)
   include(cmake/test_harness/test_harness.cmake)
   enable_testing()
+  message(STATUS ${TEST_HARNESS_DIR})
 endif()
+# Install these for downstream apps even if tests aren't enabled.
+install(FILES ${TEST_HARNESS_DIR}/test_harness.cmake ${TEST_HARNESS_DIR}/unit_test_main.cpp ${TEST_HARNESS_DIR}/mpi_unit_test_main.cpp
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/Cabana/)
+#foreach(_device ${CABANA_SUPPORTED_DEVICES})
+#  install(FILES ${TEST_HARNESS_DIR}/Test${_device}_Category.hpp 
+#          DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/unit_test/)
+#endforeach()
 
 # enable doxygen
 find_package(Doxygen)
@@ -247,6 +255,9 @@ if(Cabana_ENABLE_CAJITA)
     message(FATAL_ERROR "Cajita requires MPI")
   endif()
 endif()
+
+# Utilities for both Cabana and downstream apps.
+add_subdirectory(unit_test)
 
 option(Cabana_ENABLE_EXAMPLES "Build examples" OFF)
 if(Cabana_ENABLE_EXAMPLES)
