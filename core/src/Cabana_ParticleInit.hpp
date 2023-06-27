@@ -48,13 +48,6 @@ struct InitRandom
 /*!
   \brief Initialize random particles given an initialization functor.
 
-  \tparam ParticleListType The type of particle list to initialize.
-  \tparam InitFunctor Initialization functor type. See the documentation below
-  for the create_functor parameter on the signature of this functor.
-  \tparam ParticleListType The type of particle list to initialize.
-  \tparam ArrayType Array of size equal to system dimension. Must be device
-  accessible if on device.
-
   \param exec_space Kokkos execution space.
   \param create_functor A functor which populates a particle given the logical
   position of a particle. This functor returns true if a particle was created
@@ -65,10 +58,14 @@ struct InitRandom
   \param particle_list The ParticleList to populate. This will be filled with
   particles and resized to a size equal to the number of particles created.
   \param num_particles The number of particles to create.
-  \param box_min Lower corner of volume to create particles within.
-  \param box_max Upper corner of volume to create particles within.
+  \param box_min Lower corner of volume to create particles within. Must be
+  device accessible if on device.
+  \param box_max Upper corner of volume to create particles within. Must be
+  device accessible if on device.
   \param shrink_to_fit Optionally remove unused allocated space after creation.
   \param seed Optional random seed for generating particles.
+
+  \return Number of particles created.
 */
 template <class ExecutionSpace, class InitFunctor, class ParticleListType,
           class ArrayType>
@@ -134,12 +131,6 @@ int createParticles(
 /*!
   \brief Initialize random particles given an initialization functor.
 
-  \tparam InitFunctor Initialization functor type. See the documentation below
-  for the create_functor parameter on the signature of this functor.
-  \tparam ParticleListType The type of particle list to initialize.
-  \tparam ArrayType Array of size equal to system dimension. Must be device
-  accessible if on device.
-
   \param tag Initialization type tag.
   \param create_functor A functor which populates a particle given the logical
   position of a particle. This functor returns true if a particle was created
@@ -150,10 +141,14 @@ int createParticles(
   \param particle_list The ParticleList to populate. This will be filled with
   particles and resized to a size equal to the number of particles created.
   \param num_particles The number of particles to create.
-  \param box_min Lower corner of volume to create particles within.
-  \param box_max Upper corner of volume to create particles within.
+  \param box_min Lower corner of volume to create particles within. Must be
+  device accessible if on device.
+  \param box_max Upper corner of volume to create particles within. Must be
+  device accessible if on device.
   \param shrink_to_fit Optionally remove unused allocated space after creation.
   \param seed Optional random seed for generating particles.
+
+  \return Number of particles created.
 */
 template <class InitFunctor, class ParticleListType, class ArrayType>
 int createParticles( InitRandom tag, const InitFunctor& create_functor,
@@ -171,15 +166,13 @@ int createParticles( InitRandom tag, const InitFunctor& create_functor,
 /*!
   \brief Initialize random particles.
 
-  \tparam InitFunctor Initialization functor type. See the documentation below
-  for the create_functor parameter on the signature of this functor.
-  \tparam PositionType Postion Slice type.
-
   \param exec_space Kokkos execution space.
   \param positions Particle positions slice.
   \param num_particles The number of particles to create.
-  \param box_min Lower corner of volume to create particles within.
-  \param box_max Upper corner of volume to create particles within.
+  \param box_min Lower corner of volume to create particles within. Must be
+  device accessible if on device.
+  \param box_max Upper corner of volume to create particles within. Must be
+  device accessible if on device.
   \param seed Optional random seed for generating particles.
 */
 template <class ExecutionSpace, class PositionType, class ArrayType>
@@ -191,6 +184,9 @@ void createParticles(
                               Kokkos::is_view<PositionType>::value ),
                             int>::type* = 0 )
 {
+    // Ensure correct space for the particles.
+    assert( positions.size() == num_particles );
+
     using PoolType = Kokkos::Random_XorShift64_Pool<ExecutionSpace>;
     using RandomType = Kokkos::Random_XorShift64<ExecutionSpace>;
     PoolType pool( seed );
@@ -212,15 +208,13 @@ void createParticles(
 /*!
   \brief Initialize random particles.
 
-  \tparam InitFunctor Initialization functor type. See the documentation below
-  for the create_functor parameter on the signature of this functor.
-  \tparam PositionType Postion Slice type.
-
   \param tag Initialization type tag.
   \param positions Particle positions slice.
   \param num_particles The number of particles to create.
-  \param box_min Lower corner of volume to create particles within.
-  \param box_max Upper corner of volume to create particles within.
+  \param box_min Lower corner of volume to create particles within. Must be
+  device accessible if on device.
+  \param box_max Upper corner of volume to create particles within. Must be
+  device accessible if on device.
   \param seed Optional random seed for generating particles.
 */
 template <class PositionType, class ArrayType>
@@ -270,10 +264,6 @@ createRandomParticles( PositionType& positions, const std::size_t num_particles,
 /*!
   \brief Initialize random particles with minimum separation.
 
-  \tparam InitFunctor Initialization functor type. See the documentation below
-  for the create_functor parameter on the signature of this functor.
-  \tparam PositionType Postion Slice type.
-
   \param tag Initialization type tag.
   \param exec_space Kokkos execution space.
   \param create_functor A functor which populates a particle given the logical
@@ -288,10 +278,14 @@ createRandomParticles( PositionType& positions, const std::size_t num_particles,
   \param num_particles The number of particles to create.
   \param min_dist Minimum separation distance between particles. Potential
   particles created within this distance of an existing particle are rejected.
-  \param box_min Lower corner of volume to create particles within.
-  \param box_max Upper corner of volume to create particles within.
+  \param box_min Lower corner of volume to create particles within. Must be
+  device accessible if on device.
+  \param box_max Upper corner of volume to create particles within. Must be
+  device accessible if on device.
   \param shrink_to_fit Optionally remove unused allocated space after creation.
   \param seed Optional random seed for generating particles.
+
+  \return Number of particles created.
 
   \note This approximates many physical scenarios, e.g. atomic simulations.
 */
@@ -344,10 +338,6 @@ int createParticles(
 /*!
   \brief Initialize random particles with minimum separation.
 
-  \tparam InitFunctor Initialization functor type. See the documentation below
-  for the create_functor parameter on the signature of this functor.
-  \tparam PositionType Postion Slice type.
-
   \param tag Initialization type tag.
   \param create_functor A functor which populates a particle given the logical
   position of a particle. This functor returns true if a particle was created
@@ -361,10 +351,14 @@ int createParticles(
   \param num_particles The number of particles to create.
   \param min_dist Minimum separation distance between particles. Potential
   particles created within this distance of an existing particle are rejected.
-  \param box_min Lower corner of volume to create particles within.
-  \param box_max Upper corner of volume to create particles within.
+  \param box_min Lower corner of volume to create particles within. Must be
+  device accessible if on device.
+  \param box_max Upper corner of volume to create particles within. Must be
+  device accessible if on device.
   \param shrink_to_fit Optionally remove unused allocated space after creation.
   \param seed Optional random seed for generating particles.
+
+  \return Number of particles created.
 
   \note This approximates many physical scenarios, e.g. atomic simulations.
 */
@@ -386,18 +380,18 @@ int createParticles( InitRandom tag, const InitFunctor& create_functor,
 /*!
   \brief Initialize random particles with minimum separation.
 
-  \tparam InitFunctor Initialization functor type. See the documentation below
-  for the create_functor parameter on the signature of this functor.
-  \tparam PositionType Postion Slice type.
-
   \param exec_space Kokkos execution space.
   \param positions Particle positions slice.
   \param num_particles The number of particles to create.
   \param min_dist Minimum separation distance between particles. Potential
   particles created within this distance of an existing particle are rejected.
-  \param box_min Lower corner of volume to create particles within.
-  \param box_max Upper corner of volume to create particles within.
+  \param box_min Lower corner of volume to create particles within. Must be
+  device accessible if on device.
+  \param box_max Upper corner of volume to create particles within. Must be
+  device accessible if on device.
   \param seed Optional random seed for generating particles.
+
+  \return Number of particles created.
 
   \note This approximates many physical scenarios, e.g. atomic simulations.
 */
@@ -459,18 +453,18 @@ int createParticles(
 /*!
   \brief Initialize random particles with minimum separation.
 
-  \tparam InitFunctor Initialization functor type. See the documentation below
-  for the create_functor parameter on the signature of this functor.
-  \tparam PositionType Postion Slice type.
-
   \param tag Initialization type tag.
   \param positions Particle positions slice.
   \param num_particles The number of particles to create.
   \param min_dist Minimum separation distance between particles. Potential
   particles created within this distance of an existing particle are rejected.
-  \param box_min Lower corner of volume to create particles within.
-  \param box_max Upper corner of volume to create particles within.
+  \param box_min Lower corner of volume to create particles within. Must be
+  device accessible if on device.
+  \param box_max Upper corner of volume to create particles within. Must be
+  device accessible if on device.
   \param seed Optional random seed for generating particles.
+
+  \return Number of particles created.
 
   \note This approximates many physical scenarios, e.g. atomic simulations.
 */

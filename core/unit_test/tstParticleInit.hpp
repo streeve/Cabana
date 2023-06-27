@@ -32,8 +32,8 @@ struct Bar : Cabana::Field::Matrix<double, 3, 3>
 
 template <class PositionType>
 void checkRandomParticles( const int num_particle,
-                           const std::array<double, 3> box_min,
-                           const std::array<double, 3> box_max,
+                           const Kokkos::Array<double, 3> box_min,
+                           const Kokkos::Array<double, 3> box_max,
                            const PositionType host_positions )
 {
     // Check that we got as many particles as we should have.
@@ -76,8 +76,8 @@ void testRandomCreationSliceMinDistance()
     auto positions = Cabana::slice<0>( aosoa );
 
     double min_dist = 0.47;
-    std::array<double, 3> box_min = { -9.5, -4.7, 0.5 };
-    std::array<double, 3> box_max = { 7.6, -1.5, 5.5 };
+    Kokkos::Array<double, 3> box_min = { -9.5, -4.7, 0.5 };
+    Kokkos::Array<double, 3> box_max = { 7.6, -1.5, 5.5 };
     int created =
         Cabana::createParticles( Cabana::InitRandom(), positions,
                                  positions.size(), min_dist, box_min, box_max );
@@ -102,8 +102,8 @@ void testRandomCreationSlice()
         "random", num_particle );
     auto positions = Cabana::slice<0>( aosoa );
 
-    std::array<double, 3> box_min = { -9.5, -4.7, 0.5 };
-    std::array<double, 3> box_max = { 7.6, -1.5, 5.5 };
+    Kokkos::Array<double, 3> box_min = { -9.5, -4.7, 0.5 };
+    Kokkos::Array<double, 3> box_max = { 7.6, -1.5, 5.5 };
     Cabana::createParticles( Cabana::InitRandom(), positions, positions.size(),
                              box_min, box_max );
     auto host_aosoa =
@@ -122,8 +122,8 @@ void testRandomCreationParticleListMinDistance()
     plist_type particle_list( "random_particles" );
 
     double min_dist = 0.47;
-    std::array<double, 3> box_min = { -9.5, -4.7, 0.5 };
-    std::array<double, 3> box_max = { 7.6, -1.5, 5.5 };
+    Kokkos::Array<double, 3> box_min = { -9.5, -4.7, 0.5 };
+    Kokkos::Array<double, 3> box_max = { 7.6, -1.5, 5.5 };
     // Create all particles.
     auto init_func =
         KOKKOS_LAMBDA( const int, const double x[3], const double,
@@ -161,8 +161,8 @@ void testRandomCreationParticleList()
                              Bar>;
     plist_type particle_list( "random_particles" );
 
-    std::array<double, 3> box_min = { -9.5, -4.7, 0.5 };
-    std::array<double, 3> box_max = { 7.6, -1.5, 5.5 };
+    Kokkos::Array<double, 3> box_min = { -9.5, -4.7, 0.5 };
+    Kokkos::Array<double, 3> box_max = { 7.6, -1.5, 5.5 };
     // Create all particles.
     auto init_func =
         KOKKOS_LAMBDA( const int, const double x[3], const double,
