@@ -184,8 +184,8 @@ void createParticles(
                               Kokkos::is_view<PositionType>::value ),
                             int>::type* = 0 )
 {
-    // Ensure correct space for the particles.
-    assert( positions.size() == num_particles );
+    // Ensure correct space for the particles (View or Slice).
+    checkSize( positions, num_particles );
 
     using PoolType = Kokkos::Random_XorShift64_Pool<ExecutionSpace>;
     using RandomType = Kokkos::Random_XorShift64<ExecutionSpace>;
