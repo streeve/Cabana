@@ -180,6 +180,40 @@ void outputResults( std::ostream& stream, const std::string& data_point_name,
 
 //---------------------------------------------------------------------------//
 
+// Generate random exponential (non-uniform) particles.
+template <class ExecutionSpace, class PositionType>
+void createRandomExponential( ExecutionSpace, PositionType& positions,
+                              const std::size_t num_particles,
+                              const double box_min, const double box_max,
+                              const double lambda )
+{
+    using PoolType = Kokkos::Random_XorShift64_Pool<ExecutionSpace>;
+    using RandomType = Kokkos::Random_XorShift64<ExecutionSpace>;
+    PoolType pool( 342343901 );
+    auto random_coord_op = KOKKOS_LAMBDA( const int p )
+    {
+        auto gen = pool.get_state();
+        for ( int d = 0; d < 3; ++d )
+        {
+            double r;
+            bool resample = true;
+            while ( resample )
+            {
+                double rand = Kokkos::rand<RandomType, double>::draw(
+                    gen, box_min, box_max );
+                r = -1.0 / lambda * Kokkos::log( 1 - rand );
+                if ( r > box_min && r < box_max )
+                    resample = false;
+            }
+            positions( p, d ) = r;
+        }
+        pool.free_state( gen );
+    };
+    Kokkos::RangePolicy<ExecutionSpace> exec_policy( 0, num_particles );
+    Kokkos::parallel_for( exec_policy, random_coord_op );
+    Kokkos::fence();
+}
+
 } // end namespace Benchmark
 } // end namespace Cabana
 

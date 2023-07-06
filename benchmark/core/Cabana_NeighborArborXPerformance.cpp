@@ -28,7 +28,9 @@
 template <class Device>
 void performanceTest( std::ostream& stream, const std::string& test_prefix,
                       std::vector<int> problem_sizes,
-                      std::vector<double> cutoff_ratios, bool sort = true )
+                      std::vector<double> cutoff_ratios, bool sort = true,
+                      const double nonuniform = 0.0,
+                      const int buffer_size = 100 )
 {
     using exec_space = typename Device::execution_space;
     using memory_space = typename Device::memory_space;
@@ -66,7 +68,12 @@ void performanceTest( std::ostream& stream, const std::string& test_prefix,
         x_max[p] = 1.3 * std::pow( num_p, 1.0 / 3.0 );
         aosoas[p].resize( num_p );
         auto x = Cabana::slice<0>( aosoas[p], "position" );
-        Cabana::createRandomParticles( x, x.size(), x_min[p], x_max[p] );
+        if ( nonuniform > 0 )
+            Cabana::Benchmark::createRandomExponential(
+                exec_space{}, x, x.size(), x_min[p], x_max[p], nonuniform );
+        else
+            Cabana::createRandomParticles( exec_space{}, x, x.size(), x_min[p],
+                                           x_max[p] );
 
         if ( sort )
         {
@@ -131,7 +138,7 @@ void performanceTest( std::ostream& stream, const std::string& test_prefix,
                 auto const nlist =
                     Cabana::Experimental::make2DNeighborList<Device>(
                         ListTag{}, Cabana::slice<0>( aosoas[p], "position" ), 0,
-                        num_p, cutoff );
+                        num_p, cutoff, buffer_size );
                 create_timer.stop( pid );
 
                 // Print neighbor statistics once per system.
