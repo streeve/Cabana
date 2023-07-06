@@ -275,6 +275,7 @@ auto makeNeighborList( Tag, Slice const& coordinate_slice,
                        typename Slice::size_type last,
                        typename Slice::value_type radius, int buffer_size = 0 )
 {
+    Kokkos::Profiling::pushRegion( "Cabana::ArborX::NeighborList::CSR" );
     assert( buffer_size >= 0 );
     assert( last >= first );
     assert( last <= coordinate_slice.size() );
@@ -293,6 +294,7 @@ auto makeNeighborList( Tag, Slice const& coordinate_slice,
         space, Impl::makePredicates( coordinate_slice, first, last, radius ),
         Impl::NeighborDiscriminatorCallback<Tag>{}, indices, offset,
         ArborX::Experimental::TraversalPolicy().setBufferSize( buffer_size ) );
+    Kokkos::Profiling::popRegion();
 
     return CrsGraph<MemorySpace, Tag>{ std::move( indices ),
                                        std::move( offset ), first, bvh.size() };
@@ -341,6 +343,7 @@ auto make2DNeighborList( Tag, Slice const& coordinate_slice,
                          typename Slice::value_type radius,
                          int buffer_size = 0 )
 {
+    Kokkos::Profiling::pushRegion( "Cabana::ArborX::NeighborList::2D" );
     assert( buffer_size >= 0 );
     assert( last >= first );
     assert( last <= coordinate_slice.size() );
@@ -397,6 +400,7 @@ auto make2DNeighborList( Tag, Slice const& coordinate_slice,
                Impl::NeighborDiscriminatorCallback2D_SecondPass<
                    decltype( counts ), decltype( neighbors ), Tag>{
                    counts, neighbors } );
+    Kokkos::Profiling::popRegion();
 
     return Dense<MemorySpace, Tag>{ counts, neighbors, first, bvh.size() };
 }
