@@ -133,6 +133,13 @@ class GlobalGrid
     std::enable_if_t<3 == NSD, MPI_Comm>
     subComm( std::array<int, 2> dims ) const;
 
+    /*!
+      \brief Get an MPI sub communicator for a given direction and plane.
+      \param dim Spatial dimension.
+      \param plane Plane/row along which to communicate.
+    */
+    MPI_Comm subComm( const int dim, const int plane ) const;
+
     //! \brief Get the global number of entities in a given dimension.
     //! \param dim Spatial dimension.
     int globalNumEntity( Cell, const int dim ) const;

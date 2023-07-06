@@ -244,6 +244,24 @@ GlobalGrid<MeshType>::subComm( std::array<int, 2> dims ) const
 }
 
 //---------------------------------------------------------------------------//
+// Get the MPI sub communicator for given direction and plane
+template <class MeshType>
+MPI_Comm GlobalGrid<MeshType>::subComm( const int dim, const int plane ) const
+{
+    assert( plane < dimNumBlock( dim ) );
+
+    MPI_Comm sub_comm;
+
+    // Only get the subcommunicator for one plane.
+    int color = dimBlockId( dim );
+    if ( color != plane )
+        color = MPI_UNDEFINED;
+
+    MPI_Comm_split( comm(), color, blockId(), &sub_comm );
+    return sub_comm;
+}
+
+//---------------------------------------------------------------------------//
 // Get the global number of cells in a given dimension.
 template <class MeshType>
 int GlobalGrid<MeshType>::globalNumEntity( Cell, const int dim ) const
