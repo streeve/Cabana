@@ -146,13 +146,17 @@ void performanceTest( std::ostream& stream, const std::string& test_prefix,
                     // Print neighbor statistics once per system.
                     if ( t == 0 )
                     {
-                        auto min_neigh = std::numeric_limits<int>::max();
-                        auto max_neigh = -std::numeric_limits<int>::max();
-                        int total_neigh = 0;
+                        std::size_t max_neigh;
+                        Kokkos::Max<std::size_t> max_reducer( max_neigh );
+                        std::size_t min_neigh;
+                        Kokkos::Min<std::size_t> min_reducer( min_neigh );
+                        std::size_t total_neigh;
+                        Kokkos::Sum<std::size_t> total_reducer( total_neigh );
                         Kokkos::parallel_reduce(
                             "Cabana::Benchmark::countNeighbors", policy,
-                            KOKKOS_LAMBDA( const int p, int& min, int& max,
-                                           int& sum ) {
+                            KOKKOS_LAMBDA( const int p, std::size_t& min,
+                                           std::size_t& max,
+                                           std::size_t& sum ) {
                                 auto const val = Cabana::NeighborList<
                                     neigh_type>::numNeighbor( nlist, p );
                                 if ( val < min )
@@ -161,7 +165,7 @@ void performanceTest( std::ostream& stream, const std::string& test_prefix,
                                     max = val;
                                 sum += val;
                             },
-                            min_neigh, max_neigh, total_neigh );
+                            min_reducer, max_reducer, total_reducer );
                         Kokkos::fence();
                         std::cout << "List min neighbors: " << min_neigh
                                   << std::endl;
