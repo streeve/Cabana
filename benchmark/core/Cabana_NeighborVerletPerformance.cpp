@@ -231,7 +231,7 @@ int main( int argc, char* argv[] )
     std::vector<double> cell_ratios = { 1.0 };
     if ( run_type == "large" )
     {
-        problem_sizes = { 1000, 10000, 100000, 1000000 };
+        problem_sizes = { 1000, 10000, 100000, 1000000, 10000000 };
         cutoff_ratios = { 3.0, 4.0, 5.0 };
         cell_ratios = { 1.0 };
     }
@@ -253,6 +253,10 @@ int main( int argc, char* argv[] )
         performanceTest<device_type>( file, "device_", problem_sizes,
                                       cutoff_ratios, cell_ratios );
     }
+
+    // Do not run with the largest systems on the host by default.
+    if ( run_type == "large" )
+        problem_sizes.erase( problem_sizes.end() - 1 );
     performanceTest<host_device_type>( file, "host_", problem_sizes,
                                        cutoff_ratios, cell_ratios );
 
