@@ -261,7 +261,7 @@ class FastFourierTransform
                  const LGViewType lg_view )
     {
         Kokkos::parallel_for(
-            "fft_copy_to_work",
+            "Cabana::FFT::copy",
             createExecutionPolicy( own_space, exec_space() ),
             KOKKOS_LAMBDA( const int i, const int j, const int k ) {
                 auto iw = i - own_space.min( Dim::I );
@@ -282,7 +282,7 @@ class FastFourierTransform
                  const LGViewType lg_view )
     {
         Kokkos::parallel_for(
-            "fft_copy_to_work",
+            "Cabana::FFT::copy",
             createExecutionPolicy( own_space, exec_space() ),
             KOKKOS_LAMBDA( const int i, const int j ) {
                 auto iw = i - own_space.min( Dim::I );
@@ -302,7 +302,7 @@ class FastFourierTransform
                    LGViewType& lg_view )
     {
         Kokkos::parallel_for(
-            "fft_copy_from_work",
+            "Cabana::FFT::copy",
             createExecutionPolicy( own_space, exec_space() ),
             KOKKOS_LAMBDA( const int i, const int j, const int k ) {
                 auto iw = i - own_space.min( Dim::I );
@@ -323,7 +323,7 @@ class FastFourierTransform
                    LGViewType& lg_view )
     {
         Kokkos::parallel_for(
-            "fft_copy_from_work",
+            "Cabana::FFT::copy",
             createExecutionPolicy( own_space, exec_space() ),
             KOKKOS_LAMBDA( const int i, const int j ) {
                 auto iw = i - own_space.min( Dim::I );
