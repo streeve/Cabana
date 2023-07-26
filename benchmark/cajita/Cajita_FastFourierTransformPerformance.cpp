@@ -48,83 +48,114 @@ void performanceTest( std::ostream& stream,
     // number of runs in test loops
     int num_runs = 10;
 
-    // create timers
-    Cabana::Benchmark::Timer setup_timer( test_prefix + "setup",
-                                          num_grid_size );
+    // Create FFT options
+    Experimental::FastFourierTransformParams params;
 
-    Cabana::Benchmark::Timer transforms_timer( test_prefix + "transforms",
-                                               num_grid_size );
     // loop over the grid sizes
-    for ( int p = 0; p < num_grid_size; ++p )
+    for ( bool all_to_all : { false, true } )
     {
-        auto ranks_per_dim = partitioner.ranksPerDimension( comm, { 0, 0, 0 } );
+        params.setAllToAll( all_to_all );
 
-        std::array<int, 3> num_cell;
-        for ( int d = 0; d < 3; ++d )
+        for ( bool pencil : { false, true } )
         {
-            num_cell[d] = grid_sizes_per_dim_per_rank[p] * ranks_per_dim[d];
-        }
-        auto global_mesh = createUniformGlobalMesh(
-            global_low_corner, global_high_corner, num_cell );
+            params.setPencils( pencil );
 
-        // Create the global grid
-        auto global_grid =
-            createGlobalGrid( comm, global_mesh, is_dim_periodic, partitioner );
+            for ( bool reorder : { false, true } )
+            {
+                params.setReorder( reorder );
 
-        // Create a local grid
-        int halo_width = 0;
-        auto local_grid = createLocalGrid( global_grid, halo_width );
-        auto owned_space = local_grid->indexSpace( Own(), Cell(), Local() );
-        auto ghosted_space = local_grid->indexSpace( Ghost(), Cell(), Local() );
+                // Create timers
+                std::stringstream create_name;
+                create_name << test_prefix << "create_" << all_to_all << "_"
+                            << pencil << "_" << reorder;
+                Cabana::Benchmark::Timer setup_timer( create_name.str(),
+                                                      num_grid_size );
 
-        auto vector_layout = createArrayLayout( local_grid, 2, Cell() );
-        auto lhs = createArray<double, Device>( "lhs", vector_layout );
-        auto lhs_view = lhs->view();
-        uint64_t seed = global_grid->blockId() +
+                std::stringstream transform_name;
+                transform_name << test_prefix << "transform_" << all_to_all
+                               << "_" << pencil << "_" << reorder;
+                Cabana::Benchmark::Timer transforms_timer( transform_name.str(),
+                                                           num_grid_size );
+                // loop over the grid sizes
+                for ( int p = 0; p < num_grid_size; ++p )
+                {
+                    auto ranks_per_dim =
+                        partitioner.ranksPerDimension( comm, { 0, 0, 0 } );
+
+                    std::array<int, 3> num_cell;
+                    for ( int d = 0; d < 3; ++d )
+                    {
+                        num_cell[d] =
+                            grid_sizes_per_dim_per_rank[p] * ranks_per_dim[d];
+                    }
+                    auto global_mesh = createUniformGlobalMesh(
+                        global_low_corner, global_high_corner, num_cell );
+
+                    // Create the global grid
+                    auto global_grid = createGlobalGrid(
+                        comm, global_mesh, is_dim_periodic, partitioner );
+
+                    // Create a local grid
+                    int halo_width = 0;
+                    auto local_grid =
+                        createLocalGrid( global_grid, halo_width );
+                    auto owned_space =
+                        local_grid->indexSpace( Own(), Cell(), Local() );
+                    auto ghosted_space =
+                        local_grid->indexSpace( Ghost(), Cell(), Local() );
+
+                    auto vector_layout =
+                        createArrayLayout( local_grid, 2, Cell() );
+                    auto lhs =
+                        createArray<double, Device>( "lhs", vector_layout );
+                    auto lhs_view = lhs->view();
+                    uint64_t seed =
+                        global_grid->blockId() +
                         ( 19383747 % ( global_grid->blockId() + 1 ) );
-        using rnd_type = Kokkos::Random_XorShift64_Pool<memory_space>;
-        rnd_type pool;
-        pool.init( seed, ghosted_space.size() );
-        Kokkos::parallel_for(
-            "random_complex_grid",
-            createExecutionPolicy( owned_space, exec_space() ),
-            KOKKOS_LAMBDA( const int i, const int j, const int k ) {
-                auto rand = pool.get_state( i + j + k );
-                lhs_view( i, j, k, 0 ) =
-                    Kokkos::rand<decltype( rand ), double>::draw( rand, 0.0,
-                                                                  1.0 );
-                lhs_view( i, j, k, 1 ) =
-                    Kokkos::rand<decltype( rand ), double>::draw( rand, 0.0,
-                                                                  1.0 );
-            } );
+                    using rnd_type =
+                        Kokkos::Random_XorShift64_Pool<memory_space>;
+                    rnd_type pool;
+                    pool.init( seed, ghosted_space.size() );
+                    Kokkos::parallel_for(
+                        "random_complex_grid",
+                        createExecutionPolicy( owned_space, exec_space() ),
+                        KOKKOS_LAMBDA( const int i, const int j, const int k ) {
+                            auto rand = pool.get_state( i + j + k );
+                            lhs_view( i, j, k, 0 ) =
+                                Kokkos::rand<decltype( rand ), double>::draw(
+                                    rand, 0.0, 1.0 );
+                            lhs_view( i, j, k, 1 ) =
+                                Kokkos::rand<decltype( rand ), double>::draw(
+                                    rand, 0.0, 1.0 );
+                        } );
 
-        setup_timer.start( p );
+                    setup_timer.start( p );
 
-        // Create FFT options
-        Experimental::FastFourierTransformParams params;
+                    auto fft = Experimental::createHeffteFastFourierTransform<
+                        double, Device>( *vector_layout, params );
 
-        auto fft =
-            Experimental::createHeffteFastFourierTransform<double, Device>(
-                *vector_layout, params );
+                    setup_timer.stop( p );
 
-        setup_timer.stop( p );
+                    // Loop over number of runs
+                    for ( int t = 0; t < num_runs; ++t )
+                    {
+                        transforms_timer.start( p );
+                        fft->forward( *lhs, Experimental::FFTScaleFull() );
+                        fft->reverse( *lhs, Experimental::FFTScaleNone() );
+                        transforms_timer.stop( p );
+                    }
+                }
 
-        // Loop over number of runs
-        for ( int t = 0; t < num_runs; ++t )
-        {
-            transforms_timer.start( p );
-            fft->forward( *lhs, Experimental::FFTScaleFull() );
-            fft->reverse( *lhs, Experimental::FFTScaleNone() );
-            transforms_timer.stop( p );
+                outputResults( stream, "grid_size_per_dim",
+                               grid_sizes_per_dim_per_rank, setup_timer, comm );
+                outputResults( stream, "grid_size_per_dim",
+                               grid_sizes_per_dim_per_rank, transforms_timer,
+                               comm );
+
+                stream << std::flush;
+            }
         }
     }
-
-    outputResults( stream, "grid_size_per_dim", grid_sizes_per_dim_per_rank,
-                   setup_timer, comm );
-    outputResults( stream, "grid_size_per_dim", grid_sizes_per_dim_per_rank,
-                   transforms_timer, comm );
-
-    stream << std::flush;
 }
 
 //---------------------------------------------------------------------------//
