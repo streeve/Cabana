@@ -162,6 +162,11 @@ class GlobalGrid
     //! \param dim Spatial dimension.
     int globalOffset( const int dim ) const;
 
+    //! \brief Get the global offset in a given dimension. This is where our
+    //! block starts in the global indexing scheme.
+    //! \param dim Spatial dimension.
+    int blockCoords( const int rank ) const;
+
     //! \brief Set number of cells and offset of local part of the grid. Make
     //! sure these are consistent across all ranks.
     //! \param num_cell New number of owned cells for all dimensions.
@@ -228,6 +233,13 @@ std::shared_ptr<GlobalGrid<SparseMesh<Scalar, NumSpaceDim>>> createGlobalGrid(
 }
 
 //---------------------------------------------------------------------------//
+
+template <class MeshType>
+auto lowCorner( const int rank,
+                const std::shared_ptr<GlobalGrid<MeshType>>& global_grid,
+                const std::shared_ptr<GlobalMesh<MeshType>>& global_mesh )
+{
+}
 
 } // end namespace Cajita
 

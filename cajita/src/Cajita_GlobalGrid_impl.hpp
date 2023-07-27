@@ -312,6 +312,17 @@ int GlobalGrid<MeshType>::globalOffset( const int dim ) const
 }
 
 //---------------------------------------------------------------------------//
+// Get the cell coordinates for a given rank for the entity of a given
+// type. This is where our block starts in the global indexing scheme.
+template <class MeshType>
+int GlobalGrid<MeshType>::blockCoords( const int rank ) const
+{
+    int coords[num_space_dim];
+    MPI_Cart_coords( comm(), rank, num_space_dim, coords );
+    return coords;
+}
+
+//---------------------------------------------------------------------------//
 // Set the number of owned cells and global offset. Make sure this is
 // consistent across all ranks.
 template <class MeshType>
