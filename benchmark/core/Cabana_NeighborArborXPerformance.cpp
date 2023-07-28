@@ -29,6 +29,7 @@ template <class Device>
 void performanceTest( std::ostream& stream, const std::string& test_prefix,
                       std::vector<int> problem_sizes,
                       std::vector<double> cutoff_ratios, bool sort = true,
+                      const double num_clusters = 0.0,
                       const double nonuniform = 0.0,
                       const int buffer_size = 100 )
 {
@@ -68,12 +69,14 @@ void performanceTest( std::ostream& stream, const std::string& test_prefix,
         x_max[p] = 1.3 * std::pow( num_p, 1.0 / 3.0 );
         aosoas[p].resize( num_p );
         auto x = Cabana::slice<0>( aosoas[p], "position" );
-        if ( nonuniform > 0 )
+        auto num_particles = x.size();
+        if ( num_clusters > 0 )
             Cabana::Benchmark::createRandomExponential(
-                exec_space{}, x, x.size(), x_min[p], x_max[p], nonuniform );
+                exec_space{}, x, num_particles * num_clusters, num_clusters,
+                x_min[p], x_max[p], nonuniform );
         else
-            Cabana::createRandomParticles( exec_space{}, x, x.size(), x_min[p],
-                                           x_max[p] );
+            Cabana::createRandomParticles( exec_space{}, x, num_particles,
+                                           x_min[p], x_max[p] );
 
         if ( sort )
         {
@@ -235,14 +238,14 @@ int main( int argc, char* argv[] )
     if ( !std::is_same<device_type, host_device_type>{} )
     {
         performanceTest<device_type>( file, "device_", problem_sizes,
-                                      cutoff_ratios );
+                                      cutoff_ratios, false, 0.1, 0.1 );
     }
 
     // Do not run with the largest systems on the host by default.
     if ( run_type == "large" )
         problem_sizes.erase( problem_sizes.end() - 1 );
     performanceTest<host_device_type>( file, "host_", problem_sizes,
-                                       cutoff_ratios );
+                                       cutoff_ratios, false, 0.1, 0.1 );
 
     // Close the output file on rank 0.
     file.close();

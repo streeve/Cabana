@@ -183,35 +183,59 @@ void outputResults( std::ostream& stream, const std::string& data_point_name,
 // Generate random exponential (non-uniform) particles.
 template <class ExecutionSpace, class PositionType>
 void createRandomExponential( ExecutionSpace, PositionType& positions,
-                              const std::size_t num_particles,
+                              const std::size_t num_clusters,
+                              const std::size_t num_particles_per_cluster,
                               const double box_min, const double box_max,
                               const double lambda )
 {
     using PoolType = Kokkos::Random_XorShift64_Pool<ExecutionSpace>;
     using RandomType = Kokkos::Random_XorShift64<ExecutionSpace>;
-    PoolType pool( 342343901 );
-    auto random_coord_op = KOKKOS_LAMBDA( const int p )
+
+    Kokkos::RangePolicy<ExecutionSpace> exec_policy(
+        0, num_particles_per_cluster );
+
+    int pool_id = 342343901;
+    for ( int c = 0; c < num_clusters; ++c )
     {
+        PoolType pool( pool_id );
+
+        // Create a new cluster.
+        double center[3];
         auto gen = pool.get_state();
         for ( int d = 0; d < 3; ++d )
         {
-            double r;
-            bool resample = true;
-            while ( resample )
-            {
-                double rand = Kokkos::rand<RandomType, double>::draw(
-                    gen, box_min, box_max );
-                r = -1.0 / lambda * Kokkos::log( 1 - rand );
-                if ( r > box_min && r < box_max )
-                    resample = false;
-            }
-            positions( p, d ) = r;
+            center[d] =
+                Kokkos::rand<RandomType, double>::draw( gen, box_min, box_max );
+            std::cout << center[d] << " ";
         }
+        std::cout << "\n";
         pool.free_state( gen );
-    };
-    Kokkos::RangePolicy<ExecutionSpace> exec_policy( 0, num_particles );
-    Kokkos::parallel_for( exec_policy, random_coord_op );
-    Kokkos::fence();
+
+        // Create particles exponentially close to this cluster center.
+        auto random_coord_op = KOKKOS_LAMBDA( const int p )
+        {
+            auto gen = pool.get_state();
+
+            for ( int d = 0; d < 3; ++d )
+            {
+                double r;
+                bool resample = true;
+                while ( resample )
+                {
+                    double rand = Kokkos::rand<RandomType, double>::draw(
+                        gen, box_min, box_max );
+                    r = -1.0 / lambda * Kokkos::log( 1 - rand ) + center[d];
+                    if ( r > box_min && r < box_max )
+                        resample = false;
+                }
+                positions( p, d ) = r;
+            }
+            pool.free_state( gen );
+        };
+        Kokkos::parallel_for( exec_policy, random_coord_op );
+        Kokkos::fence();
+        pool_id++;
+    }
 }
 
 } // end namespace Benchmark
