@@ -29,7 +29,7 @@ template <class Device>
 void performanceTest( std::ostream& stream, const std::string& test_prefix,
                       std::vector<int> problem_sizes,
                       std::vector<double> cutoff_ratios, bool sort = true,
-                      const double num_clusters = 0.0,
+                      const double fraction_clusters = 0.0,
                       const double nonuniform = 0.0,
                       const int buffer_size = 100 )
 {
@@ -70,10 +70,11 @@ void performanceTest( std::ostream& stream, const std::string& test_prefix,
         aosoas[p].resize( num_p );
         auto x = Cabana::slice<0>( aosoas[p], "position" );
         auto num_particles = x.size();
-        if ( num_clusters > 0 )
+        if ( fraction_clusters > 0 )
             Cabana::Benchmark::createRandomExponential(
-                exec_space{}, x, num_particles * num_clusters, num_clusters,
-                x_min[p], x_max[p], nonuniform );
+                exec_space{}, x, num_particles * fraction_clusters,
+                num_particles / fraction_clusters, x_min[p], x_max[p],
+                nonuniform );
         else
             Cabana::createRandomParticles( exec_space{}, x, num_particles,
                                            x_min[p], x_max[p] );
@@ -147,6 +148,10 @@ void performanceTest( std::ostream& stream, const std::string& test_prefix,
                 // Print neighbor statistics once per system.
                 if ( t == 0 )
                 {
+                    Cabana::Experimental::HDF5ParticleOutput::HDF5Config h5{};
+                    Cabana::Experimental::HDF5ParticleOutput::writeTimeStep(
+                        h5, "ax_" + std::to_string( num_p ), MPI_COMM_WORLD, 0,
+                        0.0, num_p, Cabana::slice<0>( aosoas[p], "position" ) );
                     auto min_neigh = std::numeric_limits<int>::max();
                     auto max_neigh = -std::numeric_limits<int>::max();
                     int total_neigh = 0;
@@ -197,6 +202,7 @@ void performanceTest( std::ostream& stream, const std::string& test_prefix,
 int main( int argc, char* argv[] )
 {
     // Initialize environment
+    MPI_Init( &argc, &argv );
     Kokkos::initialize( argc, argv );
 
     // Check arguments.
@@ -252,6 +258,7 @@ int main( int argc, char* argv[] )
 
     // Finalize
     Kokkos::finalize();
+    MPI_Finalize();
     return 0;
 }
 

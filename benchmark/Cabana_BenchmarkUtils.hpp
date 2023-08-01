@@ -195,6 +195,7 @@ void createRandomExponential( ExecutionSpace, PositionType& positions,
         0, num_particles_per_cluster );
 
     int pool_id = 342343901;
+    std::cout << num_clusters << " " << num_particles_per_cluster << std::endl;
     for ( int c = 0; c < num_clusters; ++c )
     {
         PoolType pool( pool_id );
@@ -206,12 +207,12 @@ void createRandomExponential( ExecutionSpace, PositionType& positions,
         {
             center[d] =
                 Kokkos::rand<RandomType, double>::draw( gen, box_min, box_max );
-            std::cout << center[d] << " ";
         }
-        std::cout << "\n";
         pool.free_state( gen );
 
         // Create particles exponentially close to this cluster center.
+        int start = c * num_particles_per_cluster;
+        std::cout << start << std::endl;
         auto random_coord_op = KOKKOS_LAMBDA( const int p )
         {
             auto gen = pool.get_state();
@@ -228,8 +229,11 @@ void createRandomExponential( ExecutionSpace, PositionType& positions,
                     if ( r > box_min && r < box_max )
                         resample = false;
                 }
-                positions( p, d ) = r;
+                positions( p + start, d ) = r;
+                std::cout << center[d] << " " << positions( p + start, d )
+                          << " ";
             }
+            std::cout << "\n";
             pool.free_state( gen );
         };
         Kokkos::parallel_for( exec_policy, random_coord_op );

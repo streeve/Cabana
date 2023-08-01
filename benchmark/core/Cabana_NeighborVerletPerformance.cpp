@@ -78,7 +78,7 @@ void performanceTest( std::ostream& stream, const std::string& test_prefix,
         auto num_particles = x.size();
         if ( num_clusters > 0 )
             Cabana::Benchmark::createRandomExponential(
-                exec_space{}, x, num_particles * num_clusters, num_clusters,
+                exec_space{}, x, num_clusters, num_particles * num_clusters,
                 x_min[p], x_max[p], nonuniform );
         else
             Cabana::createRandomParticles( x, x.size(), x_min[p], x_max[p] );
