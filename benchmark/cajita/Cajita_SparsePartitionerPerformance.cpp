@@ -254,10 +254,8 @@ void performanceTest( SparseMapTag, std::ostream& stream, MPI_Comm comm,
     for ( int c = 0; c < num_cells_per_dim_size; ++c )
     {
         // init the sparse grid domain
-        std::array<int, 3> global_num_cell = {
-            num_cells_per_dim[c], num_cells_per_dim[c], num_cells_per_dim[c] };
         auto global_mesh = Cajita::createSparseGlobalMesh(
-            global_low_corner, global_high_corner, global_num_cell );
+            global_low_corner, global_high_corner, num_cells_per_dim[c] );
         int num_tiles_per_dim = num_cells_per_dim[c] >> cell_bits_per_tile_dim;
 
         // create sparse map
@@ -273,6 +271,8 @@ void performanceTest( SparseMapTag, std::ostream& stream, MPI_Comm comm,
         // set up partitioner
         auto total_num =
             num_tiles_per_dim * num_tiles_per_dim * num_tiles_per_dim;
+        std::array<int, 3> global_num_cell = {
+            num_cells_per_dim[c], num_cells_per_dim[c], num_cells_per_dim[c] };
         Cajita::SparseDimPartitioner<Device, cell_num_per_tile_dim> partitioner(
             comm, max_workload_coeff, total_num, num_step_rebalance,
             global_num_cell, max_optimize_iteration );

@@ -56,10 +56,10 @@ class GlobalMesh
     static constexpr std::size_t num_space_dim = mesh_type::num_space_dim;
 
     //! \brief Cell size constructor where all cell dimensions are the same.
-    GlobalMesh(
-        const std::array<scalar_type, num_space_dim>& global_low_corner,
-        const std::array<scalar_type, num_space_dim>& global_high_corner,
-        const scalar_type cell_size )
+    template <template <typename, std::size_t> class ArrayType>
+    GlobalMesh( const ArrayType<scalar_type, num_space_dim>& global_low_corner,
+                const ArrayType<scalar_type, num_space_dim>& global_high_corner,
+                const scalar_type cell_size )
         : _global_low_corner( global_low_corner )
         , _global_high_corner( global_high_corner )
     {
@@ -78,10 +78,10 @@ class GlobalMesh
     }
 
     //! \brief Cell size constructor - each cell dimension can be different.
-    GlobalMesh(
-        const std::array<scalar_type, num_space_dim>& global_low_corner,
-        const std::array<scalar_type, num_space_dim>& global_high_corner,
-        const std::array<scalar_type, num_space_dim>& cell_size )
+    template <template <typename, std::size_t> class ArrayType>
+    GlobalMesh( const ArrayType<scalar_type, num_space_dim>& global_low_corner,
+                const ArrayType<scalar_type, num_space_dim>& global_high_corner,
+                const ArrayType<scalar_type, num_space_dim>& cell_size )
         : _global_low_corner( global_low_corner )
         , _global_high_corner( global_high_corner )
         , _cell_size( cell_size )
@@ -100,10 +100,11 @@ class GlobalMesh
     }
 
     //! \brief Number of global cells constructor.
-    GlobalMesh(
-        const std::array<scalar_type, num_space_dim>& global_low_corner,
-        const std::array<scalar_type, num_space_dim>& global_high_corner,
-        const std::array<int, num_space_dim>& global_num_cell )
+    template <template <typename, std::size_t> class ArrayType,
+              template <typename, std::size_t> class IntArrayType>
+    GlobalMesh( const ArrayType<scalar_type, num_space_dim>& global_low_corner,
+                const ArrayType<scalar_type, num_space_dim>& global_high_corner,
+                const IntArrayType<int, num_space_dim>& global_num_cell )
         : _global_low_corner( global_low_corner )
         , _global_high_corner( global_high_corner )
     {
@@ -183,11 +184,11 @@ class GlobalMesh
   \param cell_size Uniform cell size for every dimension.
   \return Shared pointer to a GlobalMesh.
 */
-template <class Scalar, std::size_t NumSpaceDim>
-std::shared_ptr<GlobalMesh<UniformMesh<Scalar, NumSpaceDim>>>
-createUniformGlobalMesh(
-    const std::array<Scalar, NumSpaceDim>& global_low_corner,
-    const std::array<Scalar, NumSpaceDim>& global_high_corner,
+template <class Scalar, std::size_t NumSpaceDim,
+          template <class, std::size_t> class ArrayType>
+auto createUniformGlobalMesh(
+    const ArrayType<Scalar, NumSpaceDim>& global_low_corner,
+    const ArrayType<Scalar, NumSpaceDim>& global_high_corner,
     const Scalar cell_size )
 {
     return std::make_shared<GlobalMesh<UniformMesh<Scalar, NumSpaceDim>>>(
@@ -204,12 +205,13 @@ createUniformGlobalMesh(
   \param cell_size %Array ofuniform cell size per dimension.
   \return Shared pointer to a GlobalMesh.
 */
-template <class Scalar, std::size_t NumSpaceDim>
+template <class Scalar, std::size_t NumSpaceDim,
+          template <class, std::size_t> class ArrayType>
 std::shared_ptr<GlobalMesh<UniformMesh<Scalar, NumSpaceDim>>>
 createUniformGlobalMesh(
-    const std::array<Scalar, NumSpaceDim>& global_low_corner,
-    const std::array<Scalar, NumSpaceDim>& global_high_corner,
-    const std::array<Scalar, NumSpaceDim>& cell_size )
+    const ArrayType<Scalar, NumSpaceDim>& global_low_corner,
+    const ArrayType<Scalar, NumSpaceDim>& global_high_corner,
+    const ArrayType<Scalar, NumSpaceDim>& cell_size )
 {
     return std::make_shared<GlobalMesh<UniformMesh<Scalar, NumSpaceDim>>>(
         global_low_corner, global_high_corner, cell_size );
@@ -225,12 +227,12 @@ createUniformGlobalMesh(
   \param global_num_cell %Array ofnumber of cells per dimension.
   \return Shared pointer to a GlobalMesh.
 */
-template <class Scalar, std::size_t NumSpaceDim>
-std::shared_ptr<GlobalMesh<UniformMesh<Scalar, NumSpaceDim>>>
-createUniformGlobalMesh(
-    const std::array<Scalar, NumSpaceDim>& global_low_corner,
-    const std::array<Scalar, NumSpaceDim>& global_high_corner,
-    const std::array<int, NumSpaceDim>& global_num_cell )
+template <class Scalar, std::size_t NumSpaceDim,
+          template <class, std::size_t> class ArrayType>
+auto createUniformGlobalMesh(
+    const ArrayType<Scalar, NumSpaceDim>& global_low_corner,
+    const ArrayType<Scalar, NumSpaceDim>& global_high_corner,
+    const ArrayType<int, NumSpaceDim>& global_num_cell )
 {
     return std::make_shared<GlobalMesh<UniformMesh<Scalar, NumSpaceDim>>>(
         global_low_corner, global_high_corner, global_num_cell );
@@ -247,11 +249,11 @@ createUniformGlobalMesh(
   \param cell_size Uniform cell size for every dimension.
   \return Shared pointer to a GlobalMesh.
 */
-template <class Scalar, std::size_t NumSpaceDim>
-std::shared_ptr<GlobalMesh<SparseMesh<Scalar, NumSpaceDim>>>
-createSparseGlobalMesh(
-    const std::array<Scalar, NumSpaceDim>& global_low_corner,
-    const std::array<Scalar, NumSpaceDim>& global_high_corner,
+template <class Scalar, std::size_t NumSpaceDim,
+          template <class, std::size_t> class ArrayType>
+auto createSparseGlobalMesh(
+    const ArrayType<Scalar, NumSpaceDim>& global_low_corner,
+    const ArrayType<Scalar, NumSpaceDim>& global_high_corner,
     const Scalar cell_size )
 {
     return std::make_shared<GlobalMesh<SparseMesh<Scalar, NumSpaceDim>>>(
@@ -268,12 +270,12 @@ createSparseGlobalMesh(
   \param cell_size %Array ofuniform cell size per dimension.
   \return Shared pointer to a GlobalMesh.
 */
-template <class Scalar, std::size_t NumSpaceDim>
-std::shared_ptr<GlobalMesh<SparseMesh<Scalar, NumSpaceDim>>>
-createSparseGlobalMesh(
-    const std::array<Scalar, NumSpaceDim>& global_low_corner,
-    const std::array<Scalar, NumSpaceDim>& global_high_corner,
-    const std::array<Scalar, NumSpaceDim>& cell_size )
+template <class Scalar, std::size_t NumSpaceDim,
+          template <class, std::size_t> class ArrayType>
+auto createSparseGlobalMesh(
+    const ArrayType<Scalar, NumSpaceDim>& global_low_corner,
+    const ArrayType<Scalar, NumSpaceDim>& global_high_corner,
+    const ArrayType<Scalar, NumSpaceDim>& cell_size )
 {
     return std::make_shared<GlobalMesh<SparseMesh<Scalar, NumSpaceDim>>>(
         global_low_corner, global_high_corner, cell_size );
@@ -289,12 +291,13 @@ createSparseGlobalMesh(
   \param global_num_cell %Array ofnumber of cells per dimension.
   \return Shared pointer to a GlobalMesh.
 */
-template <class Scalar, std::size_t NumSpaceDim>
-std::shared_ptr<GlobalMesh<SparseMesh<Scalar, NumSpaceDim>>>
-createSparseGlobalMesh(
-    const std::array<Scalar, NumSpaceDim>& global_low_corner,
-    const std::array<Scalar, NumSpaceDim>& global_high_corner,
-    const std::array<int, NumSpaceDim>& global_num_cell )
+template <class Scalar, std::size_t NumSpaceDim, class IntType,
+          template <class, std::size_t, typename...> class ArrayType,
+          template <class, std::size_t, typename...> class IntArrayType>
+auto createSparseGlobalMesh(
+    const ArrayType<Scalar, NumSpaceDim>& global_low_corner,
+    const ArrayType<Scalar, NumSpaceDim>& global_high_corner,
+    const IntArrayType<IntType, NumSpaceDim>& global_num_cell )
 {
     return std::make_shared<GlobalMesh<SparseMesh<Scalar, NumSpaceDim>>>(
         global_low_corner, global_high_corner, global_num_cell );
