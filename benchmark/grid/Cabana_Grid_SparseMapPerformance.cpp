@@ -34,8 +34,8 @@ void performanceTest( std::ostream& stream, const std::string& test_prefix,
     using memory_space = typename Device::memory_space;
 
     // Domain size setup
-    std::array<float, 3> global_low_corner = { 0.0, 0.0, 0.0 };
-    std::array<float, 3> global_high_corner = { 1.0, 1.0, 1.0 };
+    Kokkos::Array<float, 3> global_low_corner = { 0.0, 0.0, 0.0 };
+    Kokkos::Array<float, 3> global_high_corner = { 1.0, 1.0, 1.0 };
     constexpr int cell_num_per_tile_dim = 4;
     constexpr int cell_bits_per_tile_dim = 2;
 
@@ -73,11 +73,9 @@ void performanceTest( std::ostream& stream, const std::string& test_prefix,
     // Loop over different size of the domain
     for ( int c = 0; c < num_cells_per_dim_size; ++c )
     {
-        std::array<int, 3> global_num_cell = {
-            num_cells_per_dim[c], num_cells_per_dim[c], num_cells_per_dim[c] };
-        auto global_mesh = Cabana::Grid::createSparseGlobalMesh(
-            global_low_corner, global_high_corner, global_num_cell );
         float cell_size = 1.0 / num_cells_per_dim[c];
+        auto global_mesh = Cajita::createSparseGlobalMesh(
+            global_low_corner, global_high_corner, cell_size );
 
         // create sparse map
         int pre_alloc_size = num_cells_per_dim[c] * num_cells_per_dim[c];
