@@ -66,19 +66,22 @@ void performanceTest( std::ostream& stream, const std::string& test_prefix,
 
         // Define problem grid.
         x_min[p] = 0.0;
-        x_max[p] = 1.3 * std::pow( num_p, 1.0 / 3.0 );
+        x_max[p] = 3 * std::pow( num_p, 1.0 / 3.0 );
         aosoas[p].resize( num_p );
         auto x = Cabana::slice<0>( aosoas[p], "position" );
         auto num_particles = x.size();
         if ( fraction_clusters > 0 )
+        {
+            int num_clusters = num_particles * fraction_clusters;
             Cabana::Benchmark::createRandomExponential(
-                exec_space{}, x, num_particles * fraction_clusters,
-                num_particles / fraction_clusters, x_min[p], x_max[p],
-                nonuniform );
+                exec_space{}, x, num_clusters, num_particles / num_clusters,
+                x_min[p], x_max[p], nonuniform );
+        }
         else
+        {
             Cabana::createRandomParticles( exec_space{}, x, num_particles,
                                            x_min[p], x_max[p] );
-
+        }
         if ( sort )
         {
             // Sort the particles to make them more realistic, e.g. in an MD
@@ -139,19 +142,19 @@ void performanceTest( std::ostream& stream, const std::string& test_prefix,
                 // Create the neighbor list.
                 double cutoff = cutoff_ratios[c];
                 create_timer.start( pid );
+                auto x = Cabana::slice<0>( aosoas[p], "position" );
                 auto const nlist =
                     Cabana::Experimental::make2DNeighborList<Device>(
-                        ListTag{}, Cabana::slice<0>( aosoas[p], "position" ), 0,
-                        num_p, cutoff, buffer_size );
+                        ListTag{}, x, 0, num_p, cutoff, buffer_size );
                 create_timer.stop( pid );
 
                 // Print neighbor statistics once per system.
                 if ( t == 0 )
                 {
                     Cabana::Experimental::HDF5ParticleOutput::HDF5Config h5{};
+                    std::string name = "ax_" + std::to_string( num_p );
                     Cabana::Experimental::HDF5ParticleOutput::writeTimeStep(
-                        h5, "ax_" + std::to_string( num_p ), MPI_COMM_WORLD, 0,
-                        0.0, num_p, Cabana::slice<0>( aosoas[p], "position" ) );
+                        h5, name, MPI_COMM_WORLD, 0, 0.0, x.size(), x );
                     auto min_neigh = std::numeric_limits<int>::max();
                     auto max_neigh = -std::numeric_limits<int>::max();
                     int total_neigh = 0;
@@ -221,7 +224,7 @@ int main( int argc, char* argv[] )
     std::string run_type = "";
     if ( argc > 2 )
         run_type = argv[2];
-    std::vector<int> problem_sizes = { 100, 1000 };
+    std::vector<int> problem_sizes = { 1000, 10000 };
     std::vector<double> cutoff_ratios = { 2.0, 3.0 };
     if ( run_type == "large" )
     {
@@ -244,14 +247,14 @@ int main( int argc, char* argv[] )
     if ( !std::is_same<device_type, host_device_type>{} )
     {
         performanceTest<device_type>( file, "device_", problem_sizes,
-                                      cutoff_ratios, false, 0.1, 0.1 );
+                                      cutoff_ratios, false, 0.05, 0.9 );
     }
 
     // Do not run with the largest systems on the host by default.
     if ( run_type == "large" )
         problem_sizes.erase( problem_sizes.end() - 1 );
     performanceTest<host_device_type>( file, "host_", problem_sizes,
-                                       cutoff_ratios, false, 0.1, 0.1 );
+                                       cutoff_ratios, false, 0.01, 0.9 );
 
     // Close the output file on rank 0.
     file.close();
