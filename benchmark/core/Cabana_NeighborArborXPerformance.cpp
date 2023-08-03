@@ -23,44 +23,48 @@
 #include <string>
 #include <vector>
 
-//---------------------------------------------------------------------------//
-// Performance test.
-template <class Device>
-void performanceTest( std::ostream& stream, const std::string& test_prefix,
-                      std::vector<int> problem_sizes,
-                      std::vector<double> cutoff_ratios, bool sort = true,
-                      const double fraction_clusters = 0.0,
-                      const double nonuniform = 0.0,
-                      const int buffer_size = 100 )
+template <class AoSoAType>
+void readFile( std::string filename, std::vector<AoSoAType>& aosoas,
+               std::vector<int> problem_sizes )
 {
-    using exec_space = typename Device::execution_space;
-    using memory_space = typename Device::memory_space;
+    std::ifstream file_stream;
+    file_stream.open( filename );
 
-    // Declare the neighbor list type.
-    using ListTag = Cabana::FullNeighborTag;
-    using IterTag = Cabana::SerialOpTag;
-    // Note: this needs to match the neighbor function call below.
-    using neigh_type = Cabana::Experimental::Dense<memory_space, ListTag>;
+    std::string line;
+    // box
+    for ( int l = 0; l < 3; ++l )
+        std::getline( file_stream, line );
+    std::getline( file_stream, line );
 
+    int num_problem_size = problem_sizes.size();
+    auto x = Cabana::slice<0>( aosoas[0], "position" );
+    for ( std::size_t p = 0; p < x.size(); ++p )
+    {
+        std::getline( file_stream, line );
+        std::size_t pos1;
+        for ( std::size_t n = 0; n < 2; n++ )
+            pos1 = line.find( " " );
+        std::size_t pos2 = line.find( " " );
+        for ( int d = 0; d < 3; ++d )
+        {
+            x( p, d ) = std::stod( line.substr( pos1, pos2 ) );
+            pos1 = pos2;
+            pos2 = line.find( " " );
+        }
+    }
+}
+
+template <class AoSoAType>
+void createParticles( std::vector<AoSoAType>& aosoas,
+                      std::vector<int> problem_sizes )
+{
     // Declare problem sizes.
     int num_problem_size = problem_sizes.size();
     std::vector<double> x_min( num_problem_size );
     std::vector<double> x_max( num_problem_size );
 
-    // Declare the number of cutoff ratios (directly related to neighbors per
-    // atom) to generate.
-    int cutoff_ratios_size = cutoff_ratios.size();
-
-    // Number of runs in the test loops.
-    int num_run = 10;
-
-    // Define the aosoa.
-    using member_types = Cabana::MemberTypes<double[3]>;
-    using aosoa_type = Cabana::AoSoA<member_types, Device>;
-    std::vector<aosoa_type> aosoas( num_problem_size );
-
     // Create aosoas.
-    for ( int p = 0; p < num_problem_size; ++p )
+    for ( std::size_t p = 0; p < problem_sizes.size(); ++p )
     {
         int num_p = problem_sizes[p];
 
@@ -70,18 +74,10 @@ void performanceTest( std::ostream& stream, const std::string& test_prefix,
         aosoas[p].resize( num_p );
         auto x = Cabana::slice<0>( aosoas[p], "position" );
         auto num_particles = x.size();
-        if ( fraction_clusters > 0 )
-        {
-            int num_clusters = num_particles * fraction_clusters;
-            Cabana::Benchmark::createRandomExponential(
-                exec_space{}, x, num_clusters, num_particles / num_clusters,
-                x_min[p], x_max[p], nonuniform );
-        }
-        else
-        {
-            Cabana::createRandomParticles( exec_space{}, x, num_particles,
-                                           x_min[p], x_max[p] );
-        }
+
+        Cabana::createRandomParticles( exec_space{}, x, num_particles, x_min[p],
+                                       x_max[p] );
+
         if ( sort )
         {
             // Sort the particles to make them more realistic, e.g. in an MD
@@ -97,6 +93,49 @@ void performanceTest( std::ostream& stream, const std::string& test_prefix,
                 x, sort_delta, grid_min, grid_max );
             Cabana::permute( linked_cell_list, aosoas[p] );
         }
+    }
+}
+
+//---------------------------------------------------------------------------//
+// Performance test.
+template <class Device>
+void performanceTest( std::ostream& stream, const std::string& test_prefix,
+                      std::vector<int> problem_sizes,
+                      std::vector<double> cutoff_ratios, bool sort = true,
+                      const double fraction_clusters = 0.0,
+                      const double nonuniform = 0.0,
+                      const std::string filename = "",
+                      const int buffer_size = 100 )
+{
+    using exec_space = typename Device::execution_space;
+    using memory_space = typename Device::memory_space;
+
+    // Declare the neighbor list type.
+    using ListTag = Cabana::FullNeighborTag;
+    using IterTag = Cabana::SerialOpTag;
+    // Note: this needs to match the neighbor function call below.
+    using neigh_type = Cabana::Experimental::Dense<memory_space, ListTag>;
+
+    // Declare the number of cutoff ratios (directly related to neighbors per
+    // atom) to generate.
+    int cutoff_ratios_size = cutoff_ratios.size();
+
+    // Number of runs in the test loops.
+    int num_run = 10;
+
+    // Define the aosoa.
+    using member_types = Cabana::MemberTypes<double[3]>;
+    using aosoa_type = Cabana::AoSoA<member_types, Device>;
+    int num_problem_size = problem_sizes.size();
+    std::vector<aosoa_type> aosoas( num_problem_size );
+
+    if ( filename )
+    {
+        readFile( filename, aosoas, problem_sizes );
+    }
+    else
+    {
+        createParticles( aosoas, problem_sizes );
     }
 
     // Loop over number of ratios (neighbors per particle).
@@ -231,6 +270,17 @@ int main( int argc, char* argv[] )
         problem_sizes = { 1000, 10000, 100000, 1000000, 10000000 };
         cutoff_ratios = { 3.0, 4.0, 5.0 };
     }
+    else if ( run_type )
+    {
+        std::ifstream file_stream;
+        file_stream.open( run_type );
+
+        std::string line;
+        for ( int l = 0; l < 3; ++l )
+            getline( file_stream, line );
+        int num_particles = std::to_string( line[0] );
+        problem_sizes = { num_particles };
+    }
 
     // Open the output file on rank 0.
     std::fstream file;
@@ -254,7 +304,8 @@ int main( int argc, char* argv[] )
     if ( run_type == "large" )
         problem_sizes.erase( problem_sizes.end() - 1 );
     performanceTest<host_device_type>( file, "host_", problem_sizes,
-                                       cutoff_ratios, false, 0.01, 0.9 );
+                                       cutoff_ratios, false, 0.01, 0.9,
+                                       filename );
 
     // Close the output file on rank 0.
     file.close();
