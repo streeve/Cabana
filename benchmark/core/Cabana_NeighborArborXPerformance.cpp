@@ -32,32 +32,38 @@ void readFile( std::string filename, std::vector<AoSoAType>& aosoas,
 
     std::string line;
     // box
-    for ( int l = 0; l < 3; ++l )
+    for ( int l = 0; l < 8; ++l )
         std::getline( file_stream, line );
     std::getline( file_stream, line );
 
-    int num_problem_size = problem_sizes.size();
+    aosoas[0].resize( problem_sizes[0] );
     auto x = Cabana::slice<0>( aosoas[0], "position" );
+    std::cout << x.size() << std::endl;
     for ( std::size_t p = 0; p < x.size(); ++p )
     {
         std::getline( file_stream, line );
-        std::size_t pos1;
+        std::size_t pos;
         for ( std::size_t n = 0; n < 2; n++ )
-            pos1 = line.find( " " );
-        std::size_t pos2 = line.find( " " );
+        {
+            pos = line.find( " " );
+            line = line.substr( pos + 1, std::string::npos );
+        }
         for ( int d = 0; d < 3; ++d )
         {
-            x( p, d ) = std::stod( line.substr( pos1, pos2 ) );
-            pos1 = pos2;
-            pos2 = line.find( " " );
+            pos = line.find( " " );
+            x( p, d ) = std::stod( line.substr( 0, pos ) );
+            line = line.substr( pos + 1, std::string::npos );
         }
     }
 }
 
-template <class AoSoAType>
-void createParticles( std::vector<AoSoAType>& aosoas,
-                      std::vector<int> problem_sizes )
+template <class Device, class AoSoAType>
+void createParticles( Device, std::vector<AoSoAType>& aosoas,
+                      std::vector<int> problem_sizes, double cutoff,
+                      bool sort = true )
 {
+    using exec_space = typename Device::execution_space;
+
     // Declare problem sizes.
     int num_problem_size = problem_sizes.size();
     std::vector<double> x_min( num_problem_size );
@@ -73,9 +79,8 @@ void createParticles( std::vector<AoSoAType>& aosoas,
         x_max[p] = 3 * std::pow( num_p, 1.0 / 3.0 );
         aosoas[p].resize( num_p );
         auto x = Cabana::slice<0>( aosoas[p], "position" );
-        auto num_particles = x.size();
-
-        Cabana::createRandomParticles( exec_space{}, x, num_particles, x_min[p],
+        std::cout << x.size() << std::endl;
+        Cabana::createRandomParticles( exec_space{}, x, num_p, x_min[p],
                                        x_max[p] );
 
         if ( sort )
@@ -84,7 +89,6 @@ void createParticles( std::vector<AoSoAType>& aosoas,
             // simulation. They likely won't be randomly scattered about, but
             // rather will be periodically sorted for spatial locality. Bin them
             // in cells the size of the smallest cutoff distance.
-            double cutoff = cutoff_ratios.front();
             double sort_delta[3] = { cutoff, cutoff, cutoff };
             double grid_min[3] = { x_min[p], x_min[p], x_min[p] };
             double grid_max[3] = { x_max[p], x_max[p], x_max[p] };
@@ -129,13 +133,16 @@ void performanceTest( std::ostream& stream, const std::string& test_prefix,
     int num_problem_size = problem_sizes.size();
     std::vector<aosoa_type> aosoas( num_problem_size );
 
-    if ( filename )
+    if ( filename == "small" || filename == "large" )
     {
-        readFile( filename, aosoas, problem_sizes );
+        std::cout << "create" << std::endl;
+        createParticles( exec_space{}, aosoas, problem_sizes,
+                         cutoff_ratios.front(), sort );
     }
     else
     {
-        createParticles( aosoas, problem_sizes );
+        std::cout << "file" << std::endl;
+        readFile( filename, aosoas, problem_sizes );
     }
 
     // Loop over number of ratios (neighbors per particle).
@@ -260,25 +267,33 @@ int main( int argc, char* argv[] )
     std::string filename = argv[1];
 
     // Define run sizes.
-    std::string run_type = "";
+    std::string run_type = "small";
     if ( argc > 2 )
         run_type = argv[2];
-    std::vector<int> problem_sizes = { 1000, 10000 };
+    std::cout << run_type << std::endl;
+
+    std::vector<int> problem_sizes;
     std::vector<double> cutoff_ratios = { 2.0, 3.0 };
-    if ( run_type == "large" )
+    if ( run_type == "small" )
+    {
+        problem_sizes = { 1000, 10000 };
+    }
+    else if ( run_type == "large" )
     {
         problem_sizes = { 1000, 10000, 100000, 1000000, 10000000 };
         cutoff_ratios = { 3.0, 4.0, 5.0 };
     }
-    else if ( run_type )
+    else
     {
         std::ifstream file_stream;
         file_stream.open( run_type );
 
         std::string line;
-        for ( int l = 0; l < 3; ++l )
+        for ( int l = 0; l < 4; ++l )
             getline( file_stream, line );
-        int num_particles = std::to_string( line[0] );
+        std::cout << line << std::endl;
+        int num_particles = std::stoi( line, nullptr );
+        std::cout << num_particles << std::endl;
         problem_sizes = { num_particles };
     }
 
@@ -305,7 +320,7 @@ int main( int argc, char* argv[] )
         problem_sizes.erase( problem_sizes.end() - 1 );
     performanceTest<host_device_type>( file, "host_", problem_sizes,
                                        cutoff_ratios, false, 0.01, 0.9,
-                                       filename );
+                                       run_type );
 
     // Close the output file on rank 0.
     file.close();
