@@ -633,7 +633,7 @@ auto createHeffteFastFourierTransform(
     const FastFourierTransformParams& params )
 {
     return std::make_shared<HeffteFastFourierTransform<
-        EntityType, MeshType, Scalar, DeviceType, BackendType>>( layout,
+      EntityType, MeshType, Scalar, DeviceType, BackendType>>( exec_space, layout,
                                                                  params );
 }
 
