@@ -102,7 +102,7 @@ void performanceTest( std::ostream& stream,
 
         auto fft =
             Experimental::createHeffteFastFourierTransform<double, Device>(
-                *vector_layout, params );
+				exec_space{}, *vector_layout, params );
 
         setup_timer.stop( p );
 

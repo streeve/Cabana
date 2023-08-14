@@ -48,11 +48,12 @@ void calculateFFT( bool use_default, bool use_params,
     // transposition; false uses strided data with no transposition)
     params.setReorder( true );
 
+    using exec_space = TEST_EXECSPACE;
     if ( use_default && use_params )
     {
         auto fft =
             Experimental::createHeffteFastFourierTransform<double, TEST_DEVICE>(
-                *vector_layout, params );
+										exec_space{}, *vector_layout, params );
         // Forward transform
         fft->forward( *lhs, Experimental::FFTScaleFull() );
         // Reverse transform
@@ -62,11 +63,11 @@ void calculateFFT( bool use_default, bool use_params,
     {
         auto fft =
             Experimental::createHeffteFastFourierTransform<double, TEST_DEVICE>(
-                *vector_layout );
+										exec_space{}, *vector_layout );
         fft->forward( *lhs, Experimental::FFTScaleFull() );
         fft->reverse( *lhs, Experimental::FFTScaleNone() );
     }
-#if !defined( KOKKOS_ENABLE_CUDA ) && !defined( KOKKOS_ENABLE_HIP )
+#if !defined( KOKKOS_ENABLE_CUDA ) && !defined( KOKKOS_ENABLE_HIP ) && !defined( KOKKOS_ENABLE_SYCL )
     else if ( use_params )
     {
         auto fft = Experimental::createHeffteFastFourierTransform<

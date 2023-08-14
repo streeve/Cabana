@@ -497,8 +497,9 @@ class HeffteFastFourierTransform
       \param layout The array layout defining the vector space of the transform.
       \param params Parameters for the FFT.
     */
-    HeffteFastFourierTransform( const ArrayLayout<EntityType, MeshType>& layout,
-                                const FastFourierTransformParams& params )
+  HeffteFastFourierTransform( exec_space space,
+			      const ArrayLayout<EntityType, MeshType>& layout,
+			      const FastFourierTransformParams& params )
         : FastFourierTransform<
               EntityType, MeshType, Scalar, DeviceType,
               HeffteFastFourierTransform<EntityType, MeshType, Scalar,
@@ -521,7 +522,7 @@ class HeffteFastFourierTransform
 
         // Create the heFFTe main class (separated to handle SYCL queue
         // correctly).
-        _fft = Impl::createHeffte( exec_space{}, heffte_backend_type{}, inbox, outbox,
+        _fft = Impl::createHeffte( space, heffte_backend_type{}, inbox, outbox,
                                    layout.localGrid()->globalGrid().comm(),
                                    heffte_params );
         int fftsize = std::max( _fft->size_outbox(), _fft->size_inbox() );
@@ -627,6 +628,7 @@ class HeffteFastFourierTransform
 template <class Scalar, class DeviceType, class BackendType, class EntityType,
           class MeshType>
 auto createHeffteFastFourierTransform(
+				      typename DeviceType::execution_space exec_space,
     const ArrayLayout<EntityType, MeshType>& layout,
     const FastFourierTransformParams& params )
 {
@@ -640,12 +642,13 @@ auto createHeffteFastFourierTransform(
 //! \param params FFT parameters
 template <class Scalar, class DeviceType, class EntityType, class MeshType>
 auto createHeffteFastFourierTransform(
-    const ArrayLayout<EntityType, MeshType>& layout,
+                                      typename DeviceType::execution_space exec_space,
+				      const ArrayLayout<EntityType, MeshType>& layout,
     const FastFourierTransformParams& params )
 {
     return createHeffteFastFourierTransform<
         Scalar, DeviceType, Impl::FFTBackendDefault, EntityType, MeshType>(
-        layout, params );
+									   exec_space, layout, params );
 }
 
 //! Creation function for heFFTe FFT with explict FFT backend and default
@@ -654,13 +657,13 @@ auto createHeffteFastFourierTransform(
 template <class Scalar, class DeviceType, class BackendType, class EntityType,
           class MeshType>
 auto createHeffteFastFourierTransform(
-    const ArrayLayout<EntityType, MeshType>& layout )
+				      typename DeviceType::execution_space exec_space,
+				      const ArrayLayout<EntityType, MeshType>& layout )
 {
     using device_type = DeviceType;
     using backend_type = BackendType;
-    using exec_space = typename device_type::execution_space;
     using heffte_backend_type =
-        typename Impl::HeffteBackendTraits<exec_space,
+      typename Impl::HeffteBackendTraits<typename DeviceType::execution_space,
                                            backend_type>::backend_type;
 
     // use default heFFTe params for this backend
@@ -673,7 +676,7 @@ auto createHeffteFastFourierTransform(
     params.setReorder( heffte_params.use_reorder );
 
     return std::make_shared<HeffteFastFourierTransform<
-        EntityType, MeshType, Scalar, DeviceType, BackendType>>( layout,
+      EntityType, MeshType, Scalar, DeviceType, BackendType>>( exec_space, layout,
                                                                  params );
 }
 
@@ -682,11 +685,11 @@ auto createHeffteFastFourierTransform(
 //! \param layout FFT entity array
 template <class Scalar, class DeviceType, class EntityType, class MeshType>
 auto createHeffteFastFourierTransform(
-    const ArrayLayout<EntityType, MeshType>& layout )
+				      typename DeviceType::execution_space exec_space, const ArrayLayout<EntityType, MeshType>& layout )
 {
     return createHeffteFastFourierTransform<
         Scalar, DeviceType, Impl::FFTBackendDefault, EntityType, MeshType>(
-        layout );
+									   exec_space, layout );
 }
 
 //---------------------------------------------------------------------------//
