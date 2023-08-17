@@ -202,20 +202,20 @@ void performanceTest( std::ostream& stream, const std::size_t num_particle,
             comm_dst_particles = Cabana::create_mirror_view(
                 comm_memory_space(), dst_particles );
 
-            auto s0 = Cabana::slice<0>( comm_src_particles );
-            auto d0 = Cabana::slice<0>( comm_dst_particles );
+            auto s0 = Cabana::slice<0>( "s0", comm_src_particles );
+            auto d0 = Cabana::slice<0>( "d0", comm_dst_particles );
             Cabana::migrate( distributor_fast, s0, d0 );
 
-            auto s1 = Cabana::slice<1>( comm_src_particles );
-            auto d1 = Cabana::slice<1>( comm_dst_particles );
+            auto s1 = Cabana::slice<1>( "s1", comm_src_particles );
+            auto d1 = Cabana::slice<1>( "d1", comm_dst_particles );
             Cabana::migrate( distributor_fast, s1, d1 );
 
-            auto s2 = Cabana::slice<2>( comm_src_particles );
-            auto d2 = Cabana::slice<2>( comm_dst_particles );
+            auto s2 = Cabana::slice<2>( "s2", comm_src_particles );
+            auto d2 = Cabana::slice<2>( "d2", comm_dst_particles );
             Cabana::migrate( distributor_fast, s2, d2 );
 
-            auto s3 = Cabana::slice<3>( comm_src_particles );
-            auto d3 = Cabana::slice<3>( comm_dst_particles );
+            auto s3 = Cabana::slice<3>( "s3", comm_src_particles );
+            auto d3 = Cabana::slice<3>( "d3", comm_dst_particles );
             Cabana::migrate( distributor_fast, s3, d3 );
 
             Cabana::deep_copy( dst_particles, comm_dst_particles );
@@ -345,16 +345,16 @@ void performanceTest( std::ostream& stream, const std::size_t num_particle,
             comm_particles = Cabana::create_mirror_view_and_copy(
                 comm_memory_space(), particles );
 
-            auto s0 = Cabana::slice<0>( comm_particles );
+            auto s0 = Cabana::slice<0>( "s0", comm_particles );
             Cabana::gather( halo, s0 );
 
-            auto s1 = Cabana::slice<1>( comm_particles );
+            auto s1 = Cabana::slice<1>( "s1", comm_particles );
             Cabana::gather( halo, s1 );
 
-            auto s2 = Cabana::slice<2>( comm_particles );
+            auto s2 = Cabana::slice<2>( "s2", comm_particles );
             Cabana::gather( halo, s2 );
 
-            auto s3 = Cabana::slice<3>( comm_particles );
+            auto s3 = Cabana::slice<3>( "s3", comm_particles );
             Cabana::gather( halo, s3 );
 
             Cabana::deep_copy( particles, comm_particles );
@@ -367,16 +367,16 @@ void performanceTest( std::ostream& stream, const std::size_t num_particle,
             comm_particles = Cabana::create_mirror_view_and_copy(
                 comm_memory_space(), particles );
 
-            s0 = Cabana::slice<0>( comm_particles );
+            s0 = Cabana::slice<0>( "s0", comm_particles );
             Cabana::scatter( halo, s0 );
 
-            s1 = Cabana::slice<1>( comm_particles );
+            s1 = Cabana::slice<1>( "s1", comm_particles );
             Cabana::scatter( halo, s1 );
 
-            s2 = Cabana::slice<2>( comm_particles );
+            s2 = Cabana::slice<2>( "s2", comm_particles );
             Cabana::scatter( halo, s2 );
 
-            s3 = Cabana::slice<3>( comm_particles );
+            s3 = Cabana::slice<3>( "s3", comm_particles );
             Cabana::scatter( halo, s3 );
 
             Cabana::deep_copy( particles, comm_particles );
@@ -405,10 +405,10 @@ void performanceTest( std::ostream& stream, const std::size_t num_particle,
         // ensemble.
         comm_particles = Cabana::create_mirror_view_and_copy(
             comm_memory_space(), particles );
-        auto s0 = Cabana::slice<0>( comm_particles );
-        auto s1 = Cabana::slice<1>( comm_particles );
-        auto s2 = Cabana::slice<2>( comm_particles );
-        auto s3 = Cabana::slice<3>( comm_particles );
+        auto s0 = Cabana::slice<0>( "s0", comm_particles );
+        auto s1 = Cabana::slice<1>( "s1", comm_particles );
+        auto s2 = Cabana::slice<2>( "s2", comm_particles );
+        auto s3 = Cabana::slice<3>( "s3", comm_particles );
         auto gather_s0 = createGather( halo, s0, overallocation );
         auto gather_s1 = createGather( halo, s1, overallocation );
         auto gather_s2 = createGather( halo, s2, overallocation );
@@ -422,10 +422,10 @@ void performanceTest( std::ostream& stream, const std::size_t num_particle,
             halo_buffer_slice_gather.start( fraction );
             comm_particles = Cabana::create_mirror_view_and_copy(
                 comm_memory_space(), particles );
-            s0 = Cabana::slice<0>( comm_particles );
-            s1 = Cabana::slice<1>( comm_particles );
-            s2 = Cabana::slice<2>( comm_particles );
-            s3 = Cabana::slice<3>( comm_particles );
+            s0 = Cabana::slice<0>( "s0", comm_particles );
+            s1 = Cabana::slice<1>( "s1", comm_particles );
+            s2 = Cabana::slice<2>( "s2", comm_particles );
+            s3 = Cabana::slice<3>( "s3", comm_particles );
             gather_s0.setData( s0 );
             gather_s1.setData( s1 );
             gather_s2.setData( s2 );
@@ -442,10 +442,10 @@ void performanceTest( std::ostream& stream, const std::size_t num_particle,
             halo_buffer_slice_scatter.start( fraction );
             comm_particles = Cabana::create_mirror_view_and_copy(
                 comm_memory_space(), particles );
-            s0 = Cabana::slice<0>( comm_particles );
-            s1 = Cabana::slice<1>( comm_particles );
-            s2 = Cabana::slice<2>( comm_particles );
-            s3 = Cabana::slice<3>( comm_particles );
+            s0 = Cabana::slice<0>( "s0", comm_particles );
+            s1 = Cabana::slice<1>( "s1", comm_particles );
+            s2 = Cabana::slice<2>( "s2", comm_particles );
+            s3 = Cabana::slice<3>( "s3", comm_particles );
             scatter_s0.setData( s0 );
             scatter_s1.setData( s1 );
             scatter_s2.setData( s2 );

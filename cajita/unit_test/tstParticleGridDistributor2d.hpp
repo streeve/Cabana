@@ -96,12 +96,12 @@ void migrateTest( const GridType global_grid, const double cell_size,
 
     ParticleContainer particles_initial( "initial_particles", num_particle );
     Cabana::deep_copy( particles_initial, particles );
-    auto coords_initial = Cabana::slice<0>( particles_initial );
+    auto coords_initial = Cabana::slice<0>( "coords", particles_initial );
 
     // Copy to the device space.
     auto particles_mirror =
         Cabana::create_mirror_view_and_copy( TEST_DEVICE(), particles );
-    auto coords_mirror = Cabana::slice<0>( particles_mirror, "coords" );
+    auto coords_mirror = Cabana::slice<0>( "coords_mirror", particles_mirror );
 
     // Redistribute the particle AoSoA in place.
     if ( test_type == 0 )

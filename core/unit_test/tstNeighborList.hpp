@@ -108,7 +108,7 @@ void testVerletListFull()
 {
     // Create the AoSoA and fill with random particle positions.
     NeighborListTestData test_data;
-    auto position = Cabana::slice<0>( test_data.aosoa );
+    auto position = Cabana::slice<0>( "pos", test_data.aosoa );
 
     // Create the neighbor list.
     {
@@ -162,7 +162,7 @@ void testVerletListHalf()
 {
     // Create the AoSoA and fill with random particle positions.
     NeighborListTestData test_data;
-    auto position = Cabana::slice<0>( test_data.aosoa );
+    auto position = Cabana::slice<0>( "pos", test_data.aosoa );
 
     // Create the neighbor list.
     {
@@ -204,7 +204,7 @@ void testVerletListFullPartialRange()
 {
     // Create the AoSoA and fill with random particle positions.
     NeighborListTestData test_data;
-    auto position = Cabana::slice<0>( test_data.aosoa );
+    auto position = Cabana::slice<0>( "pos", test_data.aosoa );
 
     // Create the neighbor list.
     Cabana::VerletList<TEST_MEMSPACE, Cabana::FullNeighborTag, LayoutTag,
@@ -225,7 +225,7 @@ void testNeighborParallelFor()
 {
     // Create the AoSoA and fill with random particle positions.
     NeighborListTestData test_data;
-    auto position = Cabana::slice<0>( test_data.aosoa );
+    auto position = Cabana::slice<0>( "pos", test_data.aosoa );
 
     // Create the neighbor list.
     using ListType = Cabana::VerletList<TEST_MEMSPACE, Cabana::FullNeighborTag,
@@ -260,7 +260,7 @@ void testNeighborParallelReduce()
 {
     // Create the AoSoA and fill with random particle positions.
     NeighborListTestData test_data;
-    auto position = Cabana::slice<0>( test_data.aosoa );
+    auto position = Cabana::slice<0>( "pos", test_data.aosoa );
 
     // Create the neighbor list.
     using ListType = Cabana::VerletList<TEST_MEMSPACE, Cabana::FullNeighborTag,
@@ -291,7 +291,7 @@ void testModifyNeighbors()
 {
     // Create the AoSoA and fill with random particle positions.
     NeighborListTestData test_data;
-    auto position = Cabana::slice<0>( test_data.aosoa );
+    auto position = Cabana::slice<0>( "pos", test_data.aosoa );
 
     // Create the neighbor list.
     using ListType = Cabana::VerletList<TEST_MEMSPACE, Cabana::FullNeighborTag,

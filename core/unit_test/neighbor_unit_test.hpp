@@ -336,7 +336,7 @@ void checkFirstNeighborParallelReduce( const TestListType& N2_list_copy,
     // Get the expected result from N^2 list in serial.
     auto aosoa_mirror =
         Cabana::create_mirror_view_and_copy( Kokkos::HostSpace(), aosoa );
-    auto positions_mirror = Cabana::slice<0>( aosoa_mirror );
+    auto positions_mirror = Cabana::slice<0>( "pos_mirror", aosoa_mirror );
     double N2_sum = 0;
     for ( int p = 0; p < num_particle; ++p )
         for ( int n = 0; n < N2_list_copy.counts( p ); ++n )
@@ -361,7 +361,7 @@ void checkSecondNeighborParallelReduce( const TestListType& N2_list_copy,
     // Get the expected result from N^2 list in serial.
     auto aosoa_mirror =
         Cabana::create_mirror_view_and_copy( Kokkos::HostSpace(), aosoa );
-    auto positions_mirror = Cabana::slice<0>( aosoa_mirror );
+    auto positions_mirror = Cabana::slice<0>( "pos_mirror", aosoa_mirror );
     double N2_sum = 0;
     for ( int p = 0; p < num_particle; ++p )
         for ( int n = 0; n < N2_list_copy.counts( p ); ++n )
@@ -551,7 +551,7 @@ void checkFirstNeighborParallelReduceLambda( const ListType& nlist,
 {
     // Test the list parallel operation by adding a value from each neighbor
     // to the particle and compare to counts.
-    auto position = Cabana::slice<0>( aosoa );
+    auto position = Cabana::slice<0>( "pos", aosoa );
     auto sum_op = KOKKOS_LAMBDA( const int i, const int n, double& sum )
     {
         sum += position( i, 0 ) + position( n, 0 );
@@ -583,7 +583,7 @@ void checkSecondNeighborParallelReduceLambda( const ListType& nlist,
 {
     // Test the list parallel operation by adding a value from each neighbor
     // to the particle and compare to counts.
-    auto position = Cabana::slice<0>( aosoa );
+    auto position = Cabana::slice<0>( "pos", aosoa );
     auto sum_op =
         KOKKOS_LAMBDA( const int i, const int n, const int a, double& sum )
     {
@@ -828,7 +828,7 @@ void checkFirstNeighborParallelReduceFunctor( const ListType& nlist,
 {
     // Test the list parallel operation by adding a value from each neighbor
     // to the particle and compare to counts.
-    auto position = Cabana::slice<0>( aosoa );
+    auto position = Cabana::slice<0>( "pos", aosoa );
     using slice_type = typename AoSoAType::template member_slice_type<0>;
 
     FirstNeighReduceOp<slice_type> serial_sum_functor( position );
@@ -905,7 +905,7 @@ void checkSecondNeighborParallelReduceFunctor( const ListType& nlist,
 {
     // Test the list parallel operation by adding a value from each neighbor
     // to the particle and compare to counts.
-    auto position = Cabana::slice<0>( aosoa );
+    auto position = Cabana::slice<0>( "pos", aosoa );
     using slice_type = typename AoSoAType::template member_slice_type<0>;
 
     SecondNeighReduceOp<slice_type> serial_sum_functor( position );
@@ -960,9 +960,9 @@ struct NeighborListTestData
 #ifdef KOKKOS_ENABLE_OPENMPTARGET // FIXME_OPENMPTARGET
         using AoSoA_copy = Cabana::AoSoA<DataTypes, Kokkos::HostSpace>;
         AoSoA_copy aosoa_copy( "aosoa", num_particle );
-        auto positions = Cabana::slice<0>( aosoa_copy );
+        auto positions = Cabana::slice<0>( "pos", aosoa_copy );
 #else
-        auto positions = Cabana::slice<0>( aosoa );
+        auto positions = Cabana::slice<0>( "pos", aosoa );
 #endif
 
         Cabana::createRandomParticles( positions, positions.size(), box_min,

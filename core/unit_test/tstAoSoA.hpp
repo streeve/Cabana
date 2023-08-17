@@ -30,10 +30,10 @@ void checkDataMembers( aosoa_type aosoa, const float fval, const double dval,
     auto mirror =
         Cabana::create_mirror_view_and_copy( Kokkos::HostSpace(), aosoa );
 
-    auto slice_0 = Cabana::slice<0>( mirror );
-    auto slice_1 = Cabana::slice<1>( mirror );
-    auto slice_2 = Cabana::slice<2>( mirror );
-    auto slice_3 = Cabana::slice<3>( mirror );
+    auto slice_0 = Cabana::slice<0>( "s0", mirror );
+    auto slice_1 = Cabana::slice<1>( "s1", mirror );
+    auto slice_2 = Cabana::slice<2>( "s2", mirror );
+    auto slice_3 = Cabana::slice<3>( "s3", mirror );
 
     for ( std::size_t idx = 0; idx < aosoa.size(); ++idx )
     {
@@ -132,10 +132,10 @@ void testAoSoA()
     // Create a mirror on the host and fill.
     auto mirror =
         Cabana::create_mirror_view_and_copy( Kokkos::HostSpace(), aosoa );
-    auto mirror_slice_0 = Cabana::slice<0>( mirror );
-    auto mirror_slice_1 = Cabana::slice<1>( mirror );
-    auto mirror_slice_2 = Cabana::slice<2>( mirror );
-    auto mirror_slice_3 = Cabana::slice<3>( mirror );
+    auto mirror_slice_0 = Cabana::slice<0>( "s0", mirror );
+    auto mirror_slice_1 = Cabana::slice<1>( "s1", mirror );
+    auto mirror_slice_2 = Cabana::slice<2>( "s2", mirror );
+    auto mirror_slice_3 = Cabana::slice<3>( "s3", mirror );
 
     // Initialize data with the rank accessors.
     float fval = 3.4;
@@ -270,11 +270,11 @@ void testRawData()
     EXPECT_EQ( aosoa.label(), label );
 
     // Get slices of fields.
-    auto slice_0 = Cabana::slice<0>( aosoa );
-    auto slice_1 = Cabana::slice<1>( aosoa );
-    auto slice_2 = Cabana::slice<2>( aosoa );
-    auto slice_3 = Cabana::slice<3>( aosoa );
-    auto slice_4 = Cabana::slice<4>( aosoa );
+    auto slice_0 = Cabana::slice<0>( "s0", aosoa );
+    auto slice_1 = Cabana::slice<1>( "s1", aosoa );
+    auto slice_2 = Cabana::slice<2>( "s2", aosoa );
+    auto slice_3 = Cabana::slice<3>( "s3", aosoa );
+    auto slice_4 = Cabana::slice<4>( "s4", aosoa );
 
     // Get raw pointers to the data as one would in a C interface (no
     // templates).
@@ -326,11 +326,11 @@ void testRawData()
     // Check the results.
     auto mirror =
         Cabana::create_mirror_view_and_copy( Kokkos::HostSpace(), aosoa );
-    auto mirror_slice_0 = Cabana::slice<0>( mirror );
-    auto mirror_slice_1 = Cabana::slice<1>( mirror );
-    auto mirror_slice_2 = Cabana::slice<2>( mirror );
-    auto mirror_slice_3 = Cabana::slice<3>( mirror );
-    auto mirror_slice_4 = Cabana::slice<4>( mirror );
+    auto mirror_slice_0 = Cabana::slice<0>( "s0", mirror );
+    auto mirror_slice_1 = Cabana::slice<1>( "s1", mirror );
+    auto mirror_slice_2 = Cabana::slice<2>( "s2", mirror );
+    auto mirror_slice_3 = Cabana::slice<3>( "s3", mirror );
+    auto mirror_slice_4 = Cabana::slice<4>( "s4", mirror );
     for ( std::size_t idx = 0; idx < aosoa.size(); ++idx )
     {
         int s = Cabana::Impl::Index<16>::s( idx );
@@ -380,10 +380,10 @@ void testTuple()
                                                                    num_data );
 
     // Initialize aosoa data.
-    auto slice_0 = Cabana::slice<0>( aosoa );
-    auto slice_1 = Cabana::slice<1>( aosoa );
-    auto slice_2 = Cabana::slice<2>( aosoa );
-    auto slice_3 = Cabana::slice<3>( aosoa );
+    auto slice_0 = Cabana::slice<0>( "s0", aosoa );
+    auto slice_1 = Cabana::slice<1>( "s1", aosoa );
+    auto slice_2 = Cabana::slice<2>( "s2", aosoa );
+    auto slice_3 = Cabana::slice<3>( "s3", aosoa );
     float fval = 3.4;
     double dval = 1.23;
     int ival = 1;

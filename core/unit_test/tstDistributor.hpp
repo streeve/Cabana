@@ -55,8 +55,8 @@ void test1( const bool use_topology )
     using DataTypes = Cabana::MemberTypes<int, double[2]>;
     using AoSoA_t = Cabana::AoSoA<DataTypes, TEST_MEMSPACE>;
     AoSoA_t data_src( "src", num_data );
-    auto slice_int_src = Cabana::slice<0>( data_src );
-    auto slice_dbl_src = Cabana::slice<1>( data_src );
+    auto slice_int_src = Cabana::slice<0>( "src_int", data_src );
+    auto slice_dbl_src = Cabana::slice<1>( "src_dbl", data_src );
 
     // Fill the data.
     auto fill_func = KOKKOS_LAMBDA( const int i )
@@ -71,8 +71,8 @@ void test1( const bool use_topology )
 
     // Create a second set of data to which we will migrate.
     AoSoA_t data_dst( "dst", num_data );
-    auto slice_int_dst = Cabana::slice<0>( data_dst );
-    auto slice_dbl_dst = Cabana::slice<1>( data_dst );
+    auto slice_int_dst = Cabana::slice<0>( "dst_int", data_dst );
+    auto slice_dbl_dst = Cabana::slice<1>( "dst_dbl", data_dst );
 
     // Do the migration
     Cabana::migrate( *distributor, data_src, data_dst );
@@ -80,8 +80,8 @@ void test1( const bool use_topology )
     // Check the migration.
     Cabana::AoSoA<DataTypes, Kokkos::HostSpace> data_dst_host( "data_dst_host",
                                                                num_data );
-    auto slice_int_dst_host = Cabana::slice<0>( data_dst_host );
-    auto slice_dbl_dst_host = Cabana::slice<1>( data_dst_host );
+    auto slice_int_dst_host = Cabana::slice<0>( "dst_int_host", data_dst_host );
+    auto slice_dbl_dst_host = Cabana::slice<1>( "dst_dbl_host", data_dst_host );
     Cabana::deep_copy( data_dst_host, data_dst );
     auto steering = distributor->getExportSteering();
     auto host_steering =
@@ -129,8 +129,8 @@ void test2( const bool use_topology )
     using DataTypes = Cabana::MemberTypes<int, double[2]>;
     using AoSoA_t = Cabana::AoSoA<DataTypes, TEST_MEMSPACE>;
     AoSoA_t data( "data", num_data );
-    auto slice_int = Cabana::slice<0>( data );
-    auto slice_dbl = Cabana::slice<1>( data );
+    auto slice_int = Cabana::slice<0>( "int", data );
+    auto slice_dbl = Cabana::slice<1>( "dbl", data );
 
     // Fill the data.
     auto fill_func = KOKKOS_LAMBDA( const int i )
@@ -149,8 +149,8 @@ void test2( const bool use_topology )
     // Get host copies of the migrated data.
     Cabana::AoSoA<DataTypes, Kokkos::HostSpace> data_host( "data_host",
                                                            num_data / 2 );
-    auto slice_int_host = Cabana::slice<0>( data_host );
-    auto slice_dbl_host = Cabana::slice<1>( data_host );
+    auto slice_int_host = Cabana::slice<0>( "int_host", data_host );
+    auto slice_dbl_host = Cabana::slice<1>( "dbl_host", data_host );
     Cabana::deep_copy( data_host, data );
 
     // Check the migration. We received less than we sent so this should have
@@ -204,8 +204,8 @@ void test3( const bool use_topology )
     using DataTypes = Cabana::MemberTypes<int, double[2]>;
     using AoSoA_t = Cabana::AoSoA<DataTypes, TEST_MEMSPACE>;
     AoSoA_t data_src( "data_src", num_data );
-    auto slice_int_src = Cabana::slice<0>( data_src );
-    auto slice_dbl_src = Cabana::slice<1>( data_src );
+    auto slice_int_src = Cabana::slice<0>( "src_int", data_src );
+    auto slice_dbl_src = Cabana::slice<1>( "src_dbl", data_src );
 
     // Fill the data.
     auto fill_func = KOKKOS_LAMBDA( const int i )
@@ -220,8 +220,8 @@ void test3( const bool use_topology )
 
     // Create a second set of data to which we will migrate.
     AoSoA_t data_dst( "data_dst", num_data );
-    auto slice_int_dst = Cabana::slice<0>( data_dst );
-    auto slice_dbl_dst = Cabana::slice<1>( data_dst );
+    auto slice_int_dst = Cabana::slice<0>( "dst_int", data_dst );
+    auto slice_dbl_dst = Cabana::slice<1>( "dst_dbl", data_dst );
 
     // Do the migration with slices
     Cabana::migrate( *distributor, slice_int_src, slice_int_dst );
@@ -249,8 +249,8 @@ void test3( const bool use_topology )
     Cabana::AoSoA<DataTypes, Kokkos::HostSpace> data_dst_host( "data_dst_host",
                                                                num_data );
     Cabana::deep_copy( data_dst_host, data_dst );
-    auto slice_int_dst_host = Cabana::slice<0>( data_dst_host );
-    auto slice_dbl_dst_host = Cabana::slice<1>( data_dst_host );
+    auto slice_int_dst_host = Cabana::slice<0>( "dst_int_host", data_dst_host );
+    auto slice_dbl_dst_host = Cabana::slice<1>( "dst_dbl_host", data_dst_host );
     for ( int i = 0; i < num_data; ++i )
     {
         EXPECT_EQ( slice_int_dst_host( i ), inverse_rank + host_steering( i ) );
@@ -301,8 +301,8 @@ void test4( const bool use_topology )
     using DataTypes = Cabana::MemberTypes<int, double[2]>;
     using AoSoA_t = Cabana::AoSoA<DataTypes, TEST_MEMSPACE>;
     AoSoA_t data_src( "data_src", num_data );
-    auto slice_int_src = Cabana::slice<0>( data_src );
-    auto slice_dbl_src = Cabana::slice<1>( data_src );
+    auto slice_int_src = Cabana::slice<0>( "src_int", data_src );
+    auto slice_dbl_src = Cabana::slice<1>( "src_dbl", data_src );
 
     // Fill the data.
     auto fill_func = KOKKOS_LAMBDA( const int i )
@@ -317,8 +317,8 @@ void test4( const bool use_topology )
 
     // Create a second set of data to which we will migrate.
     AoSoA_t data_dst( "data_dst", num_data );
-    auto slice_int_dst = Cabana::slice<0>( data_dst );
-    auto slice_dbl_dst = Cabana::slice<1>( data_dst );
+    auto slice_int_dst = Cabana::slice<0>( "dst_int", data_dst );
+    auto slice_dbl_dst = Cabana::slice<1>( "dst_dbl", data_dst );
 
     // Do the migration
     Cabana::migrate( *distributor, data_src, data_dst );
@@ -326,8 +326,8 @@ void test4( const bool use_topology )
     // Check the migration.
     Cabana::AoSoA<DataTypes, Kokkos::HostSpace> data_dst_host( "data_dst_host",
                                                                num_data );
-    auto slice_int_dst_host = Cabana::slice<0>( data_dst_host );
-    auto slice_dbl_dst_host = Cabana::slice<1>( data_dst_host );
+    auto slice_int_dst_host = Cabana::slice<0>( "dst_int_host", data_dst_host );
+    auto slice_dbl_dst_host = Cabana::slice<1>( "dst_dbl_host", data_dst_host );
     Cabana::deep_copy( data_dst_host, data_dst );
 
     // self sends
@@ -406,8 +406,8 @@ void test5( const bool use_topology )
     using DataTypes = Cabana::MemberTypes<int, double[2]>;
     using AoSoA_t = Cabana::AoSoA<DataTypes, TEST_MEMSPACE>;
     AoSoA_t data_src( "data_src", num_data );
-    auto slice_int_src = Cabana::slice<0>( data_src );
-    auto slice_dbl_src = Cabana::slice<1>( data_src );
+    auto slice_int_src = Cabana::slice<0>( "src_int", data_src );
+    auto slice_dbl_src = Cabana::slice<1>( "src_dbl", data_src );
 
     // Fill the data.
     auto fill_func = KOKKOS_LAMBDA( const int i )
@@ -422,8 +422,8 @@ void test5( const bool use_topology )
 
     // Create a second set of data to which we will migrate.
     AoSoA_t data_dst( "data_dst", my_size );
-    auto slice_int_dst = Cabana::slice<0>( data_dst );
-    auto slice_dbl_dst = Cabana::slice<1>( data_dst );
+    auto slice_int_dst = Cabana::slice<0>( "dst_int", data_dst );
+    auto slice_dbl_dst = Cabana::slice<1>( "dst_dbl", data_dst );
 
     // Do the migration with slices
     Cabana::migrate( *distributor, slice_int_src, slice_int_dst );
@@ -432,8 +432,8 @@ void test5( const bool use_topology )
     // Check the migration.
     Cabana::AoSoA<DataTypes, Kokkos::HostSpace> data_host( "data_host",
                                                            my_size );
-    auto slice_int_host = Cabana::slice<0>( data_host );
-    auto slice_dbl_host = Cabana::slice<1>( data_host );
+    auto slice_int_host = Cabana::slice<0>( "int_host", data_host );
+    auto slice_dbl_host = Cabana::slice<1>( "dbl_host", data_host );
     Cabana::deep_copy( data_host, data_dst );
 
     // self sends
@@ -500,8 +500,8 @@ void test6( const bool use_topology )
     using DataTypes = Cabana::MemberTypes<int, double[2]>;
     using AoSoA_t = Cabana::AoSoA<DataTypes, TEST_MEMSPACE>;
     AoSoA_t data( "data", num_data );
-    auto slice_int = Cabana::slice<0>( data );
-    auto slice_dbl = Cabana::slice<1>( data );
+    auto slice_int = Cabana::slice<0>( "int", data );
+    auto slice_dbl = Cabana::slice<1>( "dbl", data );
 
     // Fill the data.
     auto fill_func = KOKKOS_LAMBDA( const int i )
@@ -526,8 +526,8 @@ void test6( const bool use_topology )
     // Check the migration.
     Cabana::AoSoA<DataTypes, Kokkos::HostSpace> data_host(
         "data_host", distributor->totalNumImport() );
-    auto slice_int_host = Cabana::slice<0>( data_host );
-    auto slice_dbl_host = Cabana::slice<1>( data_host );
+    auto slice_int_host = Cabana::slice<0>( "int_host", data_host );
+    auto slice_dbl_host = Cabana::slice<1>( "dbl_host", data_host );
     Cabana::deep_copy( data_host, data );
     auto steering = distributor->getExportSteering();
     auto host_steering =
@@ -586,8 +586,8 @@ void test7( const bool use_topology )
     using DataTypes = Cabana::MemberTypes<int, double[2]>;
     using AoSoA_t = Cabana::AoSoA<DataTypes, TEST_MEMSPACE>;
     AoSoA_t data( "data", num_data );
-    auto slice_int = Cabana::slice<0>( data );
-    auto slice_dbl = Cabana::slice<1>( data );
+    auto slice_int = Cabana::slice<0>( "int", data );
+    auto slice_dbl = Cabana::slice<1>( "dbl", data );
 
     // Fill the data.
     auto fill_func = KOKKOS_LAMBDA( const int i )
@@ -608,8 +608,8 @@ void test7( const bool use_topology )
     // Check the migration.
     Cabana::AoSoA<DataTypes, Kokkos::HostSpace> data_host(
         "data_host", distributor->totalNumImport() );
-    auto slice_int_host = Cabana::slice<0>( data_host );
-    auto slice_dbl_host = Cabana::slice<1>( data_host );
+    auto slice_int_host = Cabana::slice<0>( "int_host", data_host );
+    auto slice_dbl_host = Cabana::slice<1>( "dbl_host", data_host );
     Cabana::deep_copy( data_host, data );
     EXPECT_EQ( slice_int_host( 0 ), my_rank );
     EXPECT_DOUBLE_EQ( slice_dbl_host( 0, 0 ), my_rank );
@@ -665,8 +665,8 @@ void test8( const bool use_topology )
     using DataTypes = Cabana::MemberTypes<int, double[2]>;
     using AoSoA_t = Cabana::AoSoA<DataTypes, TEST_MEMSPACE>;
     AoSoA_t data( "data", num_data );
-    auto slice_int = Cabana::slice<0>( data );
-    auto slice_dbl = Cabana::slice<1>( data );
+    auto slice_int = Cabana::slice<0>( "int", data );
+    auto slice_dbl = Cabana::slice<1>( "dbl", data );
 
     // Fill the data.
     auto fill_func = KOKKOS_LAMBDA( const int )
@@ -689,8 +689,8 @@ void test8( const bool use_topology )
     // Check the results.
     Cabana::AoSoA<DataTypes, Kokkos::HostSpace> data_host( "data_host",
                                                            data.size() );
-    auto slice_int_host = Cabana::slice<0>( data_host );
-    auto slice_dbl_host = Cabana::slice<1>( data_host );
+    auto slice_int_host = Cabana::slice<0>( "int_host", data_host );
+    auto slice_dbl_host = Cabana::slice<1>( "dbl_host", data_host );
     Cabana::deep_copy( data_host, data );
     for ( unsigned i = 0; i < data.size(); ++i )
     {
@@ -733,17 +733,17 @@ void test9( const bool use_topology )
     using DataTypes = Cabana::MemberTypes<int, double[2]>;
     using AoSoA_t = Cabana::AoSoA<DataTypes, TEST_MEMSPACE>;
     AoSoA_t data( "data", num_data );
-    auto slice_int = Cabana::slice<0>( data );
+    auto slice_int = Cabana::slice<0>( "int", data );
 
     // Create empty slice to "copy" into.
     AoSoA_t data_copy( "copy", 0 );
-    auto slice_int_copy = Cabana::slice<0>( data_copy );
+    auto slice_int_copy = Cabana::slice<0>( "int_copy", data_copy );
 
     // Do empty slice migration.
     Cabana::migrate( *distributor, slice_int, slice_int_copy );
 
     // Check entries were removed.
-    slice_int_copy = Cabana::slice<0>( data_copy );
+    slice_int_copy = Cabana::slice<0>( "int_copy", data_copy );
     EXPECT_EQ( slice_int_copy.size(), 0 );
 
     // Do empty in-place migration.

@@ -27,7 +27,7 @@ void testArborXListFull()
 {
     // Create the AoSoA and fill with random particle positions.
     NeighborListTestData test_data;
-    auto position = Cabana::slice<0>( test_data.aosoa );
+    auto position = Cabana::slice<0>( "pos", test_data.aosoa );
 
     using device_type = TEST_MEMSPACE; // sigh...
 
@@ -93,7 +93,7 @@ void testArborXListHalf()
 {
     // Create the AoSoA and fill with random particle positions.
     NeighborListTestData test_data;
-    auto position = Cabana::slice<0>( test_data.aosoa );
+    auto position = Cabana::slice<0>( "pos", test_data.aosoa );
 
     using device_type = TEST_MEMSPACE; // sigh...
 
@@ -159,7 +159,7 @@ void testArborXListFullPartialRange()
 {
     // Create the AoSoA and fill with random particle positions.
     NeighborListTestData test_data;
-    auto position = Cabana::slice<0>( test_data.aosoa );
+    auto position = Cabana::slice<0>( "pos", test_data.aosoa );
 
     {
         // Create the neighbor list.
@@ -193,7 +193,7 @@ void testNeighborArborXParallelFor()
 {
     // Create the AoSoA and fill with random particle positions.
     NeighborListTestData test_data;
-    auto position = Cabana::slice<0>( test_data.aosoa );
+    auto position = Cabana::slice<0>( "pos", test_data.aosoa );
 
     {
         // Create the neighbor list.
@@ -255,7 +255,7 @@ void testNeighborArborXParallelReduce()
 {
     // Create the AoSoA and fill with random particle positions.
     NeighborListTestData test_data;
-    auto position = Cabana::slice<0>( test_data.aosoa );
+    auto position = Cabana::slice<0>( "pos", test_data.aosoa );
 
     {
         // Create the neighbor list.

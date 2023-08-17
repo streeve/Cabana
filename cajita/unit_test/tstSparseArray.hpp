@@ -373,10 +373,10 @@ void sparse_array_test( int par_num, EntityType entity )
                                                        test_array.aosoa() );
     auto info_mirror =
         Kokkos::create_mirror_view_and_copy( Kokkos::HostSpace(), info );
-    auto slice_0 = Cabana::slice<0>( mirror );
-    auto slice_1 = Cabana::slice<1>( mirror );
-    auto slice_2 = Cabana::slice<2>( mirror );
-    auto slice_3 = Cabana::slice<3>( mirror );
+    auto slice_0 = Cabana::slice<0>( "s0", mirror );
+    auto slice_1 = Cabana::slice<1>( "s1", mirror );
+    auto slice_2 = Cabana::slice<2>( "s2", mirror );
+    auto slice_3 = Cabana::slice<3>( "s3", mirror );
     for ( unsigned long cid = 0; cid < mirror.size(); ++cid )
     {
         EXPECT_EQ( slice_0( cid, 0 ), info_mirror( cid, 0 ) );
@@ -562,9 +562,9 @@ void full_occupy_test( EntityType entity )
                                                        test_array.aosoa() );
     auto info_mirror =
         Kokkos::create_mirror_view_and_copy( Kokkos::HostSpace(), info );
-    auto slice_0 = Cabana::slice<0>( mirror );
-    auto slice_1 = Cabana::slice<1>( mirror );
-    auto slice_2 = Cabana::slice<2>( mirror );
+    auto slice_0 = Cabana::slice<0>( "s0", mirror );
+    auto slice_1 = Cabana::slice<1>( "s1", mirror );
+    auto slice_2 = Cabana::slice<2>( "s2", mirror );
 
     for ( int ci = start[0]; ci < end[0]; ci++ )
         for ( int cj = start[1]; cj < end[1]; cj++ )

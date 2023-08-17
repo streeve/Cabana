@@ -29,10 +29,10 @@ void checkDataMembers( aosoa_type aosoa, int begin, int end, const float fval,
     auto mirror =
         Cabana::create_mirror_view_and_copy( Kokkos::HostSpace(), aosoa );
 
-    auto slice_0 = Cabana::slice<0>( mirror );
-    auto slice_1 = Cabana::slice<1>( mirror );
-    auto slice_2 = Cabana::slice<2>( mirror );
-    auto slice_3 = Cabana::slice<3>( mirror );
+    auto slice_0 = Cabana::slice<0>( "s0", mirror );
+    auto slice_1 = Cabana::slice<1>( "s1", mirror );
+    auto slice_2 = Cabana::slice<2>( "s2", mirror );
+    auto slice_3 = Cabana::slice<3>( "s3", mirror );
 
     for ( int idx = begin; idx != end; ++idx )
     {
@@ -72,10 +72,10 @@ class AssignmentOp
   public:
     AssignmentOp( AoSoA_t aosoa, float fval, double dval, int ival )
         : _aosoa( aosoa )
-        , _slice_0( Cabana::slice<0>( aosoa ) )
-        , _slice_1( Cabana::slice<1>( aosoa ) )
-        , _slice_2( Cabana::slice<2>( aosoa ) )
-        , _slice_3( Cabana::slice<3>( aosoa ) )
+        , _slice_0( Cabana::slice<0>( "s0", aosoa ) )
+        , _slice_1( Cabana::slice<1>( "s1", aosoa ) )
+        , _slice_2( Cabana::slice<2>( "s2", aosoa ) )
+        , _slice_3( Cabana::slice<3>( "s3", aosoa ) )
         , _fval( fval )
         , _dval( dval )
         , _ival( ival )

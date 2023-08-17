@@ -69,8 +69,8 @@ struct HaloData
 
     AoSoA_t createData( const int my_rank, const int num_local )
     {
-        auto slice_int = Cabana::slice<0>( aosoa );
-        auto slice_dbl = Cabana::slice<1>( aosoa );
+        auto slice_int = Cabana::slice<0>( "int", aosoa );
+        auto slice_dbl = Cabana::slice<1>( "dbl", aosoa );
 
         // Fill the local data.
         auto fill_func = KOKKOS_LAMBDA( const int i )
@@ -166,8 +166,8 @@ template <class AoSoAType>
 void checkGatherAoSoA( UniqueTestTag, AoSoAType data_host, const int my_size,
                        const int my_rank, const int num_local )
 {
-    auto slice_int_host = Cabana::slice<0>( data_host );
-    auto slice_dbl_host = Cabana::slice<1>( data_host );
+    auto slice_int_host = Cabana::slice<0>( "int_host", data_host );
+    auto slice_dbl_host = Cabana::slice<1>( "dbl_host", data_host );
 
     // check that the local data didn't change.
     for ( int i = 0; i < my_size; ++i )
@@ -211,8 +211,8 @@ template <class AoSoAType>
 void checkScatter( UniqueTestTag, AoSoAType data_host, const int my_size,
                    const int my_rank, const int num_local )
 {
-    auto slice_int_host = Cabana::slice<0>( data_host );
-    auto slice_dbl_host = Cabana::slice<1>( data_host );
+    auto slice_int_host = Cabana::slice<0>( "int_host", data_host );
+    auto slice_dbl_host = Cabana::slice<1>( "dbl_host", data_host );
 
     // Check that the local data was updated. Every ghost had a unique
     // destination so the result should be doubled for those elements that
@@ -259,8 +259,8 @@ template <class AoSoAType>
 void checkGatherSlice( UniqueTestTag, AoSoAType data_host, const int my_size,
                        const int my_rank, const int num_local )
 {
-    auto slice_int_host = Cabana::slice<0>( data_host );
-    auto slice_dbl_host = Cabana::slice<1>( data_host );
+    auto slice_int_host = Cabana::slice<0>( "int_host", data_host );
+    auto slice_dbl_host = Cabana::slice<1>( "dbl_host", data_host );
 
     // Check that the local data remained unchanged.
     for ( int i = 0; i < my_size; ++i )
@@ -305,8 +305,8 @@ template <class AoSoAType>
 void checkGatherAoSoA( AllTestTag, AoSoAType data_host, const int my_size,
                        const int my_rank, const int num_local )
 {
-    auto slice_int_host = Cabana::slice<0>( data_host );
-    auto slice_dbl_host = Cabana::slice<1>( data_host );
+    auto slice_int_host = Cabana::slice<0>( "int_host", data_host );
+    auto slice_dbl_host = Cabana::slice<1>( "dbl_host", data_host );
 
     // check that the local data didn't change.
     EXPECT_EQ( slice_int_host( 0 ), my_rank + 1 );
@@ -343,8 +343,8 @@ template <class AoSoAType>
 void checkScatter( AllTestTag, AoSoAType data_host, const int my_size,
                    const int my_rank, const int num_local )
 {
-    auto slice_int_host = Cabana::slice<0>( data_host );
-    auto slice_dbl_host = Cabana::slice<1>( data_host );
+    auto slice_int_host = Cabana::slice<0>( "int_host", data_host );
+    auto slice_dbl_host = Cabana::slice<1>( "dbl_host", data_host );
 
     // Check that the local data was updated. Every ghost was sent to all of
     // the ranks so the result should be multiplied by the number of ranks.
@@ -384,8 +384,8 @@ template <class AoSoAType>
 void checkGatherSlice( AllTestTag, AoSoAType data_host, const int my_size,
                        const int my_rank, const int num_local )
 {
-    auto slice_int_host = Cabana::slice<0>( data_host );
-    auto slice_dbl_host = Cabana::slice<1>( data_host );
+    auto slice_int_host = Cabana::slice<0>( "int_host", data_host );
+    auto slice_dbl_host = Cabana::slice<1>( "dbl_host", data_host );
 
     // Check that the local data remained unchanged.
     EXPECT_EQ( slice_int_host( 0 ), ( my_size + 1 ) * ( my_rank + 1 ) );
@@ -472,8 +472,8 @@ void testHalo( TestTag tag, const bool use_topology )
     checkGatherAoSoA( tag, data_host, my_size, my_rank, num_local );
 
     // Scatter back the results,
-    auto slice_int = Cabana::slice<0>( data );
-    auto slice_dbl = Cabana::slice<1>( data );
+    auto slice_int = Cabana::slice<0>( "int", data );
+    auto slice_dbl = Cabana::slice<1>( "dbl", data );
     Cabana::scatter( *halo, slice_int );
     Cabana::scatter( *halo, slice_dbl );
     Cabana::deep_copy( data_host, data );
@@ -528,8 +528,8 @@ void testHaloBuffers( TestTag tag, const bool use_topology )
     checkGatherAoSoA( tag, data_host, my_size, my_rank, num_local );
 
     // Scatter back the results, now with preallocated slice buffers.
-    auto slice_int = Cabana::slice<0>( data );
-    auto slice_dbl = Cabana::slice<1>( data );
+    auto slice_int = Cabana::slice<0>( "int", data );
+    auto slice_dbl = Cabana::slice<1>( "dbl", data );
     auto scatter_int = createScatter( *halo, slice_int, overalloc );
     auto scatter_dbl = createScatter( *halo, slice_dbl, overalloc );
     scatter_int.apply();
@@ -540,8 +540,8 @@ void testHaloBuffers( TestTag tag, const bool use_topology )
     checkSizeAndCapacity( scatter_dbl, num_recv, num_send, overalloc );
 
     // Gather again, this time with slices.
-    slice_int = Cabana::slice<0>( data );
-    slice_dbl = Cabana::slice<1>( data );
+    slice_int = Cabana::slice<0>( "int", data );
+    slice_dbl = Cabana::slice<1>( "dbl", data );
     auto gather_int = createGather( *halo, slice_int, overalloc );
     auto gather_dbl = createGather( *halo, slice_dbl, overalloc );
     gather_int.apply();

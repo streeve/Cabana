@@ -68,11 +68,11 @@ struct is_aosoa : public is_aosoa_impl<typename std::remove_cv<T>::type>::type
   \tparam AoSoA_t AoSoA type.
 
   \param aosoa AoSoA to slice from.
-  \param slice_label Optional slice label.
+  \param slice_label Slice label.
 */
 template <std::size_t M, class AoSoA_t>
 typename AoSoA_t::template member_slice_type<M>
-slice( const AoSoA_t& aosoa, const std::string& slice_label = "" )
+slice( const std::string& slice_label, const AoSoA_t& aosoa )
 {
     static_assert(
         0 == sizeof( typename AoSoA_t::soa_type ) %
@@ -82,6 +82,39 @@ slice( const AoSoA_t& aosoa, const std::string& slice_label = "" )
     return typename AoSoA_t::template member_slice_type<M>(
         Impl::soaMemberPtr<M>( aosoa.data() ), aosoa.size(), aosoa.numSoA(),
         slice_label );
+}
+
+/*!
+  \brief Create a slice from an AoSoA.
+
+  \tparam M Slice index.
+  \tparam AoSoA_t AoSoA type.
+
+  \param aosoa AoSoA to slice from.
+*/
+template <std::size_t M, class AoSoA_t>
+[[deprecated]] typename AoSoA_t::template member_slice_type<M>
+slice( const AoSoA_t& aosoa )
+{
+    return slice<M>( "UnlabeledSlice", aosoa );
+}
+
+/*!
+  \brief Create a slice from an AoSoA.
+
+  \tparam M Slice index.
+  \tparam AoSoA_t AoSoA type.
+
+  \param aosoa AoSoA to slice from.
+  \param slice_label Slice label.
+
+  Previous variant from optional labels.
+*/
+template <std::size_t M, class AoSoA_t>
+typename AoSoA_t::template member_slice_type<M>
+slice( const AoSoA_t& aosoa, const std::string& slice_label )
+{
+    return slice<M>( slice_label, aosoa );
 }
 
 //---------------------------------------------------------------------------//
@@ -196,15 +229,32 @@ class AoSoA
     /*!
       \brief Default constructor.
 
-      \param label An optional label for the data structure.
+      \param label Label for the data structure.
 
       The container size is zero and no memory is allocated.
     */
-    AoSoA( const std::string& label = "" )
+    AoSoA( const std::string& label )
         : _size( 0 )
         , _capacity( 0 )
         , _num_soa( 0 )
         , _data( Kokkos::ViewAllocateWithoutInitializing( label ), 0 )
+    {
+        static_assert(
+            !memory_traits::is_unmanaged,
+            "Construction by allocation cannot use unmanaged memory" );
+    }
+
+    /*!
+      \brief Default constructor.
+
+      The container size is zero and no memory is allocated.
+    */
+    AoSoA()
+        : _size( 0 )
+        , _capacity( 0 )
+        , _num_soa( 0 )
+        , _data( Kokkos::ViewAllocateWithoutInitializing( "UnlabeledAoAoA" ),
+                 0 )
     {
         static_assert(
             !memory_traits::is_unmanaged,

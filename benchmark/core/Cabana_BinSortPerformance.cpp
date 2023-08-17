@@ -117,7 +117,7 @@ void performanceTest( std::ostream& stream, const std::string& test_prefix,
                     aosoa_permute_timer.stop( pid );
 
                     // Permute a slice of the first member
-                    auto slice = Cabana::slice<0>( aosoas[p] );
+                    auto slice = Cabana::slice<0>( "slice_0", aosoas[p] );
                     slice_permute_timer.start( pid );
                     Cabana::permute( bin_data, slice );
                     slice_permute_timer.stop( pid );
@@ -164,7 +164,7 @@ void performanceTest( std::ostream& stream, const std::string& test_prefix,
             aosoa_permute_timer.stop( p );
 
             // Permute a slice of the first member
-            auto slice = Cabana::slice<0>( aosoas[p] );
+            auto slice = Cabana::slice<0>( "slice_0", aosoas[p] );
             slice_permute_timer.start( p );
             Cabana::permute( bin_data, slice );
             slice_permute_timer.stop( p );

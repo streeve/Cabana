@@ -79,10 +79,10 @@ void checkParticleListInitial( const ParticleList plist )
     auto& aosoa = plist.aosoa();
     auto aosoa_host =
         Cabana::create_mirror_view_and_copy( Kokkos::HostSpace(), aosoa );
-    auto px_h = Cabana::slice<0>( aosoa_host );
-    auto pm_h = Cabana::slice<1>( aosoa_host );
-    auto pc_h = Cabana::slice<2>( aosoa_host );
-    auto pf_h = Cabana::slice<3>( aosoa_host );
+    auto px_h = Cabana::slice<0>( "pos", aosoa_host );
+    auto pm_h = Cabana::slice<1>( "foo", aosoa_host );
+    auto pc_h = Cabana::slice<2>( "rank", aosoa_host );
+    auto pf_h = Cabana::slice<3>( "bar", aosoa_host );
     for ( std::size_t p = 0; p < aosoa_host.size(); ++p )
     {
         for ( int d = 0; d < 3; ++d )
@@ -105,10 +105,10 @@ void checkParticleListFinal( const ParticleList plist )
     auto& aosoa = plist.aosoa();
     auto aosoa_host =
         Cabana::create_mirror_view_and_copy( Kokkos::HostSpace(), aosoa );
-    auto px_h = Cabana::slice<0>( aosoa_host );
-    auto pm_h = Cabana::slice<1>( aosoa_host );
-    auto pc_h = Cabana::slice<2>( aosoa_host );
-    auto pf_h = Cabana::slice<3>( aosoa_host );
+    auto px_h = Cabana::slice<0>( "pos", aosoa_host );
+    auto pm_h = Cabana::slice<1>( "foo", aosoa_host );
+    auto pc_h = Cabana::slice<2>( "rank", aosoa_host );
+    auto pf_h = Cabana::slice<3>( "bar", aosoa_host );
     for ( std::size_t p = 0; p < aosoa_host.size(); ++p )
     {
         for ( int d = 0; d < 3; ++d )

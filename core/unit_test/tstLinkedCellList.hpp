@@ -101,8 +101,9 @@ void copyListToHost( LCLTestData& test_data,
     // Copy data to the host for testing.
     auto np = test_data.num_p;
     auto nx = test_data.nx;
-    auto pos_slice = Cabana::slice<LCLTestData::Position>( test_data.aosoa );
-    auto id_slice = Cabana::slice<LCLTestData::CellId>( test_data.aosoa );
+    auto pos_slice =
+        Cabana::slice<LCLTestData::Position>( "pos", test_data.aosoa );
+    auto id_slice = Cabana::slice<LCLTestData::CellId>( "id", test_data.aosoa );
 
     LCLTestData::IDViewType ids( "cell_ids", np );
     LCLTestData::PosViewType pos( "cell_ids", np );
@@ -243,7 +244,7 @@ void testLinkedList()
     auto grid_delta = test_data.grid_delta;
     auto grid_min = test_data.grid_min;
     auto grid_max = test_data.grid_max;
-    auto pos = Cabana::slice<LCLTestData::Position>( test_data.aosoa );
+    auto pos = Cabana::slice<LCLTestData::Position>( "pos", test_data.aosoa );
 
     // Bin and permute the particles in the grid. First do this by only
     // operating on a subset of the particles.
@@ -280,7 +281,7 @@ void testLinkedListSlice()
     auto grid_delta = test_data.grid_delta;
     auto grid_min = test_data.grid_min;
     auto grid_max = test_data.grid_max;
-    auto pos = Cabana::slice<LCLTestData::Position>( test_data.aosoa );
+    auto pos = Cabana::slice<LCLTestData::Position>( "pos", test_data.aosoa );
 
     // Bin the particles in the grid and permute only the position slice.
     // First do this by only operating on a subset of the particles.

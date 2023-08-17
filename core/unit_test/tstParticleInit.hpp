@@ -59,7 +59,7 @@ void testRandomCreationMinDistance()
     int num_particle = 200;
     Cabana::AoSoA<Cabana::MemberTypes<double[3]>, TEST_MEMSPACE> aosoa(
         "random", num_particle );
-    auto positions = Cabana::slice<0>( aosoa );
+    auto positions = Cabana::slice<0>( "pos", aosoa );
 
     double min_dist = 0.47;
     double box_min = -9.5;
@@ -68,7 +68,7 @@ void testRandomCreationMinDistance()
                                               box_min, box_max, min_dist );
     auto host_aosoa =
         Cabana::create_mirror_view_and_copy( Kokkos::HostSpace(), aosoa );
-    auto host_positions = Cabana::slice<0>( host_aosoa );
+    auto host_positions = Cabana::slice<0>( "pos_host", host_aosoa );
 
     checkRandomParticles( num_particle, box_min, box_max, host_positions );
     checkRandomDistances( min_dist, host_positions );
@@ -79,7 +79,7 @@ void testRandomCreation()
     int num_particle = 200;
     Cabana::AoSoA<Cabana::MemberTypes<double[3]>, TEST_MEMSPACE> aosoa(
         "random", num_particle );
-    auto positions = Cabana::slice<0>( aosoa );
+    auto positions = Cabana::slice<0>( "pos", aosoa );
 
     double box_min = -9.5;
     double box_max = 7.6;
@@ -87,7 +87,7 @@ void testRandomCreation()
                                    box_max );
     auto host_aosoa =
         Cabana::create_mirror_view_and_copy( Kokkos::HostSpace(), aosoa );
-    auto host_positions = Cabana::slice<0>( host_aosoa );
+    auto host_positions = Cabana::slice<0>( "pos_host", host_aosoa );
 
     checkRandomParticles( num_particle, box_min, box_max, host_positions );
 }
