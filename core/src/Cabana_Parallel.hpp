@@ -93,13 +93,8 @@ struct ParallelFor<SimdPolicy<VectorLength, Properties...>, Functor>
         : exec_policy_( std::move( exec_policy ) )
         , functor_( std::move( functor ) )
     {
-        if ( label.empty() )
-            Kokkos::parallel_for(
-                dynamic_cast<const team_policy&>( exec_policy_ ), *this );
-        else
-            Kokkos::parallel_for(
-                label, dynamic_cast<const team_policy&>( exec_policy_ ),
-                *this );
+        Kokkos::parallel_for(
+            label, dynamic_cast<const team_policy&>( exec_policy_ ), *this );
     }
 
     template <class WorkTag>
@@ -169,8 +164,9 @@ struct ParallelFor<SimdPolicy<VectorLength, Properties...>, Functor>
 */
 template <class FunctorType, int VectorLength, class... ExecParameters>
 inline void simd_parallel_for(
+    const std::string& str,
     const SimdPolicy<VectorLength, ExecParameters...>& exec_policy,
-    const FunctorType& functor, const std::string& str = "" )
+    const FunctorType& functor )
 {
     Kokkos::Profiling::pushRegion( "Cabana::simd_parallel_for" );
 
@@ -178,6 +174,24 @@ inline void simd_parallel_for(
         str, exec_policy, functor );
 
     Kokkos::Profiling::popRegion();
+}
+
+//   Previous variant from optional labels.
+template <class FunctorType, int VectorLength, class... ExecParameters>
+[[deprecated]] inline void simd_parallel_for(
+    const SimdPolicy<VectorLength, ExecParameters...>& exec_policy,
+    const FunctorType& functor )
+{
+    simd_parallel_for( "UnlabeledSimdParallel", exec_policy, functor );
+}
+
+//   Previous variant from optional labels.
+template <class FunctorType, int VectorLength, class... ExecParameters>
+inline void simd_parallel_for(
+    const SimdPolicy<VectorLength, ExecParameters...>& exec_policy,
+    const FunctorType& functor, const std::string& str )
+{
+    simd_parallel_for( str, exec_policy, functor );
 }
 
 //---------------------------------------------------------------------------//
