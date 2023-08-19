@@ -208,14 +208,32 @@ int main( int argc, char* argv[] )
     std::string run_type = "";
     if ( argc > 2 )
         run_type = argv[2];
-    std::vector<int> problem_sizes = { 1000, 10000 };
+    std::vector<int> problem_sizes;
     std::vector<double> cutoff_ratios = { 2.0, 3.0 };
     std::vector<double> cell_ratios = { 1.0 };
-    if ( run_type == "large" )
+    if ( run_type == "small" )
+    {
+        problem_sizes = { 1000, 10000 };
+    }
+    else if ( run_type == "large" )
     {
         problem_sizes = { 1000, 10000, 100000, 1000000, 10000000 };
         cutoff_ratios = { 3.0, 4.0, 5.0 };
-        cell_ratios = { 1.0 };
+    }
+    else
+    {
+        std::ifstream file_stream;
+        file_stream.open( run_type );
+
+        std::string line;
+        for ( int l = 0; l < 4; ++l )
+            getline( file_stream, line );
+        std::cout << line << std::endl;
+        int num_particles = std::stoi( line, nullptr );
+        std::cout << num_particles << std::endl;
+        problem_sizes = { num_particles };
+
+        cutoff_ratios = { 3.0, 4.0, 5.0 };
     }
 
     // Open the output file on rank 0.
@@ -238,7 +256,7 @@ int main( int argc, char* argv[] )
     }
 
     // Do not run with the largest systems on the host by default.
-    if ( run_type == "large" )
+    if ( run_type != "small" )
         problem_sizes.erase( problem_sizes.end() - 1 );
     performanceTest<host_device_type>( file, "host_", problem_sizes,
                                        cutoff_ratios, cell_ratios, run_type,

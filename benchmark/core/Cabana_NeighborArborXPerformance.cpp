@@ -221,6 +221,8 @@ int main( int argc, char* argv[] )
         int num_particles = std::stoi( line, nullptr );
         std::cout << num_particles << std::endl;
         problem_sizes = { num_particles };
+
+        cutoff_ratios = { 3.0, 4.0, 5.0 };
     }
 
     // Open the output file on rank 0.
@@ -242,7 +244,7 @@ int main( int argc, char* argv[] )
     }
 
     // Do not run with the largest systems on the host by default.
-    if ( run_type == "large" )
+    if ( run_type != "small" )
         problem_sizes.erase( problem_sizes.end() - 1 );
     performanceTest<host_device_type>( file, "host_", problem_sizes,
                                        cutoff_ratios, run_type, false );
