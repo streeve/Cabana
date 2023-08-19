@@ -23,92 +23,16 @@
 #include <string>
 #include <vector>
 
-template <class AoSoAType>
-void readFile( std::string filename, std::vector<AoSoAType>& aosoas,
-               std::vector<int> problem_sizes )
-{
-    std::ifstream file_stream;
-    file_stream.open( filename );
-
-    std::string line;
-    // box
-    for ( int l = 0; l < 8; ++l )
-        std::getline( file_stream, line );
-    std::getline( file_stream, line );
-
-    aosoas[0].resize( problem_sizes[0] );
-    auto x = Cabana::slice<0>( aosoas[0], "position" );
-    std::cout << x.size() << std::endl;
-    for ( std::size_t p = 0; p < x.size(); ++p )
-    {
-        std::getline( file_stream, line );
-        std::size_t pos;
-        for ( std::size_t n = 0; n < 2; n++ )
-        {
-            pos = line.find( " " );
-            line = line.substr( pos + 1, std::string::npos );
-        }
-        for ( int d = 0; d < 3; ++d )
-        {
-            pos = line.find( " " );
-            x( p, d ) = std::stod( line.substr( 0, pos ) );
-            line = line.substr( pos + 1, std::string::npos );
-        }
-    }
-}
-
-template <class Device, class AoSoAType>
-void createParticles( Device, std::vector<AoSoAType>& aosoas,
-                      std::vector<int> problem_sizes, double cutoff,
-                      bool sort = true )
-{
-    using exec_space = typename Device::execution_space;
-
-    // Declare problem sizes.
-    int num_problem_size = problem_sizes.size();
-    std::vector<double> x_min( num_problem_size );
-    std::vector<double> x_max( num_problem_size );
-
-    // Create aosoas.
-    for ( std::size_t p = 0; p < problem_sizes.size(); ++p )
-    {
-        int num_p = problem_sizes[p];
-
-        // Define problem grid.
-        x_min[p] = 0.0;
-        x_max[p] = 3 * std::pow( num_p, 1.0 / 3.0 );
-        aosoas[p].resize( num_p );
-        auto x = Cabana::slice<0>( aosoas[p], "position" );
-        std::cout << x.size() << std::endl;
-        Cabana::createRandomParticles( exec_space{}, x, num_p, x_min[p],
-                                       x_max[p] );
-
-        if ( sort )
-        {
-            // Sort the particles to make them more realistic, e.g. in an MD
-            // simulation. They likely won't be randomly scattered about, but
-            // rather will be periodically sorted for spatial locality. Bin them
-            // in cells the size of the smallest cutoff distance.
-            double sort_delta[3] = { cutoff, cutoff, cutoff };
-            double grid_min[3] = { x_min[p], x_min[p], x_min[p] };
-            double grid_max[3] = { x_max[p], x_max[p], x_max[p] };
-            auto x = Cabana::slice<0>( aosoas[p], "position" );
-            Cabana::LinkedCellList<Device> linked_cell_list(
-                x, sort_delta, grid_min, grid_max );
-            Cabana::permute( linked_cell_list, aosoas[p] );
-        }
-    }
-}
-
 //---------------------------------------------------------------------------//
 // Performance test.
 template <class Device>
 void performanceTest( std::ostream& stream, const std::string& test_prefix,
+
                       std::vector<int> problem_sizes,
-                      std::vector<double> cutoff_ratios, bool sort = true,
+                      std::vector<double> cutoff_ratios,
+                      const std::string filename, bool sort = true,
                       const double fraction_clusters = 0.0,
                       const double nonuniform = 0.0,
-                      const std::string filename = "",
                       const int buffer_size = 100 )
 {
     using exec_space = typename Device::execution_space;
@@ -136,13 +60,13 @@ void performanceTest( std::ostream& stream, const std::string& test_prefix,
     if ( filename == "small" || filename == "large" )
     {
         std::cout << "create" << std::endl;
-        createParticles( exec_space{}, aosoas, problem_sizes,
-                         cutoff_ratios.front(), sort );
+        Cabana::Benchmark::createParticles( exec_space{}, aosoas, problem_sizes,
+                                            cutoff_ratios.front(), sort );
     }
     else
     {
         std::cout << "file" << std::endl;
-        readFile( filename, aosoas, problem_sizes );
+        Cabana::Benchmark::readFile( filename, aosoas, problem_sizes );
     }
 
     // Loop over number of ratios (neighbors per particle).
@@ -312,15 +236,14 @@ int main( int argc, char* argv[] )
     if ( !std::is_same<device_type, host_device_type>{} )
     {
         performanceTest<device_type>( file, "device_", problem_sizes,
-                                      cutoff_ratios, false, 0.05, 0.9 );
+                                      cutoff_ratios, run_type, false );
     }
 
     // Do not run with the largest systems on the host by default.
     if ( run_type == "large" )
         problem_sizes.erase( problem_sizes.end() - 1 );
     performanceTest<host_device_type>( file, "host_", problem_sizes,
-                                       cutoff_ratios, false, 0.01, 0.9,
-                                       run_type );
+                                       cutoff_ratios, run_type, false );
 
     // Close the output file on rank 0.
     file.close();

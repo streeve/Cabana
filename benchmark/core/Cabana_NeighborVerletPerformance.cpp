@@ -29,7 +29,8 @@ template <class Device>
 void performanceTest( std::ostream& stream, const std::string& test_prefix,
                       std::vector<int> problem_sizes,
                       std::vector<double> cutoff_ratios,
-                      std::vector<double> cell_ratios, bool sort = true,
+                      std::vector<double> cell_ratios,
+                      const std::string filename, bool sort = true,
                       const double fraction_clusters = 0.0,
                       const double nonuniform = 0.0,
                       const int buffer_size = 100 )
@@ -65,43 +66,16 @@ void performanceTest( std::ostream& stream, const std::string& test_prefix,
     using aosoa_type = Cabana::AoSoA<member_types, Device>;
     std::vector<aosoa_type> aosoas( num_problem_size );
 
-    // Create aosoas.
-    for ( int p = 0; p < num_problem_size; ++p )
+    if ( filename == "small" || filename == "large" )
     {
-        int num_p = problem_sizes[p];
-
-        // Define problem grid.
-        x_min[p] = 0.0;
-        x_max[p] = 3 * std::pow( num_p, 1.0 / 3.0 );
-        aosoas[p].resize( num_p );
-        auto x = Cabana::slice<0>( aosoas[p], "position" );
-        auto num_particles = x.size();
-        if ( fraction_clusters > 0 )
-        {
-            int num_clusters = num_particles * fraction_clusters;
-            Cabana::Benchmark::createRandomExponential(
-                exec_space{}, x, num_clusters, num_particles / num_clusters,
-                x_min[p], x_max[p], nonuniform );
-        }
-        else
-        {
-            Cabana::createRandomParticles( x, x.size(), x_min[p], x_max[p] );
-        }
-
-        if ( sort )
-        {
-            // Sort the particles to make them more realistic, e.g. in an MD
-            // simulation. They likely won't be randomly scattered about, but
-            // rather will be periodically sorted for spatial locality. Bin them
-            // in cells the size of the smallest cutoff distance.
-            double cutoff = cutoff_ratios.front();
-            double sort_delta[3] = { cutoff, cutoff, cutoff };
-            double grid_min[3] = { x_min[p], x_min[p], x_min[p] };
-            double grid_max[3] = { x_max[p], x_max[p], x_max[p] };
-            Cabana::LinkedCellList<Device> linked_cell_list(
-                x, sort_delta, grid_min, grid_max );
-            Cabana::permute( linked_cell_list, aosoas[p] );
-        }
+        std::cout << "create" << std::endl;
+        Cabana::Benchmark::createParticles( exec_space{}, aosoas, problem_sizes,
+                                            cutoff_ratios.front(), sort );
+    }
+    else
+    {
+        std::cout << "file" << std::endl;
+        Cabana::Benchmark::readFile( filename, aosoas, problem_sizes );
     }
 
     // Loop over number of ratios (neighbors per particle).
@@ -259,16 +233,16 @@ int main( int argc, char* argv[] )
     if ( !std::is_same<device_type, host_device_type>{} )
     {
         performanceTest<device_type>( file, "device_", problem_sizes,
-                                      cutoff_ratios, cell_ratios, false, 0.05,
-                                      0.9 );
+                                      cutoff_ratios, cell_ratios, run_type,
+                                      false );
     }
 
     // Do not run with the largest systems on the host by default.
     if ( run_type == "large" )
         problem_sizes.erase( problem_sizes.end() - 1 );
     performanceTest<host_device_type>( file, "host_", problem_sizes,
-                                       cutoff_ratios, cell_ratios, false, 0.01,
-                                       0.3 );
+                                       cutoff_ratios, cell_ratios, run_type,
+                                       false );
 
     // Close the output file on rank 0.
     file.close();

@@ -243,6 +243,83 @@ void createRandomExponential( ExecutionSpace, PositionType& positions,
     }
 }
 
+template <class AoSoAType>
+void readFile( std::string filename, std::vector<AoSoAType>& aosoas,
+               std::vector<int> problem_sizes )
+{
+    std::ifstream file_stream;
+    file_stream.open( filename );
+
+    std::string line;
+    // box
+    for ( int l = 0; l < 8; ++l )
+        std::getline( file_stream, line );
+    std::getline( file_stream, line );
+
+    aosoas[0].resize( problem_sizes[0] );
+    auto x = Cabana::slice<0>( aosoas[0], "position" );
+    std::cout << x.size() << std::endl;
+    for ( std::size_t p = 0; p < x.size(); ++p )
+    {
+        std::getline( file_stream, line );
+        std::size_t pos;
+        for ( std::size_t n = 0; n < 2; n++ )
+        {
+            pos = line.find( " " );
+            line = line.substr( pos + 1, std::string::npos );
+        }
+        for ( int d = 0; d < 3; ++d )
+        {
+            pos = line.find( " " );
+            x( p, d ) = std::stod( line.substr( 0, pos ) );
+            line = line.substr( pos + 1, std::string::npos );
+        }
+    }
+}
+
+template <class Device, class AoSoAType>
+void createParticles( Device, std::vector<AoSoAType>& aosoas,
+                      std::vector<int> problem_sizes, double cutoff,
+                      bool sort = true )
+{
+    using exec_space = typename Device::execution_space;
+
+    // Declare problem sizes.
+    int num_problem_size = problem_sizes.size();
+    std::vector<double> x_min( num_problem_size );
+    std::vector<double> x_max( num_problem_size );
+
+    // Create aosoas.
+    for ( std::size_t p = 0; p < problem_sizes.size(); ++p )
+    {
+        int num_p = problem_sizes[p];
+
+        // Define problem grid.
+        x_min[p] = 0.0;
+        x_max[p] = 3 * std::pow( num_p, 1.0 / 3.0 );
+        aosoas[p].resize( num_p );
+        auto x = Cabana::slice<0>( aosoas[p], "position" );
+        std::cout << x.size() << std::endl;
+        Cabana::createRandomParticles( exec_space{}, x, num_p, x_min[p],
+                                       x_max[p] );
+
+        if ( sort )
+        {
+            // Sort the particles to make them more realistic, e.g. in an MD
+            // simulation. They likely won't be randomly scattered about, but
+            // rather will be periodically sorted for spatial locality. Bin them
+            // in cells the size of the smallest cutoff distance.
+            double sort_delta[3] = { cutoff, cutoff, cutoff };
+            double grid_min[3] = { x_min[p], x_min[p], x_min[p] };
+            double grid_max[3] = { x_max[p], x_max[p], x_max[p] };
+            auto x = Cabana::slice<0>( aosoas[p], "position" );
+            Cabana::LinkedCellList<Device> linked_cell_list(
+                x, sort_delta, grid_min, grid_max );
+            Cabana::permute( linked_cell_list, aosoas[p] );
+        }
+    }
+}
+
 } // end namespace Benchmark
 } // end namespace Cabana
 
