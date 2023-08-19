@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cstdlib>
+#include <fstream>
 #include <iostream>
 #include <numeric>
 #include <string>
@@ -257,7 +258,10 @@ void readFile( std::string filename, std::vector<AoSoAType>& aosoas,
     std::getline( file_stream, line );
 
     aosoas[0].resize( problem_sizes[0] );
-    auto x = Cabana::slice<0>( aosoas[0], "position" );
+
+    auto host_aosoa =
+        Cabana::create_mirror_view_and_copy( Kokkos::HostSpace(), aosoas[0] );
+    auto x = Cabana::slice<0>( host_aosoa, "position" );
     std::cout << x.size() << std::endl;
     for ( std::size_t p = 0; p < x.size(); ++p )
     {
@@ -275,6 +279,7 @@ void readFile( std::string filename, std::vector<AoSoAType>& aosoas,
             line = line.substr( pos + 1, std::string::npos );
         }
     }
+    Cabana::deep_copy( aosoas[0], host_aosoa );
 }
 
 template <class Device, class AoSoAType>

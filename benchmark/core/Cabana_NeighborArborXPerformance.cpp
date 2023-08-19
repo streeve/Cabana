@@ -121,10 +121,12 @@ void performanceTest( std::ostream& stream, const std::string& test_prefix,
                 // Print neighbor statistics once per system.
                 if ( t == 0 )
                 {
+                    /*
                     Cabana::Experimental::HDF5ParticleOutput::HDF5Config h5{};
                     std::string name = "ax_" + std::to_string( num_p );
                     Cabana::Experimental::HDF5ParticleOutput::writeTimeStep(
                         h5, name, MPI_COMM_WORLD, 0, 0.0, x.size(), x );
+                    */
                     auto min_neigh = std::numeric_limits<int>::max();
                     auto max_neigh = -std::numeric_limits<int>::max();
                     int total_neigh = 0;
