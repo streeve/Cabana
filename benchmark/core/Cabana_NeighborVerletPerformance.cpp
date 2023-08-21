@@ -68,14 +68,16 @@ void performanceTest( std::ostream& stream, const std::string& test_prefix,
 
     if ( filename == "small" || filename == "large" )
     {
-        std::cout << "create" << std::endl;
-        Cabana::Benchmark::createParticles( exec_space{}, aosoas, problem_sizes,
+        Cabana::Benchmark::createParticles( exec_space{}, aosoas, x_min, x_max,
+                                            problem_sizes,
                                             cutoff_ratios.front(), sort );
     }
     else
     {
-        std::cout << "file" << std::endl;
-        Cabana::Benchmark::readFile( filename, aosoas, problem_sizes );
+        x_min.resize( 3 );
+        x_max.resize( 3 );
+        Cabana::Benchmark::readFile( filename, aosoas, x_min, x_max,
+                                     problem_sizes );
     }
 
     // Loop over number of ratios (neighbors per particle).
@@ -110,9 +112,27 @@ void performanceTest( std::ostream& stream, const std::string& test_prefix,
                 // Track the problem size.
                 psizes.push_back( problem_sizes[p] );
 
-                // Setup for Verlet list.
-                double grid_min[3] = { x_min[p], x_min[p], x_min[p] };
-                double grid_max[3] = { x_max[p], x_max[p], x_max[p] };
+                // Setup for Verlet list grid.
+                double grid_min[3];
+                double grid_max[3];
+                if ( filename == "small" || filename == "large" )
+                {
+                    // Multiple sizes, all cubes.
+                    for ( int d = 0; d < 3; ++d )
+                    {
+                        grid_min[d] = x_min[p];
+                        grid_max[d] = x_max[p];
+                    }
+                }
+                else
+                {
+                    // One size, non-cubic.
+                    for ( int d = 0; d < 3; ++d )
+                    {
+                        grid_min[d] = x_min[d];
+                        grid_max[d] = x_max[d];
+                    }
+                }
 
                 // Setup for neighbor iteration.
                 Kokkos::View<int*, memory_space> per_particle_result( "result",
@@ -260,7 +280,7 @@ int main( int argc, char* argv[] )
     }
 
     // Do not run with the largest systems on the host by default.
-    if ( run_type != "small" )
+    if ( run_type == "large" )
         problem_sizes.erase( problem_sizes.end() - 1 );
     performanceTest<host_device_type>( file, "host_", problem_sizes,
                                        cutoff_ratios, cell_ratios, run_type,

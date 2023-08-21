@@ -17,6 +17,7 @@
 #include <fstream>
 #include <iostream>
 #include <numeric>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -196,7 +197,6 @@ void createRandomExponential( ExecutionSpace, PositionType& positions,
         0, num_particles_per_cluster );
 
     int pool_id = 342343901;
-    std::cout << num_clusters << " " << num_particles_per_cluster << std::endl;
     for ( int c = 0; c < num_clusters; ++c )
     {
         PoolType pool( pool_id );
@@ -208,14 +208,11 @@ void createRandomExponential( ExecutionSpace, PositionType& positions,
         {
             center[d] =
                 Kokkos::rand<RandomType, double>::draw( gen, box_min, box_max );
-            std::cout << center[d] << " ";
         }
-        std::cout << "\n";
         pool.free_state( gen );
 
         // Create particles exponentially close to this cluster center.
         int start = c * num_particles_per_cluster;
-        std::cout << start << std::endl;
         auto random_coord_op = KOKKOS_LAMBDA( const int p )
         {
             auto gen = pool.get_state();
@@ -231,8 +228,6 @@ void createRandomExponential( ExecutionSpace, PositionType& positions,
                     r = lambda * Kokkos::exp( -lambda * rand );
                     if ( r > box_min && r < box_max )
                         resample = false;
-                    std::cout << center[d] << " " << r << " ";
-                    std::cout << "\n";
                 }
                 positions( p + start, d ) = r;
             }
@@ -246,15 +241,30 @@ void createRandomExponential( ExecutionSpace, PositionType& positions,
 
 template <class AoSoAType>
 void readFile( std::string filename, std::vector<AoSoAType>& aosoas,
+               std::vector<double>& x_min, std::vector<double>& x_max,
                std::vector<int> problem_sizes )
 {
     std::ifstream file_stream;
     file_stream.open( filename );
 
     std::string line;
-    // box
-    for ( int l = 0; l < 8; ++l )
+    // header
+    for ( int l = 0; l < 5; ++l )
         std::getline( file_stream, line );
+    // box
+    for ( int l = 0; l < 3; ++l )
+    {
+        std::getline( file_stream, line );
+        std::istringstream ss( line );
+        std::vector<double> v;
+        double val;
+        while ( ss >> val )
+        {
+            v.push_back( val );
+        }
+        x_min[l] = v[0];
+        x_max[l] = v[1];
+    }
     std::getline( file_stream, line );
 
     aosoas[0].resize( problem_sizes[0] );
@@ -262,7 +272,6 @@ void readFile( std::string filename, std::vector<AoSoAType>& aosoas,
     auto host_aosoa =
         Cabana::create_mirror_view_and_copy( Kokkos::HostSpace(), aosoas[0] );
     auto x = Cabana::slice<0>( host_aosoa, "position" );
-    std::cout << x.size() << std::endl;
     for ( std::size_t p = 0; p < x.size(); ++p )
     {
         std::getline( file_stream, line );
@@ -284,6 +293,7 @@ void readFile( std::string filename, std::vector<AoSoAType>& aosoas,
 
 template <class Device, class AoSoAType>
 void createParticles( Device, std::vector<AoSoAType>& aosoas,
+                      std::vector<double>& x_min, std::vector<double>& x_max,
                       std::vector<int> problem_sizes, double cutoff,
                       bool sort = true )
 {
@@ -291,8 +301,6 @@ void createParticles( Device, std::vector<AoSoAType>& aosoas,
 
     // Declare problem sizes.
     int num_problem_size = problem_sizes.size();
-    std::vector<double> x_min( num_problem_size );
-    std::vector<double> x_max( num_problem_size );
 
     // Create aosoas.
     for ( std::size_t p = 0; p < problem_sizes.size(); ++p )

@@ -59,14 +59,18 @@ void performanceTest( std::ostream& stream, const std::string& test_prefix,
 
     if ( filename == "small" || filename == "large" )
     {
-        std::cout << "create" << std::endl;
-        Cabana::Benchmark::createParticles( exec_space{}, aosoas, problem_sizes,
+        std::vector<double> x_min( num_problem_size );
+        std::vector<double> x_max( num_problem_size );
+        Cabana::Benchmark::createParticles( exec_space{}, aosoas, x_min, x_max,
+                                            problem_sizes,
                                             cutoff_ratios.front(), sort );
     }
     else
     {
-        std::cout << "file" << std::endl;
-        Cabana::Benchmark::readFile( filename, aosoas, problem_sizes );
+        std::vector<double> x_min( 3 );
+        std::vector<double> x_max( 3 );
+        Cabana::Benchmark::readFile( filename, aosoas, x_min, x_max,
+                                     problem_sizes );
     }
 
     // Loop over number of ratios (neighbors per particle).
@@ -241,7 +245,7 @@ int main( int argc, char* argv[] )
     }
 
     // Do not run with the largest systems on the host by default.
-    if ( run_type != "small" )
+    if ( run_type == "large" )
         problem_sizes.erase( problem_sizes.end() - 1 );
     performanceTest<host_device_type>( file, "host_", problem_sizes,
                                        cutoff_ratios, run_type, false );
