@@ -409,6 +409,7 @@ namespace ArrayOp
 /*!
   \brief Clone an array. Do not initialize the clone.
   \param array The array to clone.
+  \return Shared pointer to the new Array.
 */
 template <class Scalar, class... Params, class EntityType, class MeshType>
 std::shared_ptr<Array<Scalar, EntityType, MeshType, Params...>>
@@ -571,6 +572,7 @@ void copy( Array_t& a, const Array_t& b, DecompositionTag tag )
   \brief Clone an array and copy its contents into the clone.
   \param array The array to clone.
   \param tag The tag for the decomposition over which to perform the copy.
+  \return Shared pointer to the new Array.
 */
 template <class Array_t, class DecompositionTag>
 std::shared_ptr<Array_t> cloneCopy( const Array_t& array, DecompositionTag tag )
@@ -616,6 +618,7 @@ update( Array_t& a, const typename Array_t::value_type alpha, const Array_t& b,
   \param b The array to add to a.
   \param beta The value to scale b by.
   \param tag The tag for the decomposition over which to perform the operation.
+  \return void
 */
 template <class Array_t, class DecompositionTag>
 std::enable_if_t<2 == Array_t::num_space_dim, void>

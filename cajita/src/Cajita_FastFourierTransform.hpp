@@ -740,9 +740,12 @@ auto createHeffteFastFourierTransform(
         exec_space{}, layout, params );
 }
 
-//! Creation function for heFFTe FFT with explict FFT backend and default
-//! parameters.
-//! \param layout FFT entity array
+/*!
+  \brief Creation function for heFFTe FFT with explict FFT backend and default
+  parameters.
+  \param layout FFT entity array
+  \return HeffteFastFourierTransform
+*/
 template <class Scalar, class MemorySpace, class BackendType, class EntityType,
           class MeshType>
 auto createHeffteFastFourierTransform(
@@ -754,9 +757,12 @@ auto createHeffteFastFourierTransform(
                                                                    layout );
 }
 
-//! Creation function for heFFTe FFT with default FFT backend and default
-//! parameters.
-//! \param layout FFT entity array
+/*!
+  \brief Creation function for heFFTe FFT with default FFT backend and default
+  parameters.
+  \param layout FFT entity array
+  \return HeffteFastFourierTransform
+*/
 template <class Scalar, class MemorySpace, class EntityType, class MeshType>
 auto createHeffteFastFourierTransform(
     const ArrayLayout<EntityType, MeshType>& layout )

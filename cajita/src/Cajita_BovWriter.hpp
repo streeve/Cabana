@@ -102,7 +102,13 @@ struct BovCentering<Node>
 };
 
 //---------------------------------------------------------------------------//
-//! Create the MPI subarray for the given array.
+/*!
+  \brief Create the MPI subarray for the given array.
+  \param array
+  \param owned_extents
+  \param global_extents
+  \return MPI subarray
+*/
 template <class Array_t, std::size_t N>
 MPI_Datatype createSubarray( const Array_t& array,
                              const std::array<long, N>& owned_extents,
