@@ -67,13 +67,13 @@ class LinkedCellList
 
       \param grid_max Grid maximum value in each direction.
     */
-    template <class SliceType>
-    LinkedCellList(
-        SliceType positions, const typename SliceType::value_type grid_delta[3],
-        const typename SliceType::value_type grid_min[3],
-        const typename SliceType::value_type grid_max[3],
-        typename std::enable_if<( is_slice<SliceType>::value ), int>::type* =
-            0 )
+    template <class SliceType, template <typename> class ArrayType>
+    LinkedCellList( SliceType positions,
+                    const ArrayType<typename SliceType::value_type> grid_delta,
+                    const ArrayType<typename SliceType::value_type> grid_min,
+                    const ArrayType<typename SliceType::value_type> grid_max,
+                    typename std::enable_if<( is_slice<SliceType>::value ),
+                                            int>::type* = 0 )
         : _grid( grid_min[0], grid_min[1], grid_min[2], grid_max[0],
                  grid_max[1], grid_max[2], grid_delta[0], grid_delta[1],
                  grid_delta[2] )
