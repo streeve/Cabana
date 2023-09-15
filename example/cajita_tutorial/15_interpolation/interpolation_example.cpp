@@ -443,6 +443,99 @@ void interpolationExample()
         example_g2p { scalar_particle_field, tensor_particle_field };
     Cajita::g2p( *vector_grid_field, *vector_halo, particle_positions,
                  num_particles, Cajita::Spline<1>(), example_g2p );
+
+    /***************************************************************************
+     * G2G
+     **************************************************************************/
+    /*
+     * Using the G2P or P2G interface, grid-to-grid interpolation is also
+     * possible. Rather than using the particle positions, an Array of grid
+     * positions can be passed to any interpolation method.
+     *
+     * Here we again focus on the Cajita::g2p() interface, but custom
+     * thread-level interfaces are also useful in these instances.
+     */
+
+    std::cout << "G2G interpolations" << std::endl;
+    std::cout << "-----------------------------------------------" << std::endl;
+
+    // Create grid positions rather than using particles. In this example we
+    // will interpolate from Cells to Nodes.
+    auto grid_position_layout =
+        Cajita::createArrayLayout( local_grid, 2, Cajita::Cell() );
+    auto grid_positions = Cajita::createArray<double, ExecutionSpace>(
+        "grid_positions", grid_position_layout );
+
+    // Reset the grid to zero.
+    Cajita::ArrayOp::assign( *scalar_grid_field, 0.0, Cajita::Ghost() );
+    auto scalar_view = scalar_grid_field->view();
+
+    // Print out a random particle before interpolation.
+    std::cout << "Individual grid point at (127):\n\tbefore "
+                 "g2g::value interpolation: ";
+    std::cout << scalar_view( 127 );
+
+    /*
+      Use the existing G2P interpolation functionality, treating the grid field
+      as "particles".
+    */
+    auto scalar_value_g2g = Cajita::createScalarValueG2P( scalar_view, -0.5 );
+
+    // Interpolate a scalar grid value to the particles.
+    Cajita::g2p( *scalar_grid_field, *scalar_halo, grid_positions,
+                 num_particles, Cajita::Spline<1>(), scalar_value_g2p );
+
+    // Print out the same particle after value interpolation.
+    std::cout << "\n\tafter g2p::value interpolation: "
+              << scalar_particle_field( 127 ) << "\n\n";
+
+    // Interpolate a vector grid value to the particles.
+    Kokkos::deep_copy( vector_particle_field, 0.0 );
+    std::cout << "Individual particle at (127):\n\tbefore "
+                 "g2p::value interpolation: ";
+    std::cout << "<" << vector_particle_field( 127, 0 ) << ", "
+              << vector_particle_field( 127, 1 ) << ">";
+
+    auto vector_value_g2p =
+        Cajita::createVectorValueG2P( vector_particle_field, -0.5 );
+    Cajita::g2p( *vector_grid_field, *vector_halo, particle_positions,
+                 num_particles, Cajita::Spline<1>(), vector_value_g2p );
+
+    std::cout << "\n\tafter g2p::value interpolation: ";
+    std::cout << "<" << vector_particle_field( 127, 0 ) << ", "
+              << vector_particle_field( 127, 1 ) << ">"
+              << "\n\n";
+
+    // Interpolate a scalar grid gradient to the particles.
+    Kokkos::deep_copy( vector_particle_field, 0.0 );
+    std::cout << "Individual particle at (127):\n\tbefore "
+                 "g2p::gradient interpolation: ";
+    std::cout << "<" << vector_particle_field( 127, 0 ) << ", "
+              << vector_particle_field( 127, 1 ) << ">";
+
+    auto scalar_gradient_g2p =
+        Cajita::createScalarGradientG2P( vector_particle_field, -0.5 );
+    Cajita::g2p( *scalar_grid_field, *scalar_halo, particle_positions,
+                 num_particles, Cajita::Spline<1>(), scalar_gradient_g2p );
+
+    std::cout << "\n\tafter g2p::gradient interpolation: ";
+    std::cout << "<" << vector_particle_field( 127, 0 ) << ", "
+              << vector_particle_field( 127, 1 ) << ">"
+              << "\n\n";
+
+    // Interpolate a vector grid divergence to the particles.
+    Kokkos::deep_copy( scalar_particle_field, 0.0 );
+    std::cout << "Individual particle at (127):\n\tbefore "
+                 "g2p::divergence interpolation: ";
+    std::cout << scalar_particle_field( 127 );
+
+    auto vector_div_g2p =
+        Cajita::createVectorDivergenceG2P( scalar_particle_field, -0.5 );
+    Cajita::g2p( *vector_grid_field, *vector_halo, particle_positions,
+                 num_particles, Cajita::Spline<1>(), vector_div_g2p );
+
+    std::cout << "\n\tafter g2p::divergence interpolation: "
+              << scalar_particle_field( 127 ) << "\n\n";
 }
 
 //---------------------------------------------------------------------------//
