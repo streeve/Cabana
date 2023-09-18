@@ -17,6 +17,7 @@ set(HEADERS_PUBLIC
   Cabana_DeepCopy.hpp
   Cabana_Fields.hpp
   Cabana_ExecutionPolicy.hpp
+  Cabana_Hammersley.hpp
   Cabana_LinkedCellList.hpp
   Cabana_MemberTypes.hpp
   Cabana_NeighborList.hpp
@@ -31,6 +32,7 @@ set(HEADERS_PUBLIC
   Cabana_Types.hpp
   Cabana_VerletList.hpp
   Cabana_Version.hpp
+  Cabana_GaussianMixtureModel.hpp
   )
 
 if(Cabana_ENABLE_ARBORX)
@@ -56,8 +58,13 @@ if(Cabana_ENABLE_HDF5)
 endif()
 
 set(HEADERS_IMPL
+  impl/Cabana_Bessel.hpp
   impl/Cabana_CartesianGrid.hpp
+  impl/Cabana_Erfinv.hpp
   impl/Cabana_Index.hpp
+  impl/Cabana_GaussianMixtureModel.hpp
+  impl/Cabana_GaussianWeight.hpp
+  impl/Cabana_Matrix2d.hpp
   impl/Cabana_PerformanceTraits.hpp
   impl/Cabana_TypeTraits.hpp
   )
