@@ -139,7 +139,7 @@ void createRandomParticles( PositionType& positions,
 
 /*!
   Populate the particles based on the description of the distribution function
-  in gaussians
+  in gaussians. Particles are places in 1d1v phase space.
 */
 template <typename CellSliceType, typename WeightSliceType,
           typename PositionSliceType, typename VelocitySliceType,
@@ -209,6 +209,11 @@ size_t initializeRandomParticles( CellSliceType& cell, WeightSliceType& macro,
     return cell.size();
 }
 
+/*!
+  Populate the particles based on the description of the distribution function
+  in gaussians. Particles are places in 1d2v phase space with cylindrical
+  velocity space.
+*/
 template <typename CellSliceType, typename WeightSliceType,
           typename PositionSliceType, typename VelocitySliceType,
           typename GaussianType>
@@ -297,6 +302,10 @@ size_t initializeRandomParticles( CellSliceType& cell, WeightSliceType& macro,
     return cell.size();
 }
 
+/*!
+  Populate the particles based on the description of the distribution function
+  in gaussians. Particles are places in 1d3v phase space.
+*/
 template <typename CellSliceType, typename WeightSliceType,
           typename PositionSliceType, typename VelocitySliceType,
           typename GaussianType>
@@ -635,6 +644,10 @@ size_t initializeEqualDensityParticlesWithHammersley(
     return ( start );
 }
 
+/*!
+  Populate the particles based on the description of the distribution function
+  in gaussians. Particles are places in 1d2v phase space.
+*/
 template <typename CellSliceType, typename WeightSliceType,
           typename PositionSliceType, typename VelocitySliceType,
           typename GaussianType>
@@ -815,6 +828,10 @@ size_t initializeEqualDensityParticlesWithHammersley(
     return ( start );
 }
 
+/*!
+  Populate the particles based on the description of the distribution function
+  in gaussians. Particles are places in 1d3v phase space.
+*/
 template <typename CellSliceType, typename WeightSliceType,
           typename PositionSliceType, typename VelocitySliceType,
           typename GaussianType>
@@ -1092,6 +1109,10 @@ size_t initializeEqualWeightParticlesWithHammersley(
     return ( start );
 }
 
+/*!
+  Populate the particles based on the description of the distribution function
+  in gaussians. Particles are places in 1d2v phase space.
+*/
 template <typename CellSliceType, typename WeightSliceType,
           typename PositionSliceType, typename VelocitySliceType,
           typename GaussianType>
@@ -1202,6 +1223,10 @@ size_t initializeEqualWeightParticlesWithHammersley(
     return ( start );
 }
 
+/*!
+  Populate the particles based on the description of the distribution function
+  in gaussians. Particles are places in 1d3v phase space.
+*/
 template <typename CellSliceType, typename WeightSliceType,
           typename PositionSliceType, typename VelocitySliceType,
           typename GaussianType>

@@ -21,7 +21,7 @@
 namespace Cabana {
 namespace Impl {
 
-/*
+/*!
  This produces the inverse of
  Phi(zp) = integrate(1/sqrt(2*pi) * exp(-zeta**2/2), (zeta,-oo,zp))
          = erf(sqrt(2)*zp/2)/2 + 1/2

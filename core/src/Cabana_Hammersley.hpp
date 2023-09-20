@@ -19,6 +19,9 @@
 
 namespace Cabana {
 
+/*!
+  Reverse the bits in the unsigned 64bit input
+*/
 uint64_t KOKKOS_INLINE_FUNCTION reverseBits64(uint64_t n) {
 	n = ((n & 0x00000000ffffffff) << 32) | ((n & 0xffffffff00000000) >> 32);
 	n = ((n & 0x0000ffff0000ffff) << 16) | ((n & 0xffff0000ffff0000) >> 16);
@@ -29,6 +32,10 @@ uint64_t KOKKOS_INLINE_FUNCTION reverseBits64(uint64_t n) {
 	return n;
 }
 
+/*!
+  Reverse the digits of the input n in the number system with basis base to
+  compute the nth entry in the Van der Corput sequence.
+*/
 template <int base> struct Corput {
 static double KOKKOS_INLINE_FUNCTION value(int n){
 	const double inv_Base = (double)1. / (double)base;
@@ -46,6 +53,11 @@ static double KOKKOS_INLINE_FUNCTION value(int n){
 }
 };
 
+/*!
+  In base 2 reversing the digits is just reversing the bits and then scaling by
+  the appropriate constant to shift things to the right of the decimal point.
+  This is much faster than the general case.
+*/
 template<> struct Corput<2> {
 static double KOKKOS_INLINE_FUNCTION value(int n) {
 	return reverseBits64(n) * 0x1p-64;
@@ -53,7 +65,9 @@ static double KOKKOS_INLINE_FUNCTION value(int n) {
 };
 
 
-// Generate the nth sample (of N) of the hammersley sequence and return the value in dimension i
+/*!
+  Generate the nth sample (of N) of the hammersley sequence and return the value in dimension i
+*/
 double KOKKOS_INLINE_FUNCTION hammersley(const int i, const uint64_t n, const uint64_t N) {
 	if(n >= N) {
 		printf("Called hammersely with n = %zd, N=%zd, which is wrong\n", n, N);

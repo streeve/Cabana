@@ -29,7 +29,13 @@ template<unsigned int dims>
 class GMMImpl {
 public:
 
-// Do a quick scan of the particles and get a general sense of the variance of the velocities
+/*!
+  Do a scan of the particles and compute the variance of the 1d velocity data
+
+  This is done for the particles where the entry in the cell slide matches c,
+  respecting the possibly different weights in the macro slice and the result is
+  reported in cov[0][0].
+*/
 // FIXME is there a good way to match gmm_float_type for the return type?
 template <typename CellSliceType, typename WeightSliceType, typename VelocitySliceType>
 static void variance(const CellSliceType& cell, const WeightSliceType& macro, const VelocitySliceType& velocity_x, const int c, double(&cov)[3][3]) {
@@ -57,6 +63,13 @@ static void variance(const CellSliceType& cell, const WeightSliceType& macro, co
 	cov[0][0] = var_x;
 }
 
+/*!
+  Do a scan of the particles and compute the variance of the 2d velocity data
+
+  This is done for the particles where the entry in the cell slide matches c,
+  respecting the possibly different weights in the macro slice and the result is
+  reported in cov[0..1][0..1].
+*/
 template <typename CellSliceType, typename WeightSliceType, typename VelocitySliceType>
 static void variance(const CellSliceType& cell, const WeightSliceType& macro, const VelocitySliceType& velocity_par, const VelocitySliceType& velocity_per, const int c, double(&cov)[3][3]) {
 	using gmm_float_type = typename WeightSliceType::value_type;
@@ -98,6 +111,13 @@ static void variance(const CellSliceType& cell, const WeightSliceType& macro, co
 	printf("variance: cell %d. var = %e %e, %e %e\n", c, cov[0][0], cov[0][1], cov[1][0], cov[1][1]);
 }
 
+/*!
+  Do a scan of the particles and compute the variance of the 3d velocity data
+
+  This is done for the particles where the entry in the cell slide matches c,
+  respecting the possibly different weights in the macro slice and the result is
+  reported in the 3x3 covariance matrix cov
+*/
 template <typename CellSliceType, typename WeightSliceType, typename VelocitySliceType>
 static void variance(const CellSliceType& cell, const WeightSliceType& macro, const VelocitySliceType& velocity_x, const VelocitySliceType& velocity_y, const VelocitySliceType& velocity_z, const int c, double(&cov)[3][3]) {
 	using gmm_float_type = typename WeightSliceType::value_type;
@@ -162,7 +182,9 @@ static void variance(const CellSliceType& cell, const WeightSliceType& macro, co
 	//return (var_x+var_y+var_z)/3. ;
 }
 
-// compute the sum of alpha and compute a version normalized to 1 in alpha_norm
+/*!
+  Compute the sum of alpha and return a version normalized to 1 in alpha_norm
+*/
 template<typename AlphaType>
 static void normalize(AlphaType& alpha_norm, const AlphaType& alpha) {
 	using gmm_float_type = typename AlphaType::value_type;
@@ -183,7 +205,9 @@ static void normalize(AlphaType& alpha_norm, const AlphaType& alpha) {
 }
 
 
-// Compute the w for each combination of a Gaussian and a particle by multiplying  alpha into u
+/*!
+  Compute the w for each combination of a Gaussian and a particle by multiplying  alpha into u
+*/
 template<typename WType, typename AlphaType, typename UType>
 static void prefillW(WType w, const AlphaType& alpha_norm, const UType& u) {
 	using gmm_float_type = typename AlphaType::value_type;
@@ -199,7 +223,9 @@ static void prefillW(WType w, const AlphaType& alpha_norm, const UType& u) {
 	Kokkos::parallel_for("Prefill w", w.extent(2), _mult);
 }
 
-// Compute the wnorm by normalizing such that the sum over all Gaussians for a given particle is one
+/*!
+  Compute the w_norm by normalizing w such that the sum over all Gaussians for a given particle is one
+*/
 template<typename WType>
 static void prefillWNorm(WType& w_norm, const WType& w) {
 	using gmm_float_type = typename WType::value_type;
@@ -224,7 +250,9 @@ static void prefillWNorm(WType& w_norm, const WType& w) {
 }
 
 
-// recompute alpha as per line 10
+/*!
+  recompute alpha as per line 10
+*/
 template<typename AlphaType, typename WType>
 static void updateAlpha(AlphaType& alpha, const WType& w_norm, const int c, const int m) {
 	using gmm_float_type = typename AlphaType::value_type;
@@ -264,7 +292,9 @@ static void updateAlpha(AlphaType& alpha, const WType& w_norm, const int c, cons
 }
 
 
-// compute weights u from the probability to get particles given one gaussian
+/*!
+  compute weights u from the probability to get particles given one gaussian
+*/
 template <typename GaussianType, typename CellSliceType, typename VelocitySliceType, typename weight_type>
 static void updateWeights(weight_type u, const CellSliceType& cell, const VelocitySliceType vx, const VelocitySliceType& vy, const VelocitySliceType vz, const GaussianType& g_dev, const int c, const int m) {
 
@@ -334,7 +364,9 @@ static void updateWeights(weight_type u, const CellSliceType& cell, const Veloci
 	simd_parallel_for(vec_policy, _weight, "weight()");
 }
 
-// update gaussian m from the particles where we consider weights w_norm for the impact
+/*!
+  update gaussian m from the particles where we consider weights w_norm for the impact
+*/
 template <typename GaussianType, typename CellSliceType, typename VelocitySliceType, typename weight_type>
 static void updateGMM(GaussianType& g_dev, const CellSliceType& cell, const VelocitySliceType& vx, const VelocitySliceType& vy, const VelocitySliceType& vz, const weight_type& w_norm, const int c, const int m) {
 	using gmm_float_type = typename GaussianType::value_type;
@@ -504,7 +536,9 @@ static void updateGMM(GaussianType& g_dev, const CellSliceType& cell, const Velo
 }
 
 
-// Find the component that has the smallest remaining non-zero alpha_norm
+/*!
+  Find the component that has the smallest remaining non-zero alpha_norm
+*/
 template<typename AlphaType>
 static size_t findWeakestComponent(const AlphaType& alpha_norm, const int c) {
 	using gmm_float_type = typename AlphaType::value_type;
@@ -529,6 +563,9 @@ static size_t findWeakestComponent(const AlphaType& alpha_norm, const int c) {
 }
 
 
+/*!
+  remove the selected component from the Gaussian Mixture Model
+*/
 template <typename AlphaType, typename WType>
 static void removeGaussianComponent(AlphaType& alpha, AlphaType& alpha_norm, WType& w, WType& w_norm, WType& u, const size_t c, const size_t m) {
 	printf("removing component m = %zd from cell %zd\n", m, c);
@@ -546,6 +583,9 @@ static void removeGaussianComponent(AlphaType& alpha, AlphaType& alpha_norm, WTy
 	Kokkos::parallel_for("remove smallest Gaussian", w_norm.extent(2), _remove);
 }
 
+/*!
+  Compute the Gaussian Mixture Model given the particle information
+*/
 template <typename GaussianType, typename CellSliceType, typename WeightSliceType, typename VelocitySliceType>
 static void implReconstructGMM(GaussianType& gaussians, const double eps, const int seed, CellSliceType const& cell, WeightSliceType const& weight, VelocitySliceType const& vx, VelocitySliceType const& vy, VelocitySliceType const& vz) {
 	using gmm_float_type = typename GaussianType::value_type;

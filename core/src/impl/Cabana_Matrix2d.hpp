@@ -30,14 +30,18 @@ template<typename FloatType, int dim>
 class Matrix2d {
 
 public:
-	// Determinant of a matrix
+/*!
+  Compute the determinant of a dim-by-dim matrix
+*/
 	static FloatType KOKKOS_INLINE_FUNCTION determinant(const FloatType (&A)[dim][dim]) {
 		// I would use fprintf to stderr, but that isn't possible from device code
 		printf("Somebody should implement matrix determinants for larger than 3x3\n");
 		return 0./0.;
 	}
 
-	// Perform Cholesky decomposition
+/*!
+  Compute the Cholesky decomposition of a dim-by-dim matrix A and return B such that B * B.T = A
+*/
 	static void KOKKOS_INLINE_FUNCTION cholesky(FloatType (&B)[dim][dim], const FloatType (&A)[dim][dim]) {
 		printf("Somebody should implement Cholesky decomposition for larger than 3x3\n");
 		for(size_t i = 0; i < dim; i++) {
@@ -47,8 +51,9 @@ public:
 		}
 	}
 
-	// Transpose a matrix
-	// returns B such that B.T = A
+/*!
+  Transpose a dim-by-dim matrix matrix A and returns B such that B.T = A
+*/
 	static void KOKKOS_INLINE_FUNCTION transpose(FloatType (&B)[dim][dim], const FloatType (&A)[dim][dim]) {
 		for(size_t i = 0; i < dim; i++) {
 			for(size_t j = 0; j < dim; j++) {
@@ -57,8 +62,9 @@ public:
 		}
 	}
 
-	// Invert a matrix
-	// returns B such that B.A = 1
+/*!
+  Invert a dim-by-dim matrix matrix A and returns B such that B.A = 1
+*/
 	static void KOKKOS_INLINE_FUNCTION invert(FloatType (&B)[dim][dim], const FloatType (&A)[dim][dim]) {
 		printf("Somebody should implement matrix inversion for larger than 3x3\n");
 		for(size_t i = 0; i < dim; i++) {
@@ -73,25 +79,30 @@ public:
 // The trivial 1x1 case
 //
 template<typename FloatType> struct Matrix2d<FloatType,1> {
-	// Determinant of a matrix
+/*!
+  Compute the determinant of a trivial 1-by-1 matrix
+*/
 	static FloatType KOKKOS_INLINE_FUNCTION determinant(const FloatType (&A)[1][1]) {
 		return A[0][0];
 	}
 
-	// Perform Cholesky decomposition
-	// returns B such that B * B.T = A
+/*!
+  Compute the Cholesky decomposition of a trival 1-by-1 matrix A and return B such that B * B.T = A
+*/
 	static void KOKKOS_INLINE_FUNCTION cholesky(FloatType (&B)[1][1], const FloatType (&A)[1][1]) {
 		B[0][0] = sqrt(A[0][0]);
 	}
 
-	// Transpose a matrix
-	// returns B such that B.T = A
+/*!
+  Transpose a trivial 1-by-1 matrix matrix A and returns B such that B.T = A
+*/
 	static void KOKKOS_INLINE_FUNCTION transpose(FloatType (&B)[1][1], const FloatType (&A)[1][1]) {
 		B[0][0] = A[0][0];
 	}
 
-	// Invert a matrix
-	// returns B such that B.A = 1
+/*!
+  Invert a trivial 1-by-1 matrix matrix A and returns B such that B.A = 1
+*/
 	static void KOKKOS_INLINE_FUNCTION invert(FloatType (&B)[1][1], const FloatType (&A)[1][1]) {
 		// determinant
 		const FloatType det = determinant(A);
@@ -105,13 +116,16 @@ template<typename FloatType> struct Matrix2d<FloatType,1> {
 // The 2x2 case
 //
 template<typename FloatType> struct Matrix2d<FloatType,2> {
-	// Determinant of a matrix
+/*!
+  Compute the determinant of a 2-by-2 matrix
+*/
 	static FloatType KOKKOS_INLINE_FUNCTION determinant(const FloatType (&A)[2][2]) {
 		return A[0][0]*A[1][1] - A[1][0]*A[0][1];
 	}
 
-	// Perform Cholesky decomposition
-	// returns B such that B * B.T = A
+/*!
+  Compute the Cholesky decomposition of a 2-by-2 matrix A and return B such that B * B.T = A
+*/
 	static void KOKKOS_INLINE_FUNCTION cholesky(FloatType (&B)[2][2], const FloatType (&A)[2][2]) {
 		B[0][0] = sqrt(A[0][0]);
 		B[0][1] = 0.;
@@ -119,8 +133,9 @@ template<typename FloatType> struct Matrix2d<FloatType,2> {
 		B[1][1] = sqrt(A[1][1] - B[1][0]*B[1][0]);
 	}
 
-	// Transpose a matrix
-	// returns B such that B.T = A
+/*!
+  Transpose a 2-by-2 matrix matrix A and returns B such that B.T = A
+*/
 	static void KOKKOS_INLINE_FUNCTION transpose(FloatType (&B)[2][2], const FloatType (&A)[2][2]) {
 		B[0][0] = A[0][0];
 		B[0][1] = A[1][0];
@@ -128,8 +143,9 @@ template<typename FloatType> struct Matrix2d<FloatType,2> {
 		B[1][1] = A[1][1];
 	}
 
-	// Invert a matrix
-	// returns B such that B.A = 1
+/*!
+  Invert a 2-by-2 matrix matrix A and returns B such that B.A = 1
+*/
 	static void KOKKOS_INLINE_FUNCTION invert(FloatType (&B)[2][2], const FloatType (&A)[2][2]) {
 		// determinant
 		const FloatType det = determinant(A);
@@ -146,7 +162,9 @@ template<typename FloatType> struct Matrix2d<FloatType,2> {
 // The 3x3 case
 //
 template<typename FloatType> struct Matrix2d<FloatType,3> {
-	// Determinant of a matrix
+/*!
+  Compute the determinant of a 3-by-3 matrix
+*/
 	static FloatType KOKKOS_INLINE_FUNCTION determinant(const FloatType (&A)[3][3]) {
 		return A[0][0]*A[1][1]*A[2][2]
 			 + A[0][1]*A[1][2]*A[2][0]
@@ -156,8 +174,9 @@ template<typename FloatType> struct Matrix2d<FloatType,3> {
 			 - A[2][2]*A[1][0]*A[0][1];
 	}
 
-	// Perform Cholesky decomposition
-	// returns B such that B * B.T = A
+/*!
+  Compute the Cholesky decomposition of a 3-by-3 matrix A and return B such that B * B.T = A
+*/
 	static void KOKKOS_INLINE_FUNCTION cholesky(FloatType (&B)[3][3], const FloatType (&A)[3][3]) {
 		B[0][0] = sqrt(A[0][0]);
 		B[0][1] = 0.;
@@ -170,8 +189,9 @@ template<typename FloatType> struct Matrix2d<FloatType,3> {
 		B[2][2] = sqrt(A[2][2] - B[2][0]*B[2][0] - B[2][1]*B[2][1]);
 	}
 
-	// Transpose a matrix
-	// returns B such that B.T = A
+/*!
+  Transpose a 3-by-3 matrix matrix A and returns B such that B.T = A
+*/
 	static void KOKKOS_INLINE_FUNCTION transpose(FloatType (&B)[3][3], const FloatType (&A)[3][3]) {
 		B[0][0] = A[0][0];
 		B[0][1] = A[1][0];
@@ -184,8 +204,9 @@ template<typename FloatType> struct Matrix2d<FloatType,3> {
 		B[2][2] = A[2][2];
 	}
 
-	// Invert a matrix
-	// returns B such that B.A = 1
+/*!
+  Invert a 3-by-3 matrix matrix A and returns B such that B.A = 1
+*/
 	static void KOKKOS_INLINE_FUNCTION invert(FloatType (&B)[3][3], const FloatType (&A)[3][3]) {
 		// determinant
 		const FloatType det = determinant(A);
