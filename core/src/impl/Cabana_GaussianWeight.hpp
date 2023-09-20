@@ -15,7 +15,6 @@
 #ifndef CABANA_GAUSSIAN_WEIGHT_HPP
 #define CABANA_GAUSSIAN_WEIGHT_HPP
 
-#include <impl/Cabana_Bessel.hpp>
 #include <impl/Cabana_Matrix2d.hpp>
 
 namespace Cabana {
@@ -35,7 +34,8 @@ static GMMFloatType KOKKOS_INLINE_FUNCTION weight_1d(const GMMFloatType (&v)[1],
 }
 
 static GMMFloatType KOKKOS_INLINE_FUNCTION weight_2d(const GMMFloatType (&v)[2], const GMMFloatType (&Mu)[2], const GMMFloatType (&C)[2][2]) {
-	return v[1]/sqrt(2.*M_PI*C[0][0])/C[1][1] * exp(-0.5*Mu[1]*Mu[1]/C[1][1]) * exp(-0.5*(v[0]-Mu[0])*(v[0]-Mu[0])/C[0][0]) * exp(-0.5*v[1]*v[1]/C[1][1]) * Impl::Bessel::i0_approx(v[1]*Mu[1]/C[1][1]);
+	return v[1]/sqrt(2.*M_PI*C[0][0])/C[1][1] * exp(-0.5*Mu[1]*Mu[1]/C[1][1]) * exp(-0.5*(v[0]-Mu[0])*(v[0]-Mu[0])/C[0][0]) * exp(-0.5*v[1]*v[1]/C[1][1]) *
+	       Kokkos::Experimental::cyl_bessel_i0<Kokkos::complex<GMMFloatType>, double, int>(Kokkos::complex(v[1]*Mu[1]/C[1][1])).real();
 }
 
 static GMMFloatType KOKKOS_INLINE_FUNCTION weight_3d(const GMMFloatType (&v)[3], const GMMFloatType (&Mu)[3], const GMMFloatType (&C)[3][3]) {

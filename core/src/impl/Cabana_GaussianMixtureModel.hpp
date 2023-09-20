@@ -21,7 +21,6 @@
 #include <Kokkos_Core.hpp>
 #include <Kokkos_Random.hpp>
 #include <Cabana_Parallel.hpp>
-#include <impl/Cabana_Bessel.hpp>
 #include <impl/Cabana_GaussianWeight.hpp>
 
 namespace Cabana {
@@ -418,14 +417,15 @@ static void updateGMM(GaussianType& g_dev, const CellSliceType& cell, const Velo
 				//printf("c=%d,m=%d, alpha=%f, MuPer=%f, Cperper=%f\n", c,m, alpha, uper, cperper);
 				if(alpha > 0.01) {
 					// Iterative solution
-					double I0  = Impl::Bessel::i0_approx(0.25*uper*uper/cperper);
-					double I1  = Impl::Bessel::i1_approx(0.25*uper*uper/cperper);
+					double I0 = Kokkos::Experimental::cyl_bessel_i0<Kokkos::complex<double>, double, int>(Kokkos::complex(0.25*uper*uper/cperper)).real();
+					double I1 = Kokkos::Experimental::cyl_bessel_i1<Kokkos::complex<double>, double, int>(Kokkos::complex(0.25*uper*uper/cperper)).real();
+
 					double Exp = exp(-0.25*uper*uper/cperper);
 					for(int i = 0; i<500; i++) {
 						uper    = sqrt((-M_PI*Exp*Exp*I0*I1*M0*M2perper + 2*M1per*(-M1per + sqrt(M_PI*Exp*Exp*I0*I1*M0*M2perper + M_PI*Exp*Exp*I1*I1*M0*M2perper + M1per*M1per)))/M0/M0)/(sqrt(M_PI)*Exp*I1);
 						cperper = (M_PI*Exp*Exp*I0*I1*M0*M2perper + M_PI*Exp*Exp*I1*I1*M0*M2perper + 2*M1per*(M1per - sqrt(M_PI*Exp*Exp*I0*I1*M0*M2perper + M_PI*Exp*Exp*I1*I1*M0*M2perper + M1per*M1per)))/(2*M_PI*Exp*Exp*I1*I1*M0*M0);
-						I0  = Impl::Bessel::i0_approx(0.25*uper*uper/cperper);
-						I1  = Impl::Bessel::i1_approx(0.25*uper*uper/cperper);
+						I0  = Kokkos::Experimental::cyl_bessel_i0<Kokkos::complex<double>, double, int>(Kokkos::complex(0.25*uper*uper/cperper)).real();
+						I1  = Kokkos::Experimental::cyl_bessel_i1<Kokkos::complex<double>, double, int>(Kokkos::complex(0.25*uper*uper/cperper)).real();
 						Exp = exp(-0.25*uper*uper/cperper);
 					}
 					//printf("c=%d,m=%d, alpha=%f, MuPer=%f, Cperper=%f\n", c,m, alpha, uper, cperper);
