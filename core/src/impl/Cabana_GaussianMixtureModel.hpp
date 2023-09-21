@@ -631,17 +631,7 @@ static void implReconstructGMM(GaussianType& gaussians, const double eps, const 
 	auto alpha_best = Kokkos::create_mirror(alpha_norm);
 
 	for(int c = 0; c < c_max; c++) {
-		// gmm_float_type sigmasq = 1.;
-		// if(dims == 1) {
-		// 	sigmasq = GMMImpl<dims>::variance(cell, weight, velocity_x, c);
-		// } else if(dims == 2) {
-		// 	sigmasq = GMMImpl<dims>::variance(cell, weight, velocity_par, velocity_per, c);
-		// } else if(dims == 3) {
-		// 	sigmasq = GMMImpl<dims>::variance(cell, weight, velocity_x, velocity_y, velocity_z, c);
-		// }
-		// printf("cell %d. var = %e\n", c, sigmasq);
 		double cov[3][3];
-		//GMMFloatType sigmasq = variance(particles, c);
 		if (dims == 1) {
 			GMMImpl<1>::variance(cell, weight, velocity_x, c, cov);
 			printf("cell %d. var = %e\n", c, cov[0][0]);
@@ -660,31 +650,29 @@ static void implReconstructGMM(GaussianType& gaussians, const double eps, const 
 			// Are we worried that me might draw the same particle multiple times?
 			if (dims == 1) {
 				theta(c,m,MuX) = velocity_x(generator.drand(0, Nparticles)); // FIXME: Draw a particle in the right cell
-				theta(c,m,Cxx) = cov[0][0]; //0.2 * sigmasq;
+				theta(c,m,Cxx) = cov[0][0];
 			} else if (dims == 2) {
 				const int particle_idx = generator.drand(0, Nparticles); // FIXME: Draw a particle in the right cell
-				//const GMMFloatType sigmasq = (cov[0][0] + cov[1][1])/2.;// Change init here
 				theta(c,m,MuPar) = velocity_par(particle_idx);
 				theta(c,m,MuPer) = velocity_per(particle_idx);
-				theta(c,m,Cparpar) = cov[0][0]; //0.2 * sigmasq; //
-				theta(c,m,Cparper) = cov[0][1]; //0.0;           //
-				theta(c,m,Cperpar) = cov[1][0]; //0.0;           //
-				theta(c,m,Cperper) = cov[1][1]; //0.2 * sigmasq; //
+				theta(c,m,Cparpar) = cov[0][0];
+				theta(c,m,Cparper) = cov[0][1];
+				theta(c,m,Cperpar) = cov[1][0];
+				theta(c,m,Cperper) = cov[1][1];
 			} else if (dims == 3) {
 				const int particle_idx = generator.drand(0, Nparticles); // FIXME: Draw a particle in the right cell
-				//const GMMFloatType sigmasq = (cov[0][0] + cov[1][1] + cov[2][2])/3.;// Change init here
 				theta(c,m,MuX) = velocity_x(particle_idx);
 				theta(c,m,MuY) = velocity_y(particle_idx);
 				theta(c,m,MuZ) = velocity_z(particle_idx);
-				theta(c,m,Cxx) = cov[0][0]; // 0.2 * sigmasq; //
-				theta(c,m,Cxy) = cov[0][1]; // 0.0;           //
-				theta(c,m,Cxz) = cov[0][2]; // 0.0;           //
-				theta(c,m,Cyx) = cov[1][0]; // 0.0;           //
-				theta(c,m,Cyy) = cov[1][1]; // 0.2 * sigmasq; //
-				theta(c,m,Cyz) = cov[1][2]; // 0.0;           //
-				theta(c,m,Czx) = cov[2][0]; // 0.0;           //
-				theta(c,m,Czy) = cov[2][1]; // 0.0;           //
-				theta(c,m,Czz) = cov[2][2]; // 0.2 * sigmasq; //
+				theta(c,m,Cxx) = cov[0][0];
+				theta(c,m,Cxy) = cov[0][1];
+				theta(c,m,Cxz) = cov[0][2];
+				theta(c,m,Cyx) = cov[1][0];
+				theta(c,m,Cyy) = cov[1][1];
+				theta(c,m,Cyz) = cov[1][2];
+				theta(c,m,Czx) = cov[2][0];
+				theta(c,m,Czy) = cov[2][1];
+				theta(c,m,Czz) = cov[2][2];
 			}
 			alpha(c,m) = 1.;
 			random_pool.free_state(generator);
@@ -830,14 +818,6 @@ static void implReconstructGMM(GaussianType& gaussians, const double eps, const 
 				Kokkos::deep_copy(thetat, theta);
 
 				// Line 20 of Fig. 2
-				gmm_float_type term1 = 0.;
-				Kokkos::deep_copy(alpha_host, alpha_norm);
-				for(int mprime = 0; mprime < k_max; mprime++) {
-					if(alpha_host(c,mprime) > 0.) {
-						term1 += log(Nparticles * alpha_host(c,mprime)/12.);
-						// term1 += log(Nparticles) + log(alpha_host(c,mprime)) - log(12.);
-					}
-				}
 				gmm_float_type term1b = 0.;
 				Kokkos::deep_copy(alpha_host, alpha_norm);
 				for(int mprime = 0; mprime < k_max; mprime++) {
@@ -861,17 +841,8 @@ static void implReconstructGMM(GaussianType& gaussians, const double eps, const 
 				Kokkos::parallel_reduce("get term2", Nparticles, _term2, term2);
 
 				Lold = L;
-				// Change PLLH here
-				L = N/2. * term1 + knz/2.*log(Nparticles/12.) + (knz*N+knz)/2. - term2;
-				// L = N/2. * (knz*log(Nparticles) + term1b -knz*log(12)) + knz/2.*(log(Nparticles) - log(12.)) + (knz*N+knz)/2. - term2;
-				// L = N/2.*knz*log(Nparticles) + N/2.*term1b - N/2.*knz*log(12) + knz/2.*log(Nparticles) - knz/2.*log(12.) + knz*N/2. + knz/2. - term2;
-				// L = N/2.*term1b + N/2.*knz*log(Nparticles) + knz/2.*log(Nparticles) - term2      - N/2.*knz*log(12) - knz/2.*log(12.) + knz*N/2. + knz/2.;
-				//
-				//gmm_float_type d = knz * N + knz - 1.;
-				//L = N/2. * term1b + 0.5*d*log(Nparticles) - term2;
-				// L = N/2.*term1b + 0.5*(knz*N + knz - 1.)*log(Nparticles) - term2;
-				// L = N/2.*term1b + knz/2.*N*log(Nparticles) + knz*log(Nparticles)/2. - log(Nparticles)/2. - term2;
-				// L = N/2.*term1b + N/2.*knz*log(Nparticles) + knz/2.*log(Nparticles) - term2      - log(Nparticles)/2.;
+				gmm_float_type d = knz * N + knz - 1.;
+				L = N/2. * term1b + 0.5*d*log(Nparticles) - term2;
 
 				// Line 21 of Fig 2.
 				if(is_first_iter) {
@@ -879,7 +850,7 @@ static void implReconstructGMM(GaussianType& gaussians, const double eps, const 
 				} else {
 					//printf("knz = %d, Lold = %f, L = %f\n", knz, Lold, L);
 					if(fabs(Lold-L) < eps*fabs(L)) {
-						printf("converged on %d gaussians with Lold = %f in %d iterations!\n", knz, L, t);
+						printf("converged on %d gaussians with L= %f in %d iterations!\n", knz, L, t);
 						converged = true;
 					}
 				}
