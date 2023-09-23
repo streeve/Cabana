@@ -254,8 +254,9 @@ size_t initializeRandomParticles( CellSliceType& cell, WeightSliceType& macro,
             sum += g_dev( c, j, Weight );
         }
 
-        // FIXME: For now we are restricted to uncorrelated Gaussians. Are we ok
-        // with that?
+        // TODO: Extend this to ring distributions that allow for correlations
+        // between parallel and perpendicular velocity components
+        //
         //  Put Covariance matrix of the jth Gaussian into 3x3 Matrix
         const gmm_float_type C[3][3] = { { g_dev( c, j, Cparpar ), 0, 0 },
                                          { 0, g_dev( c, j, Cperper ), 0 },
@@ -414,8 +415,6 @@ size_t initializeParticlesFromCDF( CellSliceType& cell, WeightSliceType& macro,
     const int N_gauss = gaussians.extent( 1 );
     const int N_particles = cell.size();
 
-    // FIXME: what if the number of particles isn't a multiple of the number of
-    // cells
     int start = 0;
     for ( int c = 0; c < N_cells; c++ )
     {
@@ -471,9 +470,8 @@ size_t initializeParticlesFromCDF( CellSliceType& cell, WeightSliceType& macro,
         }
     }
 
-    // FIXME we may not have created exactly N_particles particles. Do we want
-    // to bother creating a few more to fix that? printf("Created %d
-    // particles\n", start);
+    // TODO: we may not have created exactly N_particles particles. Do we want
+    // to bother creating a few more to fix that?
     return ( start );
 }
 
@@ -506,8 +504,7 @@ size_t initializeEqualDensityParticlesWithHammersley(
         // number of physical particles in this cell
         // We assume that these get evenly distributed to all cells. We might
         // change that in the future to be proportional to the plasma density
-        // in each cell. FIXME: what if the number of particles isn't a
-        // multiple of the number of cells
+        // in each cell.
         int N_particles_in_cell = N_particles_in_total / N_cells;
 
         // number of computational particles to add for each Gaussian
@@ -540,7 +537,7 @@ size_t initializeEqualDensityParticlesWithHammersley(
             Nc_host( m ) = int( Ncd_host( m ) * norm );
             N_particles_in_cell += Nc_host( m );
             // if(Nc_host(m) > 0) {
-            //	printf("Nc(%d,%d) = %d\n", c,m, Nc_host(m));
+            //    printf("Nc(%d,%d) = %d\n", c,m, Nc_host(m));
             // }
         }
         Kokkos::deep_copy( Nc, Nc_host );
@@ -638,9 +635,8 @@ size_t initializeEqualDensityParticlesWithHammersley(
         // printf("\n");
     }
 
-    // FIXME we may not have created exactly N_particles_in_total particles. Do
+    // TODO: we may not have created exactly N_particles_in_total particles. Do
     // we want to bother creating a few more to fix that?
-    // printf("Created %d particles\n", start);
     return ( start );
 }
 
@@ -674,8 +670,7 @@ size_t initializeEqualDensityParticlesWithHammersley(
         // number of physical particles in this cell
         // We assume that these get evenly distributed to all cells. We might
         // change that in the future to be proportional to the plasma density
-        // in each cell. FIXME: what if the number of particles isn't a
-        // multiple of the number of cells
+        // in each cell.
         int N_particles_in_cell = N_particles_in_total / N_cells;
 
         // number of computational particles to add for each Gaussian
@@ -708,7 +703,7 @@ size_t initializeEqualDensityParticlesWithHammersley(
             Nc_host( m ) = int( Ncd_host( m ) * norm );
             N_particles_in_cell += Nc_host( m );
             // if(Nc_host(m) > 0) {
-            //	printf("Nc(%d,%d) = %d\n", c,m, Nc_host(m));
+            //    printf("Nc(%d,%d) = %d\n", c,m, Nc_host(m));
             // }
         }
         Kokkos::deep_copy( Nc, Nc_host );
@@ -822,9 +817,8 @@ size_t initializeEqualDensityParticlesWithHammersley(
         // printf("\n");
     }
 
-    // FIXME we may not have created exactly N_particles_in_total particles. Do
+    // TODO: we may not have created exactly N_particles_in_total particles. Do
     // we want to bother creating a few more to fix that?
-    // printf("Created %d particles\n", start);
     return ( start );
 }
 
@@ -858,8 +852,7 @@ size_t initializeEqualDensityParticlesWithHammersley(
         // number of physical particles in this cell
         // We assume that these get evenly distributed to all cells. We might
         // change that in the future to be proportional to the plasma density
-        // in each cell. FIXME: what if the number of particles isn't a
-        // multiple of the number of cells
+        // in each cell.
         int N_particles_in_cell = N_particles_in_total / N_cells;
 
         // number of computational particles to add for each Gaussian
@@ -892,7 +885,7 @@ size_t initializeEqualDensityParticlesWithHammersley(
             Nc_host( m ) = int( Ncd_host( m ) * norm );
             N_particles_in_cell += Nc_host( m );
             // if(Nc_host(m) > 0) {
-            //	printf("Nc(%d,%d) = %d\n", c,m, Nc_host(m));
+            //    printf("Nc(%d,%d) = %d\n", c,m, Nc_host(m));
             // }
         }
         Kokkos::deep_copy( Nc, Nc_host );
@@ -1016,9 +1009,8 @@ size_t initializeEqualDensityParticlesWithHammersley(
         // printf("\n");
     }
 
-    // FIXME we may not have created exactly N_particles_in_total particles. Do
+    // TODO: we may not have created exactly N_particles_in_total particles. Do
     // we want to bother creating a few more to fix that?
-    // printf("Created %d particles\n", start);
     return ( start );
 }
 
@@ -1042,8 +1034,6 @@ size_t initializeEqualWeightParticlesWithHammersley(
     const int N_gauss = gaussians.extent( 1 );
     const int N_particles = cell.size();
 
-    // FIXME: what if the number of particles isn't a multiple of the number of
-    // cells
     int start = 0;
     for ( int c = 0; c < N_cells; c++ )
     {
@@ -1103,9 +1093,8 @@ size_t initializeEqualWeightParticlesWithHammersley(
         }
     }
 
-    // FIXME we may not have created exactly N_particles particles. Do we want
-    // to bother creating a few more to fix that? printf("Created %d
-    // particles\n", start);
+    // TODO: we may not have created exactly N_particles particles. Do we want
+    // to bother creating a few more to fix that?
     return ( start );
 }
 
@@ -1130,8 +1119,6 @@ size_t initializeEqualWeightParticlesWithHammersley(
     const int N_gauss = gaussians.extent( 1 );
     const int N_particles = cell.size();
 
-    // FIXME: what if the number of particles isn't a multiple of the number of
-    // cells
     int start = 0;
     for ( int c = 0; c < N_cells; c++ )
     {
@@ -1152,8 +1139,9 @@ size_t initializeEqualWeightParticlesWithHammersley(
             {
                 int id = (s)*cell.vector_length + i;
 
-                // FIXME: For now we are restricted to uncorrelated Gaussians.
-                // Are we ok with that?
+                // TODO: Extend this to ring distributions that allow for correlations
+                // between parallel and perpendicular velocity components
+                //
                 //  Put Covariance matrix of the jth Gaussian into 3x3 Matrix
                 const gmm_float_type C[3][3] = {
                     { g_dev( c, m, Cparpar ), 0, 0 },
@@ -1217,9 +1205,8 @@ size_t initializeEqualWeightParticlesWithHammersley(
         }
     }
 
-    // FIXME we may not have created exactly N_particles particles. Do we want
-    // to bother creating a few more to fix that? printf("Created %d
-    // particles\n", start);
+    // TODO: we may not have created exactly N_particles particles. Do we want
+    // to bother creating a few more to fix that?
     return ( start );
 }
 
@@ -1244,8 +1231,6 @@ size_t initializeEqualWeightParticlesWithHammersley(
     const int N_gauss = gaussians.extent( 1 );
     const int N_particles = cell.size();
 
-    // FIXME: what if the number of particles isn't a multiple of the number of
-    // cells
     int start = 0;
     for ( int c = 0; c < N_cells; c++ )
     {
@@ -1333,9 +1318,8 @@ size_t initializeEqualWeightParticlesWithHammersley(
         }
     }
 
-    // FIXME we may not have created exactly N_particles particles. Do we want
-    // to bother creating a few more to fix that? printf("Created %d
-    // particles\n", start);
+    // TODO: we may not have created exactly N_particles particles. Do we want
+    // to bother creating a few more to fix that?
     return ( start );
 }
 

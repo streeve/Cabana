@@ -76,7 +76,9 @@ double KOKKOS_INLINE_FUNCTION ppnd7(double p) {
 		} else {
 			r = 1.0 - p;
 		}
-		// FIXME: if r < 0. this will blow up, but not sure how to bail out in device code
+		if((r < 0.) || (r > 1.)) {
+			Kokkos::abort("unexpected problem in ppnd7() inside erfinv()");
+		}
 		r = Kokkos::sqrt(-log(r));
 		if(r < split2) {
 			r = r - const2;

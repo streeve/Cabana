@@ -36,7 +36,6 @@ public:
   respecting the possibly different weights in the macro slice and the result is
   reported in cov[0][0].
 */
-// FIXME is there a good way to match gmm_float_type for the return type?
 template <typename CellSliceType, typename WeightSliceType, typename VelocitySliceType>
 static void variance(const CellSliceType& cell, const WeightSliceType& macro, const VelocitySliceType& velocity_x, const int c, double(&cov)[1][1]) {
 	using gmm_float_type = typename WeightSliceType::value_type;
@@ -287,7 +286,8 @@ static void updateAlpha(AlphaType& alpha, const WType& w_norm, const int c, cons
 			alpha(c,j) = tmp1(j) / sum;
 		}
 	};
-	// FIXME: This shouldn't actually be parallel
+
+	// Not actually parallel but should run on-device
 	Kokkos::parallel_for("update alpha", w_norm.extent(1), _seta);
 }
 
@@ -312,7 +312,6 @@ static void updateWeights(weight_type u, const CellSliceType& cell, const Veloci
 		fprintf(stderr, "We need a separate value of the third index in u for each particle\n");
 		exit(1);
 	}
-	//FIXME other size asserts
 
 	if (dims == 1) {
 		VelocitySliceType velocity_x = vx;
@@ -430,7 +429,7 @@ static void updateGMM(GaussianType& g_dev, const CellSliceType& cell, const Velo
 			}
 		};
 
-		// FIXME: This shouldn't actually be parallel, but it should be on-device
+		// Not actually parallel but should be on-device
 		Kokkos::parallel_for("update Gaussian", g_dev.extent(1), _update);
 	} else if (dims == 2) {
 		auto velocity_par = vx;
@@ -501,7 +500,7 @@ static void updateGMM(GaussianType& g_dev, const CellSliceType& cell, const Velo
 			}
 		};
 
-		// FIXME: This shouldn't actually be parallel, but it should be on-device
+		// This shouldn't actually be parallel, but it should be on-device
 		Kokkos::parallel_for("update Gaussian", g_dev.extent(1), _update);
 	} else if (dims == 3) {
 		auto velocity_x = vx;
@@ -564,7 +563,7 @@ static void updateGMM(GaussianType& g_dev, const CellSliceType& cell, const Velo
 			}
 		};
 
-		// FIXME: This shouldn't actually be parallel, but it should be on-device
+		// This shouldn't actually be parallel, but it should be on-device
 		Kokkos::parallel_for("update Gaussian", g_dev.extent(1), _update);
 	}
 }
@@ -625,7 +624,6 @@ static void implReconstructGMM(GaussianType& gaussians, const double eps, const 
 	using gmm_float_type = typename GaussianType::value_type;
 
 	const int Nparticles = vx.size();
-	//FIXME: assert that the other sized match
 	const int c_max  = gaussians.extent(0); // Maximum number of Cells
 	const size_t k_max  = gaussians.extent(1); // Maximum number of Gaussians
 	int N;
@@ -866,7 +864,9 @@ static void implReconstructGMM(GaussianType& gaussians, const double eps, const 
 						}
 						knz = new_knz;
 						printf("knz = %d\n", knz);
-						if(knz <= 0) {exit(2);} // FIXME
+						if(knz <= 0) {
+							Kokkos::abort("Unexpectedly all gaussian weights have fallen below zero. Construction of Gaussian mixture model failed.");
+						}
 					} // Line 17 of Fig. 2
 				} // Line 18 of Fig. 2
 				// Line 19 of Fig. 2
