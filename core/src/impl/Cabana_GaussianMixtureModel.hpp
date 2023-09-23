@@ -475,9 +475,9 @@ static void updateGMM(GaussianType& g_dev, const CellSliceType& cell, const Velo
 					alpha = 0.;
 					cperper =  M2perper/M0;
 				} else {
-					gmm_float_type rad = (disc + 2.*M1per*sqrt(disc)) / (M_PI*M_PI*M0*M2perper);
-					alpha = sqrt(rad);
-					cperper = 0.5*M_PI*M2perper*M2perper / (8.*M1per*M1per - M_PI*M0*M2perper + 4.*M1per*sqrt(disc));
+					gmm_float_type rad = (disc + 2.*M1per*Kokkos::sqrt(disc)) / (M_PI*M_PI*M0*M2perper);
+					alpha = Kokkos::sqrt(rad);
+					cperper = 0.5*M_PI*M2perper*M2perper / (8.*M1per*M1per - M_PI*M0*M2perper + 4.*M1per*Kokkos::sqrt(disc));
 				}
 				gmm_float_type uper = 2.*alpha*cperper;
 				//printf("c=%d,m=%d, alpha=%f, MuPer=%f, Cperper=%f\n", c,m, alpha, uper, cperper);
@@ -486,13 +486,13 @@ static void updateGMM(GaussianType& g_dev, const CellSliceType& cell, const Velo
 					double I0 = Kokkos::Experimental::cyl_bessel_i0<Kokkos::complex<double>, double, int>(Kokkos::complex(0.25*uper*uper/cperper)).real();
 					double I1 = Kokkos::Experimental::cyl_bessel_i1<Kokkos::complex<double>, double, int>(Kokkos::complex(0.25*uper*uper/cperper)).real();
 
-					double Exp = exp(-0.25*uper*uper/cperper);
+					double Exp = Kokkos::exp(-0.25*uper*uper/cperper);
 					for(int i = 0; i<500; i++) {
-						uper    = sqrt((-M_PI*Exp*Exp*I0*I1*M0*M2perper + 2*M1per*(-M1per + sqrt(M_PI*Exp*Exp*I0*I1*M0*M2perper + M_PI*Exp*Exp*I1*I1*M0*M2perper + M1per*M1per)))/M0/M0)/(sqrt(M_PI)*Exp*I1);
-						cperper = (M_PI*Exp*Exp*I0*I1*M0*M2perper + M_PI*Exp*Exp*I1*I1*M0*M2perper + 2*M1per*(M1per - sqrt(M_PI*Exp*Exp*I0*I1*M0*M2perper + M_PI*Exp*Exp*I1*I1*M0*M2perper + M1per*M1per)))/(2*M_PI*Exp*Exp*I1*I1*M0*M0);
+						uper    = Kokkos::sqrt((-M_PI*Exp*Exp*I0*I1*M0*M2perper + 2*M1per*(-M1per + Kokkos::sqrt(M_PI*Exp*Exp*I0*I1*M0*M2perper + M_PI*Exp*Exp*I1*I1*M0*M2perper + M1per*M1per)))/M0/M0)/(Kokkos::sqrt(M_PI)*Exp*I1);
+						cperper = (M_PI*Exp*Exp*I0*I1*M0*M2perper + M_PI*Exp*Exp*I1*I1*M0*M2perper + 2*M1per*(M1per - Kokkos::sqrt(M_PI*Exp*Exp*I0*I1*M0*M2perper + M_PI*Exp*Exp*I1*I1*M0*M2perper + M1per*M1per)))/(2*M_PI*Exp*Exp*I1*I1*M0*M0);
 						I0  = Kokkos::Experimental::cyl_bessel_i0<Kokkos::complex<double>, double, int>(Kokkos::complex(0.25*uper*uper/cperper)).real();
 						I1  = Kokkos::Experimental::cyl_bessel_i1<Kokkos::complex<double>, double, int>(Kokkos::complex(0.25*uper*uper/cperper)).real();
-						Exp = exp(-0.25*uper*uper/cperper);
+						Exp = Kokkos::exp(-0.25*uper*uper/cperper);
 					}
 					//printf("c=%d,m=%d, alpha=%f, MuPer=%f, Cperper=%f\n", c,m, alpha, uper, cperper);
 				}
@@ -878,7 +878,7 @@ static void implReconstructGMM(GaussianType& gaussians, const double eps, const 
 				Kokkos::deep_copy(alpha_host, alpha_norm);
 				for(size_t mprime = 0; mprime < k_max; mprime++) {
 					if(alpha_host(c,mprime) > 0.) {
-						term1b += log(alpha_host(c,mprime));
+						term1b += std::log(alpha_host(c,mprime));
 					}
 				}
 
@@ -891,14 +891,14 @@ static void implReconstructGMM(GaussianType& gaussians, const double eps, const 
 						}
 					}
 					if(tmp2 > 0.) {
-						lsum += weight(i) * log(tmp2);
+						lsum += weight(i) * Kokkos::log(tmp2);
 					}
 				};
 				Kokkos::parallel_reduce("get term2", Nparticles, _term2, term2);
 
 				Lold = L;
 				gmm_float_type d = knz * N + knz - 1.;
-				L = N/2. * term1b + 0.5*d*log(Nparticles) - term2;
+				L = N/2. * term1b + 0.5*d*std::log(Nparticles) - term2;
 
 				// Line 21 of Fig 2.
 				if(is_first_iter) {

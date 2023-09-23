@@ -77,7 +77,7 @@ double KOKKOS_INLINE_FUNCTION ppnd7(double p) {
 			r = 1.0 - p;
 		}
 		// FIXME: if r < 0. this will blow up, but not sure how to bail out in device code
-		r = sqrt(-log(r));
+		r = Kokkos::sqrt(-log(r));
 		if(r < split2) {
 			r = r - const2;
 			out = (((C3 * r + C2) * r + C1) * r + C0) / ((D2 * r + D1) * r + 1.0);
@@ -95,7 +95,7 @@ double KOKKOS_INLINE_FUNCTION ppnd7(double p) {
 }
 
 double KOKKOS_INLINE_FUNCTION erfinv(double x) {
-	const double out = ppnd7((x+1.)/2.)/sqrt(2.);
+	const double out = ppnd7((x+1.)/2.)/Kokkos::sqrt(2.);
 	return out;
 }
 

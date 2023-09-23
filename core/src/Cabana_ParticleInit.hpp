@@ -184,7 +184,7 @@ size_t initializeRandomParticles( CellSliceType& cell, WeightSliceType& macro,
         const gmm_float_type rx = generator.normal( 0., 1. );
 
         velocity_x.access( s, i ) =
-            g_dev( c, j, MuX ) + sqrt( g_dev( c, j, Cxx ) ) * rx;
+            g_dev( c, j, MuX ) + Kokkos::sqrt( g_dev( c, j, Cxx ) ) * rx;
 
         // Store the cell index
         cell.access( s, i ) = c;
@@ -277,7 +277,7 @@ size_t initializeRandomParticles( CellSliceType& cell, WeightSliceType& macro,
             B[2][0] * rx + B[2][1] * ry + B[2][2] * rz;
 
         velocity_par.access( s, i ) = vx;
-        velocity_per.access( s, i ) = sqrt( vy * vy + vz * vz );
+        velocity_per.access( s, i ) = Kokkos::sqrt( vy * vy + vz * vz );
 
         // Store the cell index
         cell.access( s, i ) = c;
@@ -440,7 +440,7 @@ size_t initializeParticlesFromCDF( CellSliceType& cell, WeightSliceType& macro,
                 // solution to 1/2 * (1+erf((x-mu)/(sqrt(2)*sigma))) == cdf
                 gmm_float_type vx =
                     g_dev( c, m, MuX ) +
-                    sqrt( g_dev( c, m, Cxx ) ) * Cabana::Impl::ppnd7( cdf );
+                    Kokkos::sqrt( g_dev( c, m, Cxx ) ) * Cabana::Impl::ppnd7( cdf );
                 velocity_x.access( s, i ) = vx;
 
                 // Store the cell index
@@ -523,7 +523,7 @@ size_t initializeEqualDensityParticlesWithHammersley(
         {
             if ( gaussians( c, m, Weight ) > 0. )
             {
-                Ncd_host( m ) = pow( gaussians( c, m, Weight ), 1.0 );
+                Ncd_host( m ) = Kokkos::pow( gaussians( c, m, Weight ), 1.0 );
                 sum += Ncd_host( m );
             }
             else
@@ -578,10 +578,10 @@ size_t initializeEqualDensityParticlesWithHammersley(
 
                 const gmm_float_type vx =
                     g_dev( c, m, MuX ) +
-                    5. * sqrt( g_dev( c, m, Cxx ) ) *
+                    5. * Kokkos::sqrt( g_dev( c, m, Cxx ) ) *
                         ( 2. * Cabana::Impl::hammersley( 1, id - start, Nc( m ) ) -
                           1. );
-                const gmm_float_type dv = 10. * sqrt( g_dev( c, m, Cxx ) );
+                const gmm_float_type dv = 10. * Kokkos::sqrt( g_dev( c, m, Cxx ) );
                 const gmm_float_type v[1] = { vx };
                 const gmm_float_type Mu[1] = { g_dev( c, m, MuX ) };
                 const gmm_float_type C[1][1] = { { g_dev( c, m, Cxx ) } };
@@ -691,7 +691,7 @@ size_t initializeEqualDensityParticlesWithHammersley(
         {
             if ( gaussians( c, m, Weight ) > 0. )
             {
-                Ncd_host( m ) = pow( gaussians( c, m, Weight ), 1.0 );
+                Ncd_host( m ) = Kokkos::pow( gaussians( c, m, Weight ), 1.0 );
                 sum += Ncd_host( m );
             }
             else
@@ -746,21 +746,21 @@ size_t initializeEqualDensityParticlesWithHammersley(
 
                 const gmm_float_type vpar =
                     g_dev( c, m, MuPar ) +
-                    5. * sqrt( g_dev( c, m, Cparpar ) ) *
+                    5. * Kokkos::sqrt( g_dev( c, m, Cparpar ) ) *
                         ( 2. * Cabana::Impl::hammersley( 1, id - start + 1,
                                                    Nc( m ) + 1 ) -
                           1. );
                 const gmm_float_type vpermin =
                     Kokkos::max( 0., g_dev( c, m, MuPer ) -
-                                         5. * sqrt( g_dev( c, m, Cperper ) ) );
+                                         5. * Kokkos::sqrt( g_dev( c, m, Cperper ) ) );
                 const gmm_float_type vpermax =
-                    g_dev( c, m, MuPer ) + 5. * sqrt( g_dev( c, m, Cperper ) );
+                    g_dev( c, m, MuPer ) + 5. * Kokkos::sqrt( g_dev( c, m, Cperper ) );
                 const gmm_float_type vper =
                     vpermin +
                     ( vpermax - vpermin ) *
                         Cabana::Impl::hammersley( 2, id - start + 1, Nc( m ) + 1 );
                 const gmm_float_type dvpar =
-                    10. * sqrt( g_dev( c, m, Cparpar ) );
+                    10. * Kokkos::sqrt( g_dev( c, m, Cparpar ) );
                 const gmm_float_type dvper = ( vpermax - vpermin );
                 const gmm_float_type v[2] = { vpar, vper };
                 const gmm_float_type Mu[2] = { g_dev( c, m, MuPar ),
@@ -875,7 +875,7 @@ size_t initializeEqualDensityParticlesWithHammersley(
         {
             if ( gaussians( c, m, Weight ) > 0. )
             {
-                Ncd_host( m ) = pow( gaussians( c, m, Weight ), 1.0 );
+                Ncd_host( m ) = Kokkos::pow( gaussians( c, m, Weight ), 1.0 );
                 sum += Ncd_host( m );
             }
             else
@@ -930,25 +930,25 @@ size_t initializeEqualDensityParticlesWithHammersley(
 
                 const gmm_float_type vx =
                     g_dev( c, m, MuX ) +
-                    3. * sqrt( g_dev( c, m, Cxx ) ) *
+                    3. * Kokkos::sqrt( g_dev( c, m, Cxx ) ) *
                         ( 2. * Cabana::Impl::hammersley( 1, id - start + 1,
                                                    Nc( m ) + 1 ) -
                           1. );
                 const gmm_float_type vy =
                     g_dev( c, m, MuY ) +
-                    3. * sqrt( g_dev( c, m, Cyy ) ) *
+                    3. * Kokkos::sqrt( g_dev( c, m, Cyy ) ) *
                         ( 2. * Cabana::Impl::hammersley( 2, id - start + 1,
                                                    Nc( m ) + 1 ) -
                           1. );
                 const gmm_float_type vz =
                     g_dev( c, m, MuZ ) +
-                    3. * sqrt( g_dev( c, m, Czz ) ) *
+                    3. * Kokkos::sqrt( g_dev( c, m, Czz ) ) *
                         ( 2. * Cabana::Impl::hammersley( 3, id - start + 1,
                                                    Nc( m ) + 1 ) -
                           1. );
-                const gmm_float_type dvx = 6. * sqrt( g_dev( c, m, Cxx ) );
-                const gmm_float_type dvy = 6. * sqrt( g_dev( c, m, Cyy ) );
-                const gmm_float_type dvz = 6. * sqrt( g_dev( c, m, Czz ) );
+                const gmm_float_type dvx = 6. * Kokkos::sqrt( g_dev( c, m, Cxx ) );
+                const gmm_float_type dvy = 6. * Kokkos::sqrt( g_dev( c, m, Cyy ) );
+                const gmm_float_type dvz = 6. * Kokkos::sqrt( g_dev( c, m, Czz ) );
 
                 const gmm_float_type v[3] = { vx, vy, vz };
                 const gmm_float_type Mu[3] = { g_dev( c, m, MuX ),
@@ -1072,10 +1072,10 @@ size_t initializeEqualWeightParticlesWithHammersley(
 
                 // Generate standard normal random variables
                 const gmm_float_type rx =
-                    sqrt( -2. * log( w ) ) * sin( 2. * M_PI * x );
+                    Kokkos::sqrt( -2. * Kokkos::log( w ) ) * Kokkos::sin( 2. * M_PI * x );
 
                 velocity_x.access( s, i ) =
-                    g_dev( c, m, MuX ) + sqrt( g_dev( c, m, Cxx ) ) * rx;
+                    g_dev( c, m, MuX ) + Kokkos::sqrt( g_dev( c, m, Cxx ) ) * rx;
 
                 // Store the cell index
                 cell.access( s, i ) = c;
@@ -1175,11 +1175,11 @@ size_t initializeEqualWeightParticlesWithHammersley(
 
                 // Generate standard normal random variables
                 const gmm_float_type rx =
-                    sqrt( -2. * log( w ) ) * sin( 2. * M_PI * x );
+                    Kokkos::sqrt( -2. * Kokkos::log( w ) ) * Kokkos::sin( 2. * M_PI * x );
                 const gmm_float_type ry =
-                    sqrt( -2. * log( w ) ) * cos( 2. * M_PI * x );
+                    Kokkos::sqrt( -2. * Kokkos::log( w ) ) * Kokkos::cos( 2. * M_PI * x );
                 const gmm_float_type rz =
-                    sqrt( -2. * log( y ) ) * sin( 2. * M_PI * z );
+                    Kokkos::sqrt( -2. * Kokkos::log( y ) ) * Kokkos::sin( 2. * M_PI * z );
 
                 const gmm_float_type vx = g_dev( c, m, MuPar ) + B[0][0] * rx +
                                           B[0][1] * ry + B[0][2] * rz;
@@ -1189,7 +1189,7 @@ size_t initializeEqualWeightParticlesWithHammersley(
                     B[2][0] * rx + B[2][1] * ry + B[2][2] * rz;
 
                 velocity_par.access( s, i ) = vx;
-                velocity_per.access( s, i ) = sqrt( vy * vy + vz * vz );
+                velocity_per.access( s, i ) = Kokkos::sqrt( vy * vy + vz * vz );
 
                 // Store the cell index
                 cell.access( s, i ) = c;
@@ -1290,11 +1290,11 @@ size_t initializeEqualWeightParticlesWithHammersley(
 
                 // Generate standard normal random variables
                 const gmm_float_type rx =
-                    sqrt( -2 * log( w ) ) * sin( 2. * M_PI * x );
+                    Kokkos::sqrt( -2 * Kokkos::log( w ) ) * Kokkos::sin( 2. * M_PI * x );
                 const gmm_float_type ry =
-                    sqrt( -2 * log( w ) ) * cos( 2. * M_PI * x );
+                    Kokkos::sqrt( -2 * Kokkos::log( w ) ) * Kokkos::cos( 2. * M_PI * x );
                 const gmm_float_type rz =
-                    sqrt( -2 * log( y ) ) * sin( 2. * M_PI * z );
+                    Kokkos::sqrt( -2 * Kokkos::log( y ) ) * Kokkos::sin( 2. * M_PI * z );
 
                 const gmm_float_type vx = g_dev( c, m, MuX ) + B[0][0] * rx +
                                           B[0][1] * ry + B[0][2] * rz;

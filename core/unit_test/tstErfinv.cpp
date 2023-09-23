@@ -30,7 +30,7 @@ void testErfinv()
 	double testpoints[] = {-0.999, -0.9, -0.5, -0.1, -1e-3, -1e-8, 1e-8, 1e-3, 0.1, 0.5, 0.9, 0.999};
 	for(int i = 0; i < sizeof(testpoints)/sizeof(testpoints[0]); i++) {
 		const double x = testpoints[i];
-		EXPECT_NEAR(x, erf(Cabana::Impl::erfinv(x)), 1e-7);
+		EXPECT_NEAR(x, Kokkos::erf(Cabana::Impl::erfinv(x)), 1e-7);
 	}
 }
 

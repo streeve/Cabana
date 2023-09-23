@@ -717,7 +717,7 @@ void get_stats(const gaussian_list_t gaussians, const double nppc, Kokkos::View<
 				E(cellindex,0) += 0.5*nppc * g_dev(cellindex,k,Weight) * (g_dev(cellindex,k,Cxx) + g_dev(cellindex,k,MuX)*g_dev(cellindex,k,MuX));
 #elif VelocityDimensions == 2
 				P(cellindex,0) += nppc * g_dev(cellindex,k,Weight) * g_dev(cellindex,k,MuPar);
-				P(cellindex,1) += nppc * g_dev(cellindex,k,Weight) * sqrt(0.5*M_PI)*sqrt(g_dev(cellindex,k,Cperper));
+				P(cellindex,1) += nppc * g_dev(cellindex,k,Weight) * Kokkos::sqrt(0.5*M_PI)*Kokkos::sqrt(g_dev(cellindex,k,Cperper));
 				E(cellindex,0) += 0.5*nppc * g_dev(cellindex,k,Weight) * (g_dev(cellindex,k,Cparpar) + g_dev(cellindex,k,MuPar)*g_dev(cellindex,k,MuPar));
 				E(cellindex,1) += 0.5*nppc * g_dev(cellindex,k,Weight) * (2.*g_dev(cellindex,k,Cperper)                                                 );
 #elif VelocityDimensions == 3
@@ -745,7 +745,7 @@ void get_corrections(const Kokkos::View<double*>& Npprime, const Kokkos::View<do
 		const double num = 2.*E(c,0)*Npprime(c) - P(c,0)*P(c,0);
 		if(num >= 0.) {
 			const double denom = 2.*Eprime(c,0)*Npprime(c) - Pprime(c,0)*Pprime(c,0);
-			a(c,0) = sqrt(num/denom);
+			a(c,0) = Kokkos::sqrt(num/denom);
 			b(c,0) = (P(c,0)-a(c,0)*Pprime(c,0)) / (a(c,0)*Npprime(c));
 		} else{
 			a(c,0) = 1.;
@@ -755,7 +755,7 @@ void get_corrections(const Kokkos::View<double*>& Npprime, const Kokkos::View<do
 		const double num = 2.*(E(c,0)+E(c,1))*Npprime(c) - 2.*P(c,1)*P(c,1)/Pprime(c,1)/Pprime(c,1)*Eprime(c,1)*Npprime(c) - P(c,0)*P(c,0);
 		const double denom = 2.*Eprime(c,0)*Npprime(c) - Pprime(c,0)*Pprime(c,0);
 		if(num/denom >= 0.) {
-			a(c,0) = sqrt(num/denom);
+			a(c,0) = Kokkos::sqrt(num/denom);
 			a(c,1) = P(c,1) / Pprime(c,1);
 			b(c,0) = (P(c,0) - a(c,0)*Pprime(c,0)) / (a(c,0)*Npprime(c));
 		} else {
@@ -767,7 +767,7 @@ void get_corrections(const Kokkos::View<double*>& Npprime, const Kokkos::View<do
 		const double num = 2. * (E(c,0)+E(c,1)+E(c,2)) * Npprime(c) - (P(c,0)*P(c,0) + P(c,1)*P(c,1) + P(c,2)*P(c,2));
 		if(num >= 0.) {
 			const double denom = 2. * (Eprime(c,0)+Eprime(c,1)+Eprime(c,2)) * Npprime(c) - (Pprime(c,0)*Pprime(c,0) + Pprime(c,1)*Pprime(c,1) + Pprime(c,2)*Pprime(c,2));
-			a(c,0) = sqrt(num/denom);
+			a(c,0) = Kokkos::sqrt(num/denom);
 			for(int d = 0; d < VelocityDimensions; d++) {
 				b(c,d) = (P(c,d)-a(c,0)*Pprime(c,d)) / (a(c,0)*Npprime(c));
 			}
