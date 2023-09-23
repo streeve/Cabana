@@ -10,7 +10,7 @@
  ****************************************************************************/
 
 #include <Kokkos_Vector.hpp>
-#include <Cabana_Hammersley.hpp>
+#include <impl/Cabana_Hammersley.hpp>
 #include <cmath>
 #include <cstdio>
 #include <cstdint>
@@ -25,32 +25,30 @@ namespace Test
 // Corput test
 void testCorput()
 {
-	EXPECT_NEAR(Cabana::Corput<2>::value(0), 0./8., 1e-7);
-	EXPECT_NEAR(Cabana::Corput<2>::value(1), 4./8., 1e-7);
-	EXPECT_NEAR(Cabana::Corput<2>::value(2), 2./8., 1e-7);
-	EXPECT_NEAR(Cabana::Corput<2>::value(3), 6./8., 1e-7);
-	EXPECT_NEAR(Cabana::Corput<2>::value(4), 1./8., 1e-7);
-	EXPECT_NEAR(Cabana::Corput<2>::value(5), 5./8., 1e-7);
-	EXPECT_NEAR(Cabana::Corput<2>::value(6), 3./8., 1e-7);
-	EXPECT_NEAR(Cabana::Corput<2>::value(7), 7./8., 1e-7);
+	EXPECT_NEAR(Cabana::Impl::Corput<2>::value(0), 0./8., 1e-7);
+	EXPECT_NEAR(Cabana::Impl::Corput<2>::value(1), 4./8., 1e-7);
+	EXPECT_NEAR(Cabana::Impl::Corput<2>::value(2), 2./8., 1e-7);
+	EXPECT_NEAR(Cabana::Impl::Corput<2>::value(3), 6./8., 1e-7);
+	EXPECT_NEAR(Cabana::Impl::Corput<2>::value(4), 1./8., 1e-7);
+	EXPECT_NEAR(Cabana::Impl::Corput<2>::value(5), 5./8., 1e-7);
+	EXPECT_NEAR(Cabana::Impl::Corput<2>::value(6), 3./8., 1e-7);
+	EXPECT_NEAR(Cabana::Impl::Corput<2>::value(7), 7./8., 1e-7);
 
-	EXPECT_NEAR(Cabana::Corput<3>::value(0), 0./9., 1e-7);
-	EXPECT_NEAR(Cabana::Corput<3>::value(1), 3./9., 1e-7);
-	EXPECT_NEAR(Cabana::Corput<3>::value(2), 6./9., 1e-7);
-	EXPECT_NEAR(Cabana::Corput<3>::value(3), 1./9., 1e-7);
-	EXPECT_NEAR(Cabana::Corput<3>::value(4), 4./9., 1e-7);
-	EXPECT_NEAR(Cabana::Corput<3>::value(5), 7./9., 1e-7);
-	EXPECT_NEAR(Cabana::Corput<3>::value(6), 2./9., 1e-7);
-	EXPECT_NEAR(Cabana::Corput<3>::value(7), 5./9., 1e-7);
-	EXPECT_NEAR(Cabana::Corput<3>::value(8), 8./9., 1e-7);
+	EXPECT_NEAR(Cabana::Impl::Corput<3>::value(0), 0./9., 1e-7);
+	EXPECT_NEAR(Cabana::Impl::Corput<3>::value(1), 3./9., 1e-7);
+	EXPECT_NEAR(Cabana::Impl::Corput<3>::value(2), 6./9., 1e-7);
+	EXPECT_NEAR(Cabana::Impl::Corput<3>::value(3), 1./9., 1e-7);
+	EXPECT_NEAR(Cabana::Impl::Corput<3>::value(4), 4./9., 1e-7);
+	EXPECT_NEAR(Cabana::Impl::Corput<3>::value(5), 7./9., 1e-7);
+	EXPECT_NEAR(Cabana::Impl::Corput<3>::value(6), 2./9., 1e-7);
+	EXPECT_NEAR(Cabana::Impl::Corput<3>::value(7), 5./9., 1e-7);
+	EXPECT_NEAR(Cabana::Impl::Corput<3>::value(8), 8./9., 1e-7);
 
-	/*
 	const int N = 1020; // 34 * 2*3*5
 	auto _print_hammersley = KOKKOS_LAMBDA(const int& i) {
-		printf("%f %f %f %f\n", hammersley(0,i,N), hammersley(1,i,N), hammersley(2,i,N), hammersley(3,i,N));
+		printf("%f %f %f %f\n", Cabana::Impl::hammersley(0,i,N), Cabana::Impl::hammersley(1,i,N), Cabana::Impl::hammersley(2,i,N), Cabana::Impl::hammersley(3,i,N));
 	};
 	Kokkos::parallel_for("print hammersley", N, _print_hammersley);
-	*/
 }
 
 //---------------------------------------------------------------------------//

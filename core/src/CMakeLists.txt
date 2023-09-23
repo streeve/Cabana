@@ -17,7 +17,6 @@ set(HEADERS_PUBLIC
   Cabana_DeepCopy.hpp
   Cabana_Fields.hpp
   Cabana_ExecutionPolicy.hpp
-  Cabana_Hammersley.hpp
   Cabana_LinkedCellList.hpp
   Cabana_MemberTypes.hpp
   Cabana_NeighborList.hpp
@@ -63,6 +62,7 @@ set(HEADERS_IMPL
   impl/Cabana_Index.hpp
   impl/Cabana_GaussianMixtureModel.hpp
   impl/Cabana_GaussianWeight.hpp
+  impl/Cabana_Hammersley.hpp
   impl/Cabana_Matrix2d.hpp
   impl/Cabana_PerformanceTraits.hpp
   impl/Cabana_TypeTraits.hpp

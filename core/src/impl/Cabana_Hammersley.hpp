@@ -18,6 +18,7 @@
 #include <Kokkos_Vector.hpp>
 
 namespace Cabana {
+namespace Impl {
 
 /*!
   Reverse the bits in the unsigned 64bit input
@@ -94,6 +95,7 @@ double KOKKOS_INLINE_FUNCTION hammersley(const int i, const uint64_t n, const ui
 }
 
 
+} // end namespace Impl
 } // end namespace Cabana
 
 #endif // end CABANA_HAMMERSLEY_HPP

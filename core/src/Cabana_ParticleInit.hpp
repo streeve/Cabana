@@ -17,9 +17,9 @@
 #define CABANA_PARTICLEINIT_HPP
 
 #include <Cabana_GaussianMixtureModel.hpp>
-#include <Cabana_Hammersley.hpp>
 #include <Kokkos_Random.hpp>
 #include <impl/Cabana_Erfinv.hpp>
+#include <impl/Cabana_Hammersley.hpp>
 #include <impl/Cabana_Matrix2d.hpp>
 
 #include <random>
@@ -579,7 +579,7 @@ size_t initializeEqualDensityParticlesWithHammersley(
                 const gmm_float_type vx =
                     g_dev( c, m, MuX ) +
                     5. * sqrt( g_dev( c, m, Cxx ) ) *
-                        ( 2. * Cabana::hammersley( 1, id - start, Nc( m ) ) -
+                        ( 2. * Cabana::Impl::hammersley( 1, id - start, Nc( m ) ) -
                           1. );
                 const gmm_float_type dv = 10. * sqrt( g_dev( c, m, Cxx ) );
                 const gmm_float_type v[1] = { vx };
@@ -600,7 +600,7 @@ size_t initializeEqualDensityParticlesWithHammersley(
 
                 // Store particle position
                 position_x.access( s, i ) =
-                    c + Cabana::hammersley( 0, id - start + 1, Nc( m ) + 1 );
+                    c + Cabana::Impl::hammersley( 0, id - start + 1, Nc( m ) + 1 );
             };
 
             // Define an execution policy
@@ -747,7 +747,7 @@ size_t initializeEqualDensityParticlesWithHammersley(
                 const gmm_float_type vpar =
                     g_dev( c, m, MuPar ) +
                     5. * sqrt( g_dev( c, m, Cparpar ) ) *
-                        ( 2. * Cabana::hammersley( 1, id - start + 1,
+                        ( 2. * Cabana::Impl::hammersley( 1, id - start + 1,
                                                    Nc( m ) + 1 ) -
                           1. );
                 const gmm_float_type vpermin =
@@ -758,7 +758,7 @@ size_t initializeEqualDensityParticlesWithHammersley(
                 const gmm_float_type vper =
                     vpermin +
                     ( vpermax - vpermin ) *
-                        Cabana::hammersley( 2, id - start + 1, Nc( m ) + 1 );
+                        Cabana::Impl::hammersley( 2, id - start + 1, Nc( m ) + 1 );
                 const gmm_float_type dvpar =
                     10. * sqrt( g_dev( c, m, Cparpar ) );
                 const gmm_float_type dvper = ( vpermax - vpermin );
@@ -784,7 +784,7 @@ size_t initializeEqualDensityParticlesWithHammersley(
 
                 // Store particle position
                 position_x.access( s, i ) =
-                    c + Cabana::hammersley( 0, id - start + 1, Nc( m ) + 1 );
+                    c + Cabana::Impl::hammersley( 0, id - start + 1, Nc( m ) + 1 );
             };
 
             // Define an execution policy
@@ -931,19 +931,19 @@ size_t initializeEqualDensityParticlesWithHammersley(
                 const gmm_float_type vx =
                     g_dev( c, m, MuX ) +
                     3. * sqrt( g_dev( c, m, Cxx ) ) *
-                        ( 2. * Cabana::hammersley( 1, id - start + 1,
+                        ( 2. * Cabana::Impl::hammersley( 1, id - start + 1,
                                                    Nc( m ) + 1 ) -
                           1. );
                 const gmm_float_type vy =
                     g_dev( c, m, MuY ) +
                     3. * sqrt( g_dev( c, m, Cyy ) ) *
-                        ( 2. * Cabana::hammersley( 2, id - start + 1,
+                        ( 2. * Cabana::Impl::hammersley( 2, id - start + 1,
                                                    Nc( m ) + 1 ) -
                           1. );
                 const gmm_float_type vz =
                     g_dev( c, m, MuZ ) +
                     3. * sqrt( g_dev( c, m, Czz ) ) *
-                        ( 2. * Cabana::hammersley( 3, id - start + 1,
+                        ( 2. * Cabana::Impl::hammersley( 3, id - start + 1,
                                                    Nc( m ) + 1 ) -
                           1. );
                 const gmm_float_type dvx = 6. * sqrt( g_dev( c, m, Cxx ) );
@@ -978,7 +978,7 @@ size_t initializeEqualDensityParticlesWithHammersley(
 
                 // Store particle position
                 position_x.access( s, i ) =
-                    c + Cabana::hammersley( 0, id - start + 1, Nc( m ) + 1 );
+                    c + Cabana::Impl::hammersley( 0, id - start + 1, Nc( m ) + 1 );
             };
 
             // Define an execution policy
@@ -1066,9 +1066,9 @@ size_t initializeEqualWeightParticlesWithHammersley(
 
                 // Generate uniform pseudo-radom variables
                 const gmm_float_type w =
-                    Cabana::hammersley( 1, id - start + 1, Np + 1 );
+                    Cabana::Impl::hammersley( 1, id - start + 1, Np + 1 );
                 const gmm_float_type x =
-                    Cabana::hammersley( 2, id - start + 1, Np + 1 );
+                    Cabana::Impl::hammersley( 2, id - start + 1, Np + 1 );
 
                 // Generate standard normal random variables
                 const gmm_float_type rx =
@@ -1085,7 +1085,7 @@ size_t initializeEqualWeightParticlesWithHammersley(
 
                 // Store particle position
                 position_x.access( s, i ) =
-                    c + Cabana::hammersley( 0, id - start, Np );
+                    c + Cabana::Impl::hammersley( 0, id - start, Np );
             };
 
             // Define an execution policy
@@ -1165,13 +1165,13 @@ size_t initializeEqualWeightParticlesWithHammersley(
 
                 // Generate uniform pseudo-radom variables
                 const gmm_float_type w =
-                    Cabana::hammersley( 1, id - start + 1, Np + 1 );
+                    Cabana::Impl::hammersley( 1, id - start + 1, Np + 1 );
                 const gmm_float_type x =
-                    Cabana::hammersley( 2, id - start + 1, Np + 1 );
+                    Cabana::Impl::hammersley( 2, id - start + 1, Np + 1 );
                 const gmm_float_type y =
-                    Cabana::hammersley( 3, id - start + 1, Np + 1 );
+                    Cabana::Impl::hammersley( 3, id - start + 1, Np + 1 );
                 const gmm_float_type z =
-                    Cabana::hammersley( 4, id - start + 1, Np + 1 );
+                    Cabana::Impl::hammersley( 4, id - start + 1, Np + 1 );
 
                 // Generate standard normal random variables
                 const gmm_float_type rx =
@@ -1199,7 +1199,7 @@ size_t initializeEqualWeightParticlesWithHammersley(
 
                 // Store particle position
                 position_x.access( s, i ) =
-                    c + Cabana::hammersley( 0, id - start, Np );
+                    c + Cabana::Impl::hammersley( 0, id - start, Np );
             };
 
             // Define an execution policy
@@ -1280,13 +1280,13 @@ size_t initializeEqualWeightParticlesWithHammersley(
 
                 // Generate uniform pseudo-radom variables
                 const gmm_float_type w =
-                    Cabana::hammersley( 1, id - start + 1, Np + 1 );
+                    Cabana::Impl::hammersley( 1, id - start + 1, Np + 1 );
                 const gmm_float_type x =
-                    Cabana::hammersley( 2, id - start + 1, Np + 1 );
+                    Cabana::Impl::hammersley( 2, id - start + 1, Np + 1 );
                 const gmm_float_type y =
-                    Cabana::hammersley( 3, id - start + 1, Np + 1 );
+                    Cabana::Impl::hammersley( 3, id - start + 1, Np + 1 );
                 const gmm_float_type z =
-                    Cabana::hammersley( 4, id - start + 1, Np + 1 );
+                    Cabana::Impl::hammersley( 4, id - start + 1, Np + 1 );
 
                 // Generate standard normal random variables
                 const gmm_float_type rx =
@@ -1315,7 +1315,7 @@ size_t initializeEqualWeightParticlesWithHammersley(
 
                 // Store particle position
                 position_x.access( s, i ) =
-                    c + Cabana::hammersley( 0, id - start, Np );
+                    c + Cabana::Impl::hammersley( 0, id - start, Np );
             };
 
             // Define an execution policy
