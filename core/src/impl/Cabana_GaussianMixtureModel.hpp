@@ -38,7 +38,7 @@ public:
 */
 // FIXME is there a good way to match gmm_float_type for the return type?
 template <typename CellSliceType, typename WeightSliceType, typename VelocitySliceType>
-static void variance(const CellSliceType& cell, const WeightSliceType& macro, const VelocitySliceType& velocity_x, const int c, double(&cov)[3][3]) {
+static void variance(const CellSliceType& cell, const WeightSliceType& macro, const VelocitySliceType& velocity_x, const int c, double(&cov)[1][1]) {
 	using gmm_float_type = typename WeightSliceType::value_type;
 
 	gmm_float_type sum_x = 0.;
@@ -71,7 +71,7 @@ static void variance(const CellSliceType& cell, const WeightSliceType& macro, co
   reported in cov[0..1][0..1].
 */
 template <typename CellSliceType, typename WeightSliceType, typename VelocitySliceType>
-static void variance(const CellSliceType& cell, const WeightSliceType& macro, const VelocitySliceType& velocity_par, const VelocitySliceType& velocity_per, const int c, double(&cov)[3][3]) {
+static void variance(const CellSliceType& cell, const WeightSliceType& macro, const VelocitySliceType& velocity_par, const VelocitySliceType& velocity_per, const int c, double(&cov)[2][2]) {
 	using gmm_float_type = typename WeightSliceType::value_type;
 
 	gmm_float_type sum_par = 0.;
@@ -314,54 +314,88 @@ static void updateWeights(weight_type u, const CellSliceType& cell, const Veloci
 	}
 	//FIXME other size asserts
 
-	VelocitySliceType velocity_x, velocity_y, velocity_z, velocity_par, velocity_per;
 	if (dims == 1) {
-		velocity_x = vx;
-	} else if (dims == 2) {
-		velocity_par = vx;
-		velocity_per = vy;
-	} else if (dims == 3) {
-		velocity_x = vx;
-		velocity_y = vy;
-		velocity_z = vz;
-	}
+		VelocitySliceType velocity_x = vx;
 
-	// The value of u is given by the probability to draw a single particle from a Gaussian
-	auto _weight = KOKKOS_LAMBDA(const int s, const int i) {
-		int n = (s)*cell.vector_length + i;
-		if(cell(n) == c) {
-			gmm_float_type p = 0.;
-			if (dims == 1) {
+		// The value of u is given by the probability to draw a single particle from a Gaussian
+		auto _weight = KOKKOS_LAMBDA(const int s, const int i) {
+			int n = (s)*cell.vector_length + i;
+			if(cell(n) == c) {
+				gmm_float_type p = 0.;
 				gmm_float_type v[1] = {velocity_x(n)};
 				gmm_float_type Mu[1] = {g_dev(c,m,MuX)};
 				gmm_float_type C[1][1] = {{g_dev(c,m,Cxx)}};
 				p = Impl::GaussianWeight<gmm_float_type>::weight_1d(v, Mu, C);
-			} else if (dims == 2) {
+
+				u(c,m,n) = p;
+			} else {
+				u(c,m,n) = 0.;
+			}
+		};
+
+		// Define an execution policy
+		SimdPolicy<cell.vector_length, Kokkos::DefaultExecutionSpace> vec_policy(0, cell.size());
+
+		// Execute for all particles in parallel
+		simd_parallel_for(vec_policy, _weight, "weight()");
+
+	} else if (dims == 2) {
+		VelocitySliceType velocity_par = vx;
+		VelocitySliceType velocity_per = vy;
+
+		// The value of u is given by the probability to draw a single particle from a Gaussian
+		auto _weight = KOKKOS_LAMBDA(const int s, const int i) {
+			int n = (s)*cell.vector_length + i;
+			if(cell(n) == c) {
+				gmm_float_type p = 0.;
 				gmm_float_type v[2] = {velocity_par(n), velocity_per(n)};
 				gmm_float_type Mu[2] = {g_dev(c,m,MuPar), g_dev(c,m,MuPer)};
 				gmm_float_type C[2][2] = {{g_dev(c,m,Cparpar), g_dev(c,m,Cparper)},
 										{g_dev(c,m,Cperpar), g_dev(c,m,Cperper)}};
 				p = Impl::GaussianWeight<gmm_float_type>::weight_2d(v, Mu, C);
-			} else if (dims == 3) {
+
+				u(c,m,n) = p;
+			} else {
+				u(c,m,n) = 0.;
+			}
+		};
+
+		// Define an execution policy
+		SimdPolicy<cell.vector_length, Kokkos::DefaultExecutionSpace> vec_policy(0, cell.size());
+
+		// Execute for all particles in parallel
+		simd_parallel_for(vec_policy, _weight, "weight()");
+
+	} else if (dims == 3) {
+		VelocitySliceType velocity_x = vx;
+		VelocitySliceType velocity_y = vy;
+		VelocitySliceType velocity_z = vz;
+
+		// The value of u is given by the probability to draw a single particle from a Gaussian
+		auto _weight = KOKKOS_LAMBDA(const int s, const int i) {
+			int n = (s)*cell.vector_length + i;
+			if(cell(n) == c) {
+				gmm_float_type p = 0.;
 				gmm_float_type v[3] = {velocity_x(n), velocity_y(n), velocity_z(n)};
 				gmm_float_type Mu[3] = {g_dev(c,m,MuX), g_dev(c,m,MuY), g_dev(c,m,MuZ)};
 				gmm_float_type C[3][3] = {{g_dev(c,m,Cxx), g_dev(c,m,Cxy), g_dev(c,m,Cxz)},
 										{g_dev(c,m,Cyx), g_dev(c,m,Cyy), g_dev(c,m,Cyz)},
 										{g_dev(c,m,Czx), g_dev(c,m,Czy), g_dev(c,m,Czz)}};
 				p = Impl::GaussianWeight<gmm_float_type>::weight_3d(v, Mu, C);
+
+				u(c,m,n) = p;
+			} else {
+				u(c,m,n) = 0.;
 			}
+		};
 
-			u(c,m,n) = p;
-		} else {
-			u(c,m,n) = 0.;
-		}
-	};
+		// Define an execution policy
+		SimdPolicy<cell.vector_length, Kokkos::DefaultExecutionSpace> vec_policy(0, cell.size());
 
-	// Define an execution policy
-	SimdPolicy<cell.vector_length, Kokkos::DefaultExecutionSpace> vec_policy(0, cell.size());
+		// Execute for all particles in parallel
+		simd_parallel_for(vec_policy, _weight, "weight()");
+	}
 
-	// Execute for all particles in parallel
-	simd_parallel_for(vec_policy, _weight, "weight()");
 }
 
 /*!
@@ -593,7 +627,7 @@ static void implReconstructGMM(GaussianType& gaussians, const double eps, const 
 	const int Nparticles = vx.size();
 	//FIXME: assert that the other sized match
 	const int c_max  = gaussians.extent(0); // Maximum number of Cells
-	const int k_max  = gaussians.extent(1); // Maximum number of Gaussians
+	const size_t k_max  = gaussians.extent(1); // Maximum number of Gaussians
 	int N;
 	if(dims == 1) {
 		N     = 1 + 1*(1+1)/2;       // Number of actually independent degrees of freedom for each 1d Gaussian
@@ -608,21 +642,6 @@ static void implReconstructGMM(GaussianType& gaussians, const double eps, const 
 	Kokkos::View<gmm_float_type**> alpha("alpha", c_max, k_max);
 	Kokkos::View<gmm_float_type**> alpha_norm("alpha norm", c_max, k_max);
 
-	// Generate initial guesses for all Gaussians
-	Kokkos::Random_XorShift64_Pool<> random_pool(seed);
-
-	VelocitySliceType velocity_x, velocity_y, velocity_z, velocity_par, velocity_per;
-	if (dims == 1) {
-		velocity_x = vx;
-	} else if (dims == 2) {
-		velocity_par = vx;
-		velocity_per = vz;
-	} else if (dims == 3) {
-		velocity_x = vx;
-		velocity_y = vy;
-		velocity_z = vz;
-	}
-
 	auto theta = Kokkos::create_mirror_view(Kokkos::DefaultExecutionSpace::memory_space(), gaussians);
 	Kokkos::deep_copy(theta, gaussians);
 
@@ -630,28 +649,45 @@ static void implReconstructGMM(GaussianType& gaussians, const double eps, const 
 	auto theta_best = Kokkos::create_mirror(theta);
 	auto alpha_best = Kokkos::create_mirror(alpha_norm);
 
-	for(int c = 0; c < c_max; c++) {
-		double cov[3][3];
-		if (dims == 1) {
+	// Generate initial guesses for all Gaussians
+	Kokkos::Random_XorShift64_Pool<> random_pool(seed);
+
+	if (dims == 1) {
+		VelocitySliceType velocity_x = vx;
+
+		for(int c = 0; c < c_max; c++) {
+			double cov[1][1];
 			GMMImpl<1>::variance(cell, weight, velocity_x, c, cov);
 			printf("cell %d. var = %e\n", c, cov[0][0]);
-		} else if (dims == 2) {
-			GMMImpl<2>::variance(cell, weight, velocity_par, velocity_per, c, cov);
-			printf("cell %d. var = %e %e, %e %e\n", c, cov[0][0], cov[0][1], cov[1][0], cov[1][1]);
-		} else if (dims == 3) {
-			GMMImpl<3>::variance(cell, weight, velocity_x, velocity_y, velocity_z, c, cov);
-			printf("cell %d. var = %e %e %e, %e %e %e, %e %e %e\n", c, cov[0][0], cov[0][1], cov[0][2], cov[1][0], cov[1][1], cov[1][2], cov[2][0], cov[2][1], cov[2][2]);
-		}
 
-		// Define how to initialize one Gaussian
-		auto _init = KOKKOS_LAMBDA(const int m) {
-			auto generator = random_pool.get_state();
-			theta(c,m,Weight) = 0.; // can we use this instead of alpha?
-			// Are we worried that me might draw the same particle multiple times?
-			if (dims == 1) {
+			// Define how to initialize one Gaussian
+			auto _init = KOKKOS_LAMBDA(const int m) {
+				auto generator = random_pool.get_state();
+				theta(c,m,Weight) = 0.; // can we use this instead of alpha?
+				// Are we worried that me might draw the same particle multiple times?
 				theta(c,m,MuX) = velocity_x(generator.drand(0, Nparticles)); // FIXME: Draw a particle in the right cell
 				theta(c,m,Cxx) = cov[0][0];
-			} else if (dims == 2) {
+				alpha(c,m) = 1.;
+				random_pool.free_state(generator);
+			};
+
+			// execute for all Gaussians
+			Kokkos::parallel_for("initial guesses", k_max, _init);
+		}
+	} else if (dims == 2) {
+		VelocitySliceType velocity_par = vx;
+		VelocitySliceType velocity_per = vz;
+
+		for(int c = 0; c < c_max; c++) {
+			double cov[2][2];
+			GMMImpl<2>::variance(cell, weight, velocity_par, velocity_per, c, cov);
+			printf("cell %d. var = %e %e, %e %e\n", c, cov[0][0], cov[0][1], cov[1][0], cov[1][1]);
+
+			// Define how to initialize one Gaussian
+			auto _init = KOKKOS_LAMBDA(const int m) {
+				auto generator = random_pool.get_state();
+				theta(c,m,Weight) = 0.; // can we use this instead of alpha?
+				// Are we worried that me might draw the same particle multiple times?
 				const int particle_idx = generator.drand(0, Nparticles); // FIXME: Draw a particle in the right cell
 				theta(c,m,MuPar) = velocity_par(particle_idx);
 				theta(c,m,MuPer) = velocity_per(particle_idx);
@@ -659,7 +695,28 @@ static void implReconstructGMM(GaussianType& gaussians, const double eps, const 
 				theta(c,m,Cparper) = cov[0][1];
 				theta(c,m,Cperpar) = cov[1][0];
 				theta(c,m,Cperper) = cov[1][1];
-			} else if (dims == 3) {
+				alpha(c,m) = 1.;
+				random_pool.free_state(generator);
+			};
+
+			// execute for all Gaussians
+			Kokkos::parallel_for("initial guesses", k_max, _init);
+		}
+	} else if (dims == 3) {
+		VelocitySliceType velocity_x = vx;
+		VelocitySliceType velocity_y = vy;
+		VelocitySliceType velocity_z = vz;
+
+		for(int c = 0; c < c_max; c++) {
+			double cov[3][3];
+			GMMImpl<3>::variance(cell, weight, velocity_x, velocity_y, velocity_z, c, cov);
+			printf("cell %d. var = %e %e %e, %e %e %e, %e %e %e\n", c, cov[0][0], cov[0][1], cov[0][2], cov[1][0], cov[1][1], cov[1][2], cov[2][0], cov[2][1], cov[2][2]);
+
+			// Define how to initialize one Gaussian
+			auto _init = KOKKOS_LAMBDA(const int m) {
+				auto generator = random_pool.get_state();
+				theta(c,m,Weight) = 0.; // can we use this instead of alpha?
+				// Are we worried that me might draw the same particle multiple times?
 				const int particle_idx = generator.drand(0, Nparticles); // FIXME: Draw a particle in the right cell
 				theta(c,m,MuX) = velocity_x(particle_idx);
 				theta(c,m,MuY) = velocity_y(particle_idx);
@@ -673,13 +730,11 @@ static void implReconstructGMM(GaussianType& gaussians, const double eps, const 
 				theta(c,m,Czx) = cov[2][0];
 				theta(c,m,Czy) = cov[2][1];
 				theta(c,m,Czz) = cov[2][2];
-			}
-			alpha(c,m) = 1.;
-			random_pool.free_state(generator);
-		};
+			};
 
-		// execute for all Gaussians
-		Kokkos::parallel_for("initial guesses", k_max, _init);
+			// execute for all Gaussians
+			Kokkos::parallel_for("initial guesses", k_max, _init);
+		}
 	}
 
 	// print initial gaussians
@@ -714,7 +769,7 @@ static void implReconstructGMM(GaussianType& gaussians, const double eps, const 
 	// Compute the probabilities of all particles relative to all gaussians
 	Kokkos::View<gmm_float_type***> u("u", c_max,k_max,Nparticles);
 	for(int c = 0; c < c_max; c++) {
-		for(int m = 0; m < k_max; m++) {
+		for(size_t m = 0; m < k_max; m++) {
 			updateWeights(u, cell, vx,vy,vz, theta, c,m);
 		}
 	}
@@ -741,7 +796,8 @@ static void implReconstructGMM(GaussianType& gaussians, const double eps, const 
 			fflush(NULL);
 
 			bool is_first_iter = true;
-			gmm_float_type L, Lold;
+			gmm_float_type L = std::numeric_limits<gmm_float_type>::infinity();
+			gmm_float_type Lold = std::numeric_limits<gmm_float_type>::infinity();
 			// Line 6 in Fig. 2
 			bool converged = false;
 			while(!converged) {
@@ -749,7 +805,7 @@ static void implReconstructGMM(GaussianType& gaussians, const double eps, const 
 				t += 1;
 
 				// Line 8 in Fig. 2
-				for(int m = 0; m < k_max; m++) {
+				for(size_t m = 0; m < k_max; m++) {
 					// Get a current copy of alpha_norm
 					Kokkos::deep_copy(alpha_host, alpha_norm);
 					if(alpha_host(c,m) <= 0.) {
@@ -763,7 +819,7 @@ static void implReconstructGMM(GaussianType& gaussians, const double eps, const 
 					Kokkos::parallel_for("Update w", Nparticles, _updatew);
 					auto _updatewnorm = KOKKOS_LAMBDA(const int& i) {
 						gmm_float_type sum = 0.;
-						for(int mprime = 0; mprime < k_max; mprime++) {
+						for(size_t mprime = 0; mprime < k_max; mprime++) {
 							sum += w(c,mprime,i);
 						}
 						if(sum == 0.) {
@@ -798,12 +854,12 @@ static void implReconstructGMM(GaussianType& gaussians, const double eps, const 
 						// update w_norm
 						Kokkos::parallel_for("Update wnorm", Nparticles, _updatewnorm);
 					} else { // Line 15 of Fig. 2
-						printf("alpha(%d,%d) <= 0\n", c,m);
+						printf("alpha(%d,%lu) <= 0\n", c,m);
 						removeGaussianComponent(alpha, alpha_norm, w, w_norm, u, c,m);
 						// Line 16 of Fig. 2
 						// count how many gaussians have alpha_norm(m)>0
 						int new_knz = 0;
-						for(int mprime = 0; mprime < k_max; mprime++) {
+						for(size_t mprime = 0; mprime < k_max; mprime++) {
 							if(alpha_host(c,mprime) > 0.) {
 								new_knz++;
 							}
@@ -820,7 +876,7 @@ static void implReconstructGMM(GaussianType& gaussians, const double eps, const 
 				// Line 20 of Fig. 2
 				gmm_float_type term1b = 0.;
 				Kokkos::deep_copy(alpha_host, alpha_norm);
-				for(int mprime = 0; mprime < k_max; mprime++) {
+				for(size_t mprime = 0; mprime < k_max; mprime++) {
 					if(alpha_host(c,mprime) > 0.) {
 						term1b += log(alpha_host(c,mprime));
 					}
@@ -829,7 +885,7 @@ static void implReconstructGMM(GaussianType& gaussians, const double eps, const 
 				gmm_float_type term2 = 0.;
 				auto _term2 = KOKKOS_LAMBDA(const int i, gmm_float_type& lsum) {
 					gmm_float_type tmp2 = 0.;
-					for(int mprime = 0; mprime < k_max; mprime++) {
+					for(size_t mprime = 0; mprime < k_max; mprime++) {
 						if(alpha_norm(c,mprime) > 0.) {
 							tmp2 += alpha_norm(c,mprime) * u(c,mprime,i);
 						}
@@ -889,7 +945,7 @@ static void implReconstructGMM(GaussianType& gaussians, const double eps, const 
 
 		// Copy back alpha norm and set the weights of the Gaussians from that
 		Kokkos::deep_copy(alpha_host, alpha_best);
-		for(int m = 0; m < k_max; m++) {
+		for(size_t m = 0; m < k_max; m++) {
 			gaussians(c,m,Weight) = alpha_host(c,m);
 		}
 
