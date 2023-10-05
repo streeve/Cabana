@@ -24,6 +24,7 @@
 #include <Cabana_DeepCopy.hpp>
 #include <Cabana_HDF5ParticleOutput.hpp>
 #include <Cabana_ParticleInit.hpp>
+#include <Cabana_ParticleList.hpp>
 
 #include <Kokkos_Core.hpp>
 
@@ -35,6 +36,23 @@
 
 namespace Test
 {
+
+struct Coords : public Cabana::Field::Vector<double, 3>
+{
+    static std::string label() { return "coords"; }
+};
+struct Vector : public Cabana::Field::Vector<double, 3>
+{
+    static std::string label() { return "vec"; }
+};
+struct Matrix : public Cabana::Field::Matrix<double, 3, 3>
+{
+    static std::string label() { return "matrix"; }
+};
+struct IDs : public Cabana::Field::Scalar<double>
+{
+    static std::string label() { return "ids"; }
+};
 
 template <class SliceType1, class SliceType2>
 void checkScalar( SliceType1 write, SliceType2 read )
@@ -70,7 +88,7 @@ void checkMatrix( SliceType1 write, SliceType2 read )
     }
 }
 //---------------------------------------------------------------------------//
-void writeReadTest()
+void writeReadAoSoATest()
 {
     std::array<double, 3> low_corner = { -2.8, 1.4, -10.4 };
     std::array<double, 3> high_corner = { 1.2, 7.5, -7.9 };
@@ -188,10 +206,123 @@ void writeReadTest()
     EXPECT_DOUBLE_EQ( time, time_read );
 }
 
+void writeReadParticleListTest()
+{
+    std::array<double, 3> low_corner = { -2.8, 1.4, -10.4 };
+    std::array<double, 3> high_corner = { 1.2, 7.5, -7.9 };
+
+    // Allocate particle properties.
+    int num_particle = 100;
+    Cabana::ParticleTraits<Coords, Vector, Matrix, IDs> tags;
+    auto particle_list =
+        Cabana::createParticleList<TEST_MEMSPACE>( "particles", tags );
+    using plist_type = decltype( particle_list );
+    auto null_func =
+        KOKKOS_LAMBDA( const int p, const double x[3], const double,
+                       typename plist_type::particle_type particle )
+    {
+        Cabana::get( particle, IDs() ) = p;
+
+        for ( int d = 0; d < 3; ++d )
+        {
+            Cabana::get( particle, Coords(), d ) = x[d];
+            Cabana::get( particle, Vector(), d ) = p * x[d];
+
+            for ( int d2 = 0; d2 < 3; ++d2 )
+                Cabana::get( particle, Matrix(), d, d2 ) = d * d2 / x[d];
+        }
+
+        return true;
+    };
+    Cabana::createParticles( Cabana::InitRandom(), null_func, particle_list,
+                             num_particle, low_corner, high_corner );
+
+    Cabana::Experimental::HDF5ParticleOutput::HDF5Config h5_config;
+
+    h5_config.collective = true;
+
+    // Write a time step to file.
+    double time_read;
+    double time = 7.64;
+    double step = 892;
+    Cabana::Experimental::HDF5ParticleOutput::writeTimeStep(
+        h5_config, MPI_COMM_WORLD, step, time, particle_list.size(),
+        particle_list, Coords(), Vector(), Matrix(), IDs() );
+
+    // Make an empty copy to read into.
+    Cabana::AoSoA<typename plist_type::member_types, Kokkos::HostSpace>
+        aosoa_read( "read", particle_list.size() );
+    auto coords_read = Cabana::slice<0>( aosoa_read, "coords" );
+    auto vec_read = Cabana::slice<1>( aosoa_read, "vec" );
+    auto matrix_read = Cabana::slice<2>( aosoa_read, "matrix" );
+    auto ids_read = Cabana::slice<3>( aosoa_read, "ids" );
+
+    // Read the data back in and compare.
+    Cabana::Experimental::HDF5ParticleOutput::readTimeStep(
+        h5_config, "particles", MPI_COMM_WORLD, step, coords.size(),
+        coords.label(), time_read, coords_read );
+    checkVector( coords_mirror, coords_read );
+    EXPECT_DOUBLE_EQ( time, time_read );
+
+    Cabana::Experimental::HDF5ParticleOutput::readTimeStep(
+        h5_config, "particles", MPI_COMM_WORLD, step, coords.size(),
+        ids.label(), time_read, ids_read );
+    checkScalar( ids_mirror, ids_read );
+    EXPECT_DOUBLE_EQ( time, time_read );
+
+    Cabana::Experimental::HDF5ParticleOutput::readTimeStep(
+        h5_config, "particles", MPI_COMM_WORLD, step, coords.size(),
+        vec.label(), time_read, vec_read );
+    checkVector( vec_mirror, vec_read );
+    EXPECT_DOUBLE_EQ( time, time_read );
+
+    Cabana::Experimental::HDF5ParticleOutput::readTimeStep(
+        h5_config, "particles", MPI_COMM_WORLD, step, coords.size(),
+        matrix.label(), time_read, matrix_read );
+    checkMatrix( matrix_mirror, matrix_read );
+    EXPECT_DOUBLE_EQ( time, time_read );
+
+    // Move the particles and write again.
+    double time_step_size = 0.32;
+    time += time_step_size;
+    ++step;
+    for ( int p = 0; p < num_particle; ++p )
+        for ( int d = 0; d < 3; ++d )
+            coords_mirror( p, d ) += 1.32;
+    Cabana::deep_copy( coords, coords_mirror );
+    Cabana::Experimental::HDF5ParticleOutput::writeTimeStep(
+        h5_config, "particles-update", MPI_COMM_WORLD, step, time,
+        coords.size(), coords, ids, matrix, vec );
+
+    // Read the data back in and compare.
+    Cabana::Experimental::HDF5ParticleOutput::readTimeStep(
+        h5_config, "particles-update", MPI_COMM_WORLD, step, coords_read.size(),
+        coords.label(), time_read, coords_read );
+    checkVector( coords_mirror, coords_read );
+    EXPECT_DOUBLE_EQ( time, time_read );
+
+    // Now check writing only positions.
+    Cabana::Experimental::HDF5ParticleOutput::writeTimeStep(
+        h5_config, "positions_only", MPI_COMM_WORLD, step, time, coords.size(),
+        coords );
+
+    // Read the data back in and compare.
+    Cabana::Experimental::HDF5ParticleOutput::readTimeStep(
+        h5_config, "positions_only", MPI_COMM_WORLD, step, coords_read.size(),
+        coords.label(), time_read, coords_read );
+    checkVector( coords_mirror, coords_read );
+    EXPECT_DOUBLE_EQ( time, time_read );
+}
+
 //---------------------------------------------------------------------------//
 // RUN TESTS
 //---------------------------------------------------------------------------//
-TEST( TEST_CATEGORY, write_read_test ) { writeReadTest(); }
+TEST( TEST_CATEGORY, write_read_aosoa_test ) { writeReadAoSoATest(); }
+
+TEST( TEST_CATEGORY, write_read_particle_list_test )
+{
+    writeReadParticleListTest();
+}
 
 //---------------------------------------------------------------------------//
 

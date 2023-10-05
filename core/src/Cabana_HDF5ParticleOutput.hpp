@@ -653,6 +653,29 @@ void writeTimeStep( HDF5Config h5_config, const std::string& prefix,
     Kokkos::Profiling::popRegion();
 }
 
+/*!
+  \brief Write particle output in HDF5 format.
+  \param h5_config HDF5 configuration settings.
+  \param comm MPI communicator.
+  \param time_step_index Current simulation step index.
+  \param time Current simulation time.
+  \param n_local Number of local particles.
+  \param particle_list ParticleList of particles.
+  \param position_tag Particle coordinates field tag.
+  \param field_tags Variadic list of particle property field tags.
+*/
+template <class ParticleListType, class PositionTag, class... FieldTags>
+void writeTimeStep( HDF5Config h5_config, const std::string& prefix,
+                    MPI_Comm comm, const int time_step_index, const double time,
+                    const std::size_t n_local, ParticleListType& particle_list,
+                    const PositionTag& position_tag, FieldTags&&... field_tags )
+{
+    // Extract all slices and pass to HDF5.
+    writeFields( h5_config, prefix, comm, time_step_index, time, n_local,
+                 particle_list.slice( position_tag() ),
+                 particle_list.slice( field_tags()... ) );
+}
+
 //---------------------------------------------------------------------------//
 // HDF5 (XDMF) Particle Field Input.
 //---------------------------------------------------------------------------//
@@ -838,6 +861,28 @@ void readTimeStep( HDF5Config h5_config, const std::string& prefix,
     Kokkos::Profiling::popRegion();
 }
 
+/*!
+  \brief Write particle output in HDF5 format.
+  \param h5_config HDF5 configuration settings.
+  \param comm MPI communicator.
+  \param time_step_index Current simulation step index.
+  \param time Current simulation time.
+  \param n_local Number of local particles.
+  \param particle_list ParticleList of particles.
+  \param position_tag Particle coordinates field tag.
+  \param field_tags Variadic list of particle property field tags.
+*/
+template <class ParticleListType, class PositionTag, class... FieldTags>
+void readTimeStep( HDF5Config h5_config, const std::string& prefix,
+                   MPI_Comm comm, const int time_step_index, const double time,
+                   const std::size_t n_local, ParticleListType& particle_list,
+                   FieldTags&&... field_tags )
+{
+    // Extract all slices and pass to HDF5.
+    writeFields( h5_config, prefix, comm, time_step_index, time, n_local,
+                 particle_list.slice( position_tag() ),
+                 particle_list.slice( field_tags()... ) );
+}
 //---------------------------------------------------------------------------//
 
 } // namespace HDF5ParticleOutput
