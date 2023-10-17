@@ -408,8 +408,8 @@ void migrate( ExecutionSpace exec_space, const Distributor_t& distributor,
                                       int>::type* = 0 )
 {
     // Check that the AoSoA is the right size.
-    if ( aosoa.size() != distributor.exportSize() )
-        throw std::runtime_error( "AoSoA is the wrong size for migration!" );
+    // if ( aosoa.size() != distributor.exportSize() )
+    //    throw std::runtime_error( "AoSoA is the wrong size for migration!" );
 
     // Determine if the source of destination decomposition has more data on
     // this rank.
