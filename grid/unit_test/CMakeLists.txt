@@ -20,6 +20,7 @@ set(SERIAL_TESTS
 
 set(MPI_TESTS
   GlobalGrid
+  LinkedCell
   LocalGrid
   IndexConversion
   LocalMesh3d

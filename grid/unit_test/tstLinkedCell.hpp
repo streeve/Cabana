@@ -10,9 +10,16 @@
  ****************************************************************************/
 
 #include <Kokkos_Core.hpp>
+#include <Kokkos_Random.hpp>
+
+#include <Cabana_AoSoA.hpp>
+#include <Cabana_DeepCopy.hpp>
+#include <Cabana_Distributor.hpp>
+#include <Cabana_Slice.hpp>
 
 #include <Cabana_Grid_GlobalGrid.hpp>
 #include <Cabana_Grid_GlobalMesh.hpp>
+#include <Cabana_Grid_LinkedCell.hpp>
 #include <Cabana_Grid_LocalGrid.hpp>
 #include <Cabana_Grid_LocalMesh.hpp>
 #include <Cabana_Grid_Partitioner.hpp>
@@ -31,14 +38,15 @@ void testMigrate()
     std::array<bool, 3> is_dim_periodic = { true, true, true };
 
     // Create the global mesh.
-    std::array<double, 3> low_corner = { -1.2, 0.1, 1.1 };
-    std::array<double, 3> high_corner = { -0.3, 9.5, 2.3 };
+    std::array<double, 3> global_low = { -1.2, 0.1, 1.1 };
+    std::array<double, 3> global_high = { -0.3, 9.5, 2.3 };
     double cell_size = 0.05;
     auto global_mesh = Cabana::Grid::createUniformGlobalMesh(
-        low_corner, high_corner, cell_size );
+        global_low, global_high, cell_size );
+    int num_particles = 200;
 
     // Create the global grid.
-    Cabana::Grid::ManualBlockPartitioner<3> partitioner( ranks_per_dim );
+    Cabana::Grid::DimBlockPartitioner<3> partitioner;
     auto global_grid = Cabana::Grid::createGlobalGrid(
         MPI_COMM_WORLD, global_mesh, is_dim_periodic, partitioner );
 
@@ -51,22 +59,71 @@ void testMigrate()
         Cabana::Grid::createLinkedCell<TEST_MEMSPACE>( *local_grid );
 
     // Create random particles.
-    using PoolType = Kokkos::Random_XorShift64_Pool<ExecutionSpace>;
-    using RandomType = Kokkos::Random_XorShift64<ExecutionSpace>;
-    PoolType pool( seed );
+    using DataTypes = Cabana::MemberTypes<int, double[3]>;
+    using AoSoA_t = Cabana::AoSoA<DataTypes, TEST_MEMSPACE>;
+    AoSoA_t particles( "random", num_particles );
+    auto position = Cabana::slice<1>( particles );
+
+    using PoolType = Kokkos::Random_XorShift64_Pool<TEST_EXECSPACE>;
+    using RandomType = Kokkos::Random_XorShift64<TEST_EXECSPACE>;
+    PoolType pool( 174748 );
+
+    // Create particles randomly in the global domain.
     auto random_coord_op = KOKKOS_LAMBDA( const int p )
     {
         auto gen = pool.get_state();
         for ( int d = 0; d < 3; ++d )
-            positions( p, d ) = Kokkos::rand<RandomType, double>::draw(
-                gen, kokkos_min[d], kokkos_max[d] );
+        {
+            position( p, d ) = Kokkos::rand<RandomType, double>::draw(
+                gen, global_low[d], global_high[d] );
+        }
         pool.free_state( gen );
     };
+    Kokkos::RangePolicy<TEST_EXECSPACE> policy( 0, num_particles );
+    Kokkos::parallel_for( policy, random_coord_op );
+    Kokkos::fence();
+
+    // Plan the communication.
+    linked_cell->build( position );
+
+    // Move particles to the correct rank.
+    linked_cell->migrate( particles );
+
+    // Get the local domain bounds to check particles.
+    auto local_mesh =
+        Cabana::Grid::createLocalMesh<TEST_MEMSPACE>( *local_grid );
+    std::array<double, 3> local_low = {
+        local_mesh.lowCorner( Cabana::Grid::Own(), Cabana::Grid::Dim::I ),
+        local_mesh.lowCorner( Cabana::Grid::Own(), Cabana::Grid::Dim::J ),
+        local_mesh.lowCorner( Cabana::Grid::Own(), Cabana::Grid::Dim::K ) };
+    std::array<double, 3> local_high = {
+        local_mesh.highCorner( Cabana::Grid::Own(), Cabana::Grid::Dim::I ),
+        local_mesh.highCorner( Cabana::Grid::Own(), Cabana::Grid::Dim::J ),
+        local_mesh.highCorner( Cabana::Grid::Own(), Cabana::Grid::Dim::K ) };
+
+    // Copy particles to the host.
+    Cabana::AoSoA<DataTypes, Kokkos::HostSpace> particles_host(
+        "migrated", particles.size() );
+    Cabana::deep_copy( particles_host, particles );
+    auto position_host = Cabana::slice<1>( particles_host );
+
+    // Make sure the total particles were conserved.
+    EXPECT_EQ( particles.size(), num_particles );
+
+    for ( std::size_t p = 0; p < particles.size(); ++p )
+    {
+        // Check that all of the particles were moved to the correct local rank.
+        for ( int d = 0; d < 3; ++d )
+        {
+            EXPECT_GE( position_host( p, d ), local_low[d] );
+            EXPECT_LE( position_host( p, d ), local_high[d] );
+        }
+    }
 }
 
 //---------------------------------------------------------------------------//
 // RUN TESTS
 //---------------------------------------------------------------------------//
-TEST( mesh, periodic_3d_test ) { testMigrate(); }
+TEST( linked_cell, migrate_3d_test ) { testMigrate(); }
 
 } // namespace Test

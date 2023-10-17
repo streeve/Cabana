@@ -16,7 +16,11 @@
 #ifndef CABANA_GRID_LINKEDCELL_HPP
 #define CABANA_GRID_LINKEDCELL_HPP
 
+#include <Cabana_Grid_LocalMesh.hpp>
 #include <Cabana_Grid_Types.hpp>
+
+#include <Cabana_Distributor.hpp>
+#include <Cabana_Slice.hpp>
 
 #include <array>
 #include <cmath>
@@ -40,38 +44,44 @@ class LinkedCell
   public:
     //! Spatial dimension.
     static constexpr std::size_t num_space_dim = LocalGridType::num_space_dim;
+    using mesh_type = typename LocalGridType::mesh_type;
+    using global_grid_type = Cabana::Grid::GlobalGrid<mesh_type>;
 
     using memory_space = MemorySpace;
     using corner_view_type =
         Kokkos::View<double* [num_space_dim][2], memory_space>;
+    using destination_view_type = Kokkos::View<int*, memory_space>;
 
     //! \brief Constructor.
     LinkedCell( const LocalGridType local_grid )
     {
-        auto global_grid = local_grid.globalGrid();
-        int num_ranks = global_grid.totalNumBlock;
+        _global_grid =
+            std::make_shared<global_grid_type>( local_grid.globalGrid() );
+        _destinations = destination_view_type(
+            Kokkos::ViewAllocateWithoutInitializing( "global_destination" ),
+            0 );
+
+        int num_ranks = _global_grid->totalNumBlock();
+        // Purposely using zero-init.
         local_corners = corner_view_type( "local_mpi_boundaries", num_ranks );
 
         for ( std::size_t d = 0; d < num_space_dim; ++d )
-            ranks_per_dim[d] = global_grid.dimNumBlock( d );
+            ranks_per_dim[d] = _global_grid->dimNumBlock( d );
 
-        auto rank = global_grid.blockId();
+        auto rank = _global_grid->blockId();
+        auto local_mesh = createLocalMesh<memory_space>( local_grid );
         for ( std::size_t d = 0; d < num_space_dim; ++d )
         {
             local_corners( rank, d, 0 ) =
-                local_mesh.lowCorner( Cajita::Own(), d );
+                local_mesh.lowCorner( Cabana::Grid::Own(), d );
             local_corners( rank, d, 1 ) =
-                local_mesh.highCorner( Cajita::Own(), d );
+                local_mesh.highCorner( Cabana::Grid::Own(), d );
         }
 
         // Update local boundaries from all ranks.
-        auto comm = global_grid->comm();
+        auto comm = _global_grid->comm();
         MPI_Allreduce( MPI_IN_PLACE, local_corners.data(), local_corners.size(),
                        MPI_DOUBLE, MPI_SUM, comm );
-
-        for ( std::size_t d = 0; d < num_space_dim; ++d )
-            for ( std::size_t r = 0; r < num_ranks; ++r )
-                std::cout << local_corners( d, 0, r ) << std::endl;
     }
 
     KOKKOS_INLINE_FUNCTION
@@ -88,14 +98,14 @@ class LinkedCell
             while ( min < max )
             {
                 int center = Kokkos::floor( min + ( max - min ) / 2.0 );
-                if ( px[d] > local_corners( d, 0, center ) )
+                if ( px[d] > local_corners( center, d, 0 ) )
                     min = center + 1;
-                if ( px[d] < local_corners( d, 0, center ) )
+                if ( px[d] < local_corners( center, d, 0 ) )
                     max = center - 1;
             }
             ijk[d] = min;
         }
-        return global_grid.blockRank( ijk[0], ijk[1], ijk[2] );
+        return _global_grid->blockRank( ijk[0], ijk[1], ijk[2] );
     }
 
     //! Bin particles across the global grid. Because of MPI partitioning, this
@@ -111,15 +121,16 @@ class LinkedCell
         assert( end >= begin );
         assert( end <= positions.size() );
 
+        Kokkos::resize( _destinations, end - begin );
+
         auto build_migrate = KOKKOS_LAMBDA( const std::size_t p )
         {
             double px[num_space_dim];
             for ( std::size_t d = 0; d < num_space_dim; ++d )
                 px[d] = positions( p, d );
 
-            _destinations( p ) = binary_search( px );
-            _ids( p ) = p;
-            counts_data( grid.cardinalCellIndex( i, j, k ) ) += 1;
+            _destinations( p ) = binarySearch( px );
+            std::cout << _destinations( p ) << std::endl;
         };
 
         Kokkos::RangePolicy<ExecutionSpace> policy( exec_space, begin, end );
@@ -131,34 +142,46 @@ class LinkedCell
     }
 
     template <class ExecutionSpace, class PositionType>
-    void build( ExecutionSpace exec_space, PositionType positions, )
+    void build( ExecutionSpace exec_space, PositionType positions )
     {
         build( exec_space, positions, 0, positions.size() );
     }
 
     template <class PositionType>
-    void build( PositionType positions, )
+    void build( PositionType positions )
     {
+        std::cout << "build" << std::endl;
         using execution_space = typename memory_space::execution_space;
+        // TODO: enable views.
         build( execution_space{}, positions, 0, positions.size() );
+    }
+
+    template <class AoSoAType>
+    void migrate( AoSoAType& aosoa )
+    {
+        Cabana::Distributor<memory_space> distributor( _global_grid->comm(),
+                                                       _destinations );
+        Cabana::migrate( distributor, aosoa );
     }
 
   protected:
     Kokkos::Array<int, num_space_dim> ranks_per_dim;
     corner_view_type local_corners;
 
-    DestinationRankView _destinations;
-    DestinationRankView _ids;
+    std::shared_ptr<global_grid_type> _global_grid;
+
+    destination_view_type _destinations;
 };
 
 /*!
   \brief Create global linked cell binning.
   \return Shared pointer to a LinkedCell.
 */
-template <class LocalGridType>
+template <class MemorySpace, class LocalGridType>
 auto createLinkedCell( const LocalGridType& local_grid )
 {
-    return std::make_shared<LinkedCell<LocalGridType>>( local_grid );
+    return std::make_shared<LinkedCell<MemorySpace, LocalGridType>>(
+        local_grid );
 }
 
 //---------------------------------------------------------------------------//
