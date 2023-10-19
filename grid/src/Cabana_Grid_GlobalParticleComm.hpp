@@ -52,8 +52,7 @@ class GlobalParticleComm
     //! \brief Constructor.
     GlobalParticleComm( const LocalGridType local_grid )
     {
-        _global_grid =
-            std::make_shared<global_grid_type>( local_grid.globalGrid() );
+        auto global_grid = local_grid.globalGrid();
         _destinations = destination_view_type(
             Kokkos::ViewAllocateWithoutInitializing( "global_destination" ),
             0 );
@@ -61,20 +60,21 @@ class GlobalParticleComm
         int max_ranks_per_dim = -1;
         for ( std::size_t d = 0; d < num_space_dim; ++d )
         {
-            _ranks_per_dim[d] = _global_grid->dimNumBlock( d );
+            _ranks_per_dim[d] = global_grid.dimNumBlock( d );
             if ( _ranks_per_dim[d] > max_ranks_per_dim )
                 max_ranks_per_dim = _ranks_per_dim[d];
         }
-        copyRanks();
+        copyRanks( global_grid );
 
-        int num_ranks = _global_grid->totalNumBlock();
+        int num_ranks = global_grid.totalNumBlock();
         // Purposely using zero-init. Some entries unused in non-cubic
         // decompositions.
         _local_corners =
             corner_view_type( "local_mpi_boundaries", max_ranks_per_dim );
 
+        _rank_1d = global_grid.blockId();
         for ( std::size_t d = 0; d < num_space_dim; ++d )
-            _rank[d] = _global_grid->dimBlockId( d );
+            _rank[d] = global_grid.dimBlockId( d );
 
         auto local_mesh = createLocalMesh<memory_space>( local_grid );
         for ( std::size_t d = 0; d < num_space_dim; ++d )
@@ -86,7 +86,7 @@ class GlobalParticleComm
         }
 
         // Update local boundaries from all ranks.
-        auto comm = _global_grid->comm();
+        auto comm = global_grid.comm();
         // TODO: Could use subcommunicators instead.
         MPI_Allreduce( MPI_IN_PLACE, _local_corners.data(),
                        _local_corners.size(), MPI_DOUBLE, MPI_SUM, comm );
@@ -105,8 +105,8 @@ class GlobalParticleComm
     }
 
     //! Store all cartesian MPI ranks.
-    template <std::size_t NSD = num_space_dim>
-    std::enable_if_t<3 == NSD, void> copyRanks()
+    template <class GlobalGridType, std::size_t NSD = num_space_dim>
+    std::enable_if_t<3 == NSD, void> copyRanks( GlobalGridType global_grid )
     {
         Kokkos::resize( _global_ranks, _ranks_per_dim[0], _ranks_per_dim[1],
                         _ranks_per_dim[2] );
@@ -115,18 +115,18 @@ class GlobalParticleComm
                 for ( std::size_t k = 0; k < _ranks_per_dim[2]; ++k )
                     // Not device accessible (uses MPI), so must be copied.
                     _global_ranks( i, j, k ) =
-                        _global_grid->blockRank( i, j, k );
+                        global_grid->blockRank( i, j, k );
     }
 
     //! Store all cartesian MPI ranks.
-    template <std::size_t NSD = num_space_dim>
-    std::enable_if_t<2 == NSD, void> copyRanks()
+    template <class GlobalGridType, std::size_t NSD = num_space_dim>
+    std::enable_if_t<2 == NSD, void> copyRanks( GlobalGridType global_grid )
     {
         Kokkos::resize( _global_ranks, _ranks_per_dim[0], _ranks_per_dim[1] );
         for ( std::size_t i = 0; i < _ranks_per_dim[0]; ++i )
             for ( std::size_t j = 0; j < _ranks_per_dim[1]; ++j )
                 // Not device accessible (uses MPI), so must be copied.
-                _global_ranks( i, j ) = _global_grid->blockRank( i, j );
+                _global_ranks( i, j ) = global_grid->blockRank( i, j );
     }
 
     //! Get the MPI rank.
@@ -163,13 +163,13 @@ class GlobalParticleComm
         // this search.
         Kokkos::resize( _destinations, positions.size() );
         // Start with everything staying on this rank.
-        Kokkos::deep_copy( _destinations, _global_grid->blockId() );
+        Kokkos::deep_copy( _destinations, _rank_1d );
 
         // Local copies for lambda capture.
         auto local_corners = _local_corners;
         auto ranks_per_dim = _ranks_per_dim;
         auto destinations = _destinations;
-        auto build_migrate = KOKKOS_LAMBDA( const std::size_t p )
+        auto build_migrate = KOKKOS_CLASS_LAMBDA( const std::size_t p )
         {
             int ijk[num_space_dim];
 
@@ -222,19 +222,18 @@ class GlobalParticleComm
     }
 
     template <class AoSoAType>
-    void migrate( AoSoAType& aosoa )
+    void migrate( MPI_Comm comm, AoSoAType& aosoa )
     {
-        Cabana::Distributor<memory_space> distributor( _global_grid->comm(),
-                                                       _destinations );
+        Cabana::Distributor<memory_space> distributor( comm, _destinations );
         Cabana::migrate( distributor, aosoa );
     }
 
   protected:
+    int _rank_1d;
     Kokkos::Array<int, num_space_dim> _rank;
     Kokkos::Array<int, num_space_dim> _ranks_per_dim;
     corner_view_type _local_corners;
 
-    std::shared_ptr<global_grid_type> _global_grid;
     rank_view_type _global_ranks;
 
     destination_view_type _destinations;
