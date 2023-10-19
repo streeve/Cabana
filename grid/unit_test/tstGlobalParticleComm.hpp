@@ -56,7 +56,7 @@ void testMigrate()
 
     // Create the linked cell list.
     auto linked_cell =
-        Cabana::Grid::createLinkedCell<TEST_MEMSPACE>( *local_grid );
+        Cabana::Grid::createGlobalParticleComm<TEST_MEMSPACE>( *local_grid );
 
     // Create random particles.
     using DataTypes = Cabana::MemberTypes<int, double[3]>;

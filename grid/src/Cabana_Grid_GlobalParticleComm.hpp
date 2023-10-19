@@ -10,11 +10,11 @@
  ****************************************************************************/
 
 /*!
-  \file Cabana_Grid_LinkedCell.hpp
+  \file Cabana_Grid_GlobalParticleComm.hpp
   \brief Global mesh
 */
-#ifndef CABANA_GRID_LINKEDCELL_HPP
-#define CABANA_GRID_LINKEDCELL_HPP
+#ifndef CABANA_GRID_GLOBALPARTICLECOMM_HPP
+#define CABANA_GRID_GLOBALPARTICLECOMM_HPP
 
 #include <Cabana_Grid_LocalMesh.hpp>
 #include <Cabana_Grid_Types.hpp>
@@ -22,13 +22,9 @@
 #include <Cabana_Distributor.hpp>
 #include <Cabana_Slice.hpp>
 
-#include <array>
-#include <cmath>
-#include <limits>
 #include <memory>
 #include <stdexcept>
 #include <type_traits>
-#include <vector>
 
 namespace Cabana
 {
@@ -39,7 +35,7 @@ namespace Grid
   \brief Global mesh linked cell list.
 */
 template <class MemorySpace, class LocalGridType>
-class LinkedCell
+class GlobalParticleComm
 {
   public:
     //! Spatial dimension.
@@ -54,7 +50,7 @@ class LinkedCell
     using rank_view_type = Kokkos::View<int***, memory_space>;
 
     //! \brief Constructor.
-    LinkedCell( const LocalGridType local_grid )
+    GlobalParticleComm( const LocalGridType local_grid )
     {
         _global_grid =
             std::make_shared<global_grid_type>( local_grid.globalGrid() );
@@ -156,7 +152,8 @@ class LinkedCell
     void build( ExecutionSpace exec_space, PositionType positions,
                 const std::size_t begin, const std::size_t end )
     {
-        Kokkos::Profiling::pushRegion( "Cabana::Grid::LinkedCellList::build" );
+        Kokkos::Profiling::pushRegion(
+            "Cabana::Grid::GlobalParticleComm::build" );
 
         static_assert( is_accessible_from<memory_space, ExecutionSpace>{}, "" );
         assert( end >= begin );
@@ -203,7 +200,7 @@ class LinkedCell
         };
 
         Kokkos::RangePolicy<ExecutionSpace> policy( exec_space, begin, end );
-        Kokkos::parallel_for( "Cabana::Grid::LinkedCellList::build", policy,
+        Kokkos::parallel_for( "Cabana::Grid::GlobalParticleComm::build", policy,
                               build_migrate );
         Kokkos::fence();
 
@@ -245,12 +242,12 @@ class LinkedCell
 
 /*!
   \brief Create global linked cell binning.
-  \return Shared pointer to a LinkedCell.
+  \return Shared pointer to a GlobalParticleComm.
 */
 template <class MemorySpace, class LocalGridType>
-auto createLinkedCell( const LocalGridType& local_grid )
+auto createGlobalParticleComm( const LocalGridType& local_grid )
 {
-    return std::make_shared<LinkedCell<MemorySpace, LocalGridType>>(
+    return std::make_shared<GlobalParticleComm<MemorySpace, LocalGridType>>(
         local_grid );
 }
 
@@ -259,4 +256,4 @@ auto createLinkedCell( const LocalGridType& local_grid )
 } // namespace Grid
 } // namespace Cabana
 
-#endif // end CABANA_GRID_LINKEDCELL_HPP
+#endif // end CABANA_GRID_GLOBALPARTICLECOMM_HPP
