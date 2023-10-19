@@ -51,6 +51,7 @@ class LinkedCell
     using corner_view_type =
         Kokkos::View<double* [num_space_dim][2], memory_space>;
     using destination_view_type = Kokkos::View<int*, memory_space>;
+    using rank_view_type = Kokkos::View<int***, memory_space>;
 
     //! \brief Constructor.
     LinkedCell( const LocalGridType local_grid )
@@ -61,51 +62,91 @@ class LinkedCell
             Kokkos::ViewAllocateWithoutInitializing( "global_destination" ),
             0 );
 
+        int max_ranks_per_dim = -1;
+        for ( std::size_t d = 0; d < num_space_dim; ++d )
+        {
+            _ranks_per_dim[d] = _global_grid->dimNumBlock( d );
+            if ( _ranks_per_dim[d] > max_ranks_per_dim )
+                max_ranks_per_dim = _ranks_per_dim[d];
+        }
+        copyRanks();
+
         int num_ranks = _global_grid->totalNumBlock();
-        // Purposely using zero-init.
-        local_corners = corner_view_type( "local_mpi_boundaries", num_ranks );
+        // Purposely using zero-init. Some entries unused in non-cubic
+        // decompositions.
+        _local_corners =
+            corner_view_type( "local_mpi_boundaries", max_ranks_per_dim );
 
         for ( std::size_t d = 0; d < num_space_dim; ++d )
-            ranks_per_dim[d] = _global_grid->dimNumBlock( d );
+            _rank[d] = _global_grid->dimBlockId( d );
 
-        auto rank = _global_grid->blockId();
         auto local_mesh = createLocalMesh<memory_space>( local_grid );
         for ( std::size_t d = 0; d < num_space_dim; ++d )
         {
-            local_corners( rank, d, 0 ) =
+            _local_corners( _rank[d], d, 0 ) =
                 local_mesh.lowCorner( Cabana::Grid::Own(), d );
-            local_corners( rank, d, 1 ) =
+            _local_corners( _rank[d], d, 1 ) =
                 local_mesh.highCorner( Cabana::Grid::Own(), d );
         }
 
         // Update local boundaries from all ranks.
         auto comm = _global_grid->comm();
-        MPI_Allreduce( MPI_IN_PLACE, local_corners.data(), local_corners.size(),
-                       MPI_DOUBLE, MPI_SUM, comm );
+        // TODO: Could use subcommunicators instead.
+        MPI_Allreduce( MPI_IN_PLACE, _local_corners.data(),
+                       _local_corners.size(), MPI_DOUBLE, MPI_SUM, comm );
+
+        Kokkos::Array<int, num_space_dim> double_count;
+        double_count[0] = _ranks_per_dim[1] * _ranks_per_dim[2];
+        double_count[1] = _ranks_per_dim[0] * _ranks_per_dim[2];
+        double_count[2] = _ranks_per_dim[0] * _ranks_per_dim[1];
+
+        for ( std::size_t d = 0; d < num_space_dim; ++d )
+            for ( std::size_t r = 0; r < _ranks_per_dim[d]; ++r )
+            {
+                _local_corners( r, d, 0 ) /= double_count[d];
+                _local_corners( r, d, 1 ) /= double_count[d];
+            }
     }
 
-    KOKKOS_INLINE_FUNCTION
-    auto binarySearch( const double px[num_space_dim] )
+    //! Store all cartesian MPI ranks.
+    template <std::size_t NSD = num_space_dim>
+    std::enable_if_t<3 == NSD, void> copyRanks()
     {
-        int ijk[num_space_dim];
-        // Maybe the first guess should be that it stays here?
+        Kokkos::resize( _global_ranks, _ranks_per_dim[0], _ranks_per_dim[1],
+                        _ranks_per_dim[2] );
+        for ( std::size_t i = 0; i < _ranks_per_dim[0]; ++i )
+            for ( std::size_t j = 0; j < _ranks_per_dim[1]; ++j )
+                for ( std::size_t k = 0; k < _ranks_per_dim[2]; ++k )
+                    // Not device accessible (uses MPI), so must be copied.
+                    _global_ranks( i, j, k ) =
+                        _global_grid->blockRank( i, j, k );
+    }
 
-        // Find the rank this particle should be moved to.
-        for ( std::size_t d = 0; d < num_space_dim; ++d )
-        {
-            int min = 0;
-            int max = ranks_per_dim[d];
-            while ( min < max )
-            {
-                int center = Kokkos::floor( min + ( max - min ) / 2.0 );
-                if ( px[d] > local_corners( center, d, 0 ) )
-                    min = center + 1;
-                if ( px[d] < local_corners( center, d, 0 ) )
-                    max = center - 1;
-            }
-            ijk[d] = min;
-        }
-        return _global_grid->blockRank( ijk[0], ijk[1], ijk[2] );
+    //! Store all cartesian MPI ranks.
+    template <std::size_t NSD = num_space_dim>
+    std::enable_if_t<2 == NSD, void> copyRanks()
+    {
+        Kokkos::resize( _global_ranks, _ranks_per_dim[0], _ranks_per_dim[1] );
+        for ( std::size_t i = 0; i < _ranks_per_dim[0]; ++i )
+            for ( std::size_t j = 0; j < _ranks_per_dim[1]; ++j )
+                // Not device accessible (uses MPI), so must be copied.
+                _global_ranks( i, j ) = _global_grid->blockRank( i, j );
+    }
+
+    //! Get the MPI rank.
+    template <std::size_t NSD = num_space_dim>
+    KOKKOS_INLINE_FUNCTION std::enable_if_t<3 == NSD, int>
+    getRank( int ijk[num_space_dim] )
+    {
+        return _global_ranks( ijk[0], ijk[1], ijk[2] );
+    }
+
+    //! Get the MPI rank.
+    template <std::size_t NSD = num_space_dim>
+    KOKKOS_INLINE_FUNCTION std::enable_if_t<2 == NSD, int>
+    getRank( int ijk[num_space_dim] )
+    {
+        return _global_ranks( ijk[0], ijk[1] );
     }
 
     //! Bin particles across the global grid. Because of MPI partitioning, this
@@ -121,16 +162,44 @@ class LinkedCell
         assert( end >= begin );
         assert( end <= positions.size() );
 
-        Kokkos::resize( _destinations, end - begin );
+        // Must match the size of all particles, even if some can be ignored in
+        // this search.
+        Kokkos::resize( _destinations, positions.size() );
+        // Start with everything staying on this rank.
+        Kokkos::deep_copy( _destinations, _global_grid->blockId() );
 
+        // Local copies for lambda capture.
+        auto local_corners = _local_corners;
+        auto ranks_per_dim = _ranks_per_dim;
+        auto destinations = _destinations;
         auto build_migrate = KOKKOS_LAMBDA( const std::size_t p )
         {
-            double px[num_space_dim];
-            for ( std::size_t d = 0; d < num_space_dim; ++d )
-                px[d] = positions( p, d );
+            int ijk[num_space_dim];
 
-            _destinations( p ) = binarySearch( px );
-            std::cout << _destinations( p ) << std::endl;
+            // Find the rank this particle should be moved to.
+            for ( std::size_t d = 0; d < num_space_dim; ++d )
+            {
+                int min = 0;
+                int max = ranks_per_dim[d];
+
+                // Check if outside the box in this dimension.
+                if ( ( positions( p, d ) < local_corners( min, d, 0 ) ) ||
+                     ( positions( p, d ) > local_corners( max - 1, d, 1 ) ) )
+                    destinations( p ) = -1;
+
+                // Do a binary search for this particle in this dimension.
+                while ( max - min > 1 )
+                {
+                    int center = Kokkos::floor( ( max + min ) / 2.0 );
+                    if ( positions( p, d ) < local_corners( center, d, 0 ) )
+                        max = center;
+                    else
+                        min = center;
+                }
+                ijk[d] = min;
+            }
+            // Keep the destination rank for eventual migration.
+            destinations( p ) = getRank( ijk );
         };
 
         Kokkos::RangePolicy<ExecutionSpace> policy( exec_space, begin, end );
@@ -150,7 +219,6 @@ class LinkedCell
     template <class PositionType>
     void build( PositionType positions )
     {
-        std::cout << "build" << std::endl;
         using execution_space = typename memory_space::execution_space;
         // TODO: enable views.
         build( execution_space{}, positions, 0, positions.size() );
@@ -165,10 +233,12 @@ class LinkedCell
     }
 
   protected:
-    Kokkos::Array<int, num_space_dim> ranks_per_dim;
-    corner_view_type local_corners;
+    Kokkos::Array<int, num_space_dim> _rank;
+    Kokkos::Array<int, num_space_dim> _ranks_per_dim;
+    corner_view_type _local_corners;
 
     std::shared_ptr<global_grid_type> _global_grid;
+    rank_view_type _global_ranks;
 
     destination_view_type _destinations;
 };

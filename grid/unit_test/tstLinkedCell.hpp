@@ -108,7 +108,13 @@ void testMigrate()
     auto position_host = Cabana::slice<1>( particles_host );
 
     // Make sure the total particles were conserved.
-    EXPECT_EQ( particles.size(), num_particles );
+    int global_particles;
+    int local_particles = static_cast<int>( particles.size() );
+    MPI_Reduce( &local_particles, &global_particles, 1, MPI_INT, MPI_SUM, 0,
+                MPI_COMM_WORLD );
+    if ( global_grid->blockId() == 0 )
+        EXPECT_EQ( global_particles,
+                   num_particles * global_grid->totalNumBlock() );
 
     for ( std::size_t p = 0; p < particles.size(); ++p )
     {
