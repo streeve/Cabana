@@ -19,7 +19,7 @@
 
 #include <Cabana_Grid_GlobalGrid.hpp>
 #include <Cabana_Grid_GlobalMesh.hpp>
-#include <Cabana_Grid_LinkedCell.hpp>
+#include <Cabana_Grid_GlobalParticleComm.hpp>
 #include <Cabana_Grid_LocalGrid.hpp>
 #include <Cabana_Grid_LocalMesh.hpp>
 #include <Cabana_Grid_Partitioner.hpp>
