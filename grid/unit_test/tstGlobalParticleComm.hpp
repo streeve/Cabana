@@ -87,7 +87,7 @@ void testMigrate()
     linked_cell->build( position );
 
     // Move particles to the correct rank.
-    linked_cell->migrate( particles );
+    linked_cell->migrate( global_grid->comm(), particles );
 
     // Get the local domain bounds to check particles.
     auto local_mesh =

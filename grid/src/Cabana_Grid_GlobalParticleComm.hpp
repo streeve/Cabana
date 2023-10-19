@@ -114,8 +114,7 @@ class GlobalParticleComm
             for ( std::size_t j = 0; j < _ranks_per_dim[1]; ++j )
                 for ( std::size_t k = 0; k < _ranks_per_dim[2]; ++k )
                     // Not device accessible (uses MPI), so must be copied.
-                    _global_ranks( i, j, k ) =
-                        global_grid->blockRank( i, j, k );
+                    _global_ranks( i, j, k ) = global_grid.blockRank( i, j, k );
     }
 
     //! Store all cartesian MPI ranks.
@@ -126,7 +125,7 @@ class GlobalParticleComm
         for ( std::size_t i = 0; i < _ranks_per_dim[0]; ++i )
             for ( std::size_t j = 0; j < _ranks_per_dim[1]; ++j )
                 // Not device accessible (uses MPI), so must be copied.
-                _global_ranks( i, j ) = global_grid->blockRank( i, j );
+                _global_ranks( i, j ) = global_grid.blockRank( i, j );
     }
 
     //! Get the MPI rank.
