@@ -131,7 +131,7 @@ class GlobalParticleComm
     //! Get the MPI rank.
     template <std::size_t NSD = num_space_dim>
     KOKKOS_INLINE_FUNCTION std::enable_if_t<3 == NSD, int>
-    getRank( int ijk[num_space_dim] )
+    getRank( int ijk[num_space_dim] ) const
     {
         return _global_ranks( ijk[0], ijk[1], ijk[2] );
     }
@@ -139,7 +139,7 @@ class GlobalParticleComm
     //! Get the MPI rank.
     template <std::size_t NSD = num_space_dim>
     KOKKOS_INLINE_FUNCTION std::enable_if_t<2 == NSD, int>
-    getRank( int ijk[num_space_dim] )
+    getRank( int ijk[num_space_dim] ) const
     {
         return _global_ranks( ijk[0], ijk[1] );
     }
