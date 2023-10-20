@@ -96,7 +96,8 @@ void writeFields(
     // Reorder in a contiguous blocked format.
     Kokkos::View<typename SliceType::value_type*,
                  typename SliceType::device_type>
-        view( Kokkos::ViewAllocateWithoutInitializing( "scalar_field" ),
+        view( Kokkos::ViewAllocateWithoutInitializing(
+                  "Cabana::SiloParticleOutput::scalar_field" ),
               end - begin );
     copySliceToView( view, slice, begin, end );
 
@@ -122,7 +123,8 @@ void writeFields(
     // Reorder in a contiguous blocked format.
     Kokkos::View<typename SliceType::value_type**, Kokkos::LayoutLeft,
                  typename SliceType::device_type>
-        view( Kokkos::ViewAllocateWithoutInitializing( "vector_field" ),
+        view( Kokkos::ViewAllocateWithoutInitializing(
+                  "Cabana::SiloParticleOutput::vector_field" ),
               end - begin, slice.extent( 2 ) );
     copySliceToView( view, slice, begin, end );
 
@@ -153,7 +155,8 @@ void writeFields(
     // Reorder in a contiguous blocked format.
     Kokkos::View<typename SliceType::value_type***, Kokkos::LayoutLeft,
                  typename SliceType::device_type>
-        view( Kokkos::ViewAllocateWithoutInitializing( "matrix_field" ),
+        view( Kokkos::ViewAllocateWithoutInitializing(
+                  "Cabana::SiloParticleOutput::matrix_field" ),
               end - begin, slice.extent( 2 ), slice.extent( 3 ) );
     copySliceToView( view, slice, begin, end );
 
@@ -439,8 +442,9 @@ void writePartialRangeTimeStep( const std::string& prefix, MPI_Comm comm,
     // Reorder the coordinates in a blocked format.
     Kokkos::View<typename CoordSliceType::value_type**, Kokkos::LayoutLeft,
                  typename CoordSliceType::device_type>
-        view( Kokkos::ViewAllocateWithoutInitializing( "coords" ), end - begin,
-              coords.extent( 2 ) );
+        view( Kokkos::ViewAllocateWithoutInitializing(
+                  "Cabana::SiloParticleOutput::coords" ),
+              end - begin, coords.extent( 2 ) );
     copySliceToView( view, coords, begin, end );
 
     // Mirror the coordinates to the host.

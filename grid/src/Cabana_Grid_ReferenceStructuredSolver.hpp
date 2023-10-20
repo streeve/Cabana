@@ -903,7 +903,8 @@ class ReferenceConjugateGradient
 
         // Copy stencil to the device.
         device_stencil = Kokkos::View<int* [num_space_dim], MemorySpace>(
-            Kokkos::ViewAllocateWithoutInitializing( "stencil" ),
+            Kokkos::ViewAllocateWithoutInitializing(
+                "Cabana::Grid::ReferenceStructuredSolver::stencil" ),
             stencil.size() );
         auto stencil_mirror =
             Kokkos::create_mirror_view( Kokkos::HostSpace(), device_stencil );

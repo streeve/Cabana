@@ -101,10 +101,11 @@ auto countSendsAndCreateSteering( ExecutionSpace,
     using size_type = typename ExportRankView::size_type;
 
     // Create views.
-    Kokkos::View<int*, memory_space> neighbor_counts( "neighbor_counts",
-                                                      comm_size );
+    Kokkos::View<int*, memory_space> neighbor_counts(
+        "Cabana::CommunicationPlan::neighbor_counts", comm_size );
     Kokkos::View<size_type*, memory_space> neighbor_ids(
-        Kokkos::ViewAllocateWithoutInitializing( "neighbor_ids" ),
+        Kokkos::ViewAllocateWithoutInitializing(
+            "Cabana::CommunicationPlan::neighbor_ids" ),
         element_export_ranks.size() );
 
     // Count the sends and create the steering vector.
@@ -240,10 +241,12 @@ auto countSendsAndCreateSteering( ExecutionSpace,
 
     // Create views.
     Kokkos::View<int*, memory_space> neighbor_counts(
-        Kokkos::ViewAllocateWithoutInitializing( "neighbor_counts" ),
+        Kokkos::ViewAllocateWithoutInitializing(
+            "Cabana::CommunicationPlan::neighbor_counts" ),
         comm_size );
     Kokkos::View<size_type*, memory_space> neighbor_ids(
-        Kokkos::ViewAllocateWithoutInitializing( "neighbor_ids" ),
+        Kokkos::ViewAllocateWithoutInitializing(
+            "Cabana::CommunicationPlan::neighbor_ids" ),
         element_export_ranks.size() );
     Kokkos::View<int**, memory_space> neighbor_counts_dup(
         "neighbor_counts", unique_token.size(), comm_size );
@@ -1003,7 +1006,9 @@ class CommunicationPlan
 
         // Map the offsets to the device.
         Kokkos::View<std::size_t*, Kokkos::HostSpace> rank_offsets_host(
-            Kokkos::ViewAllocateWithoutInitializing( "rank_map" ), comm_size );
+            Kokkos::ViewAllocateWithoutInitializing(
+                "Cabana::CommunicationPlan::rank_map" ),
+            comm_size );
         for ( int n = 0; n < num_n; ++n )
             rank_offsets_host( _neighbors[n] ) = offsets[n];
         auto rank_offsets = Kokkos::create_mirror_view_and_copy(
@@ -1013,11 +1018,12 @@ class CommunicationPlan
         // the send buffer. Note we create a local, shallow copy - this is a
         // CUDA workaround for handling class private data.
         _export_steering = Kokkos::View<std::size_t*, memory_space>(
-            Kokkos::ViewAllocateWithoutInitializing( "export_steering" ),
+            Kokkos::ViewAllocateWithoutInitializing(
+                "Cabana::CommunicationPlan::export_steering" ),
             _total_num_export );
         auto steer_vec = _export_steering;
         Kokkos::parallel_for(
-            "Cabana::createSteering",
+            "Cabana::CommunicationPlan::createSteering",
             Kokkos::RangePolicy<ExecutionSpace>( 0, _num_export_element ),
             KOKKOS_LAMBDA( const int i ) {
                 if ( element_export_ranks( i ) >= 0 )
@@ -1075,10 +1081,14 @@ struct CommunicationDataAoSoA
     CommunicationDataAoSoA( particle_data_type particles )
         : _particles( particles )
     {
-        _send_buffer = buffer_type(
-            Kokkos::ViewAllocateWithoutInitializing( "send_buffer" ), 0 );
-        _recv_buffer = buffer_type(
-            Kokkos::ViewAllocateWithoutInitializing( "recv_buffer" ), 0 );
+        _send_buffer =
+            buffer_type( Kokkos::ViewAllocateWithoutInitializing(
+                             "Cabana::CommunicationPlan::send_buffer" ),
+                         0 );
+        _recv_buffer =
+            buffer_type( Kokkos::ViewAllocateWithoutInitializing(
+                             "Cabana::CommunicationPlan::recv_buffer" ),
+                         0 );
     }
 
     //! Resize the send buffer.

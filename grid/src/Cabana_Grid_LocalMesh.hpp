@@ -428,7 +428,8 @@ class LocalMesh<MemorySpace, NonUniformMesh<Scalar, NumSpaceDim>>
             int nedge = ghosted_nodes_local.extent( d );
             int nedge_global = global_edge.size();
             _local_edges[d] = Kokkos::View<Scalar*, MemorySpace>(
-                Kokkos::ViewAllocateWithoutInitializing( "local_edges" ),
+                Kokkos::ViewAllocateWithoutInitializing(
+                    "Cabana::LocalMesh::edges" ),
                 nedge );
 
             // Compute edges on the host.

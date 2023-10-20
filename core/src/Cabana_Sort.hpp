@@ -469,7 +469,8 @@ auto sortByKey(
 {
     Kokkos::View<typename SliceType::value_type*,
                  typename SliceType::memory_space>
-        keys( Kokkos::ViewAllocateWithoutInitializing( "slice_keys" ),
+        keys( Kokkos::ViewAllocateWithoutInitializing(
+                  "Cabana::Sort::slice_keys" ),
               slice.size() );
 
     copySliceToView( keys, slice, 0, slice.size() );
@@ -517,7 +518,8 @@ auto binByKey(
 {
     Kokkos::View<typename SliceType::value_type*,
                  typename SliceType::memory_space>
-        keys( Kokkos::ViewAllocateWithoutInitializing( "slice_keys" ),
+        keys( Kokkos::ViewAllocateWithoutInitializing(
+                  "Cabana::Sort::slice_keys" ),
               slice.size() );
 
     copySliceToView( keys, slice, 0, slice.size() );
@@ -571,7 +573,8 @@ void permute(
 
     using memory_space = typename BinningDataType::memory_space;
     Kokkos::View<typename AoSoA_t::tuple_type*, memory_space> scratch_tuples(
-        Kokkos::ViewAllocateWithoutInitializing( "scratch_tuples" ),
+        Kokkos::ViewAllocateWithoutInitializing(
+            "Cabana::Sort::scratch_tuples" ),
         end - begin );
 
     auto permute_to_scratch = KOKKOS_LAMBDA( const std::size_t i )
@@ -631,8 +634,9 @@ void permute(
     auto slice_data = slice.data();
 
     Kokkos::View<typename SliceType::value_type**, memory_space> scratch_array(
-        Kokkos::ViewAllocateWithoutInitializing( "scratch_array" ), end - begin,
-        num_comp );
+        Kokkos::ViewAllocateWithoutInitializing(
+            "Cabana::Sort::scratch_array" ),
+        end - begin, num_comp );
 
     auto permute_to_scratch = KOKKOS_LAMBDA( const std::size_t i )
     {

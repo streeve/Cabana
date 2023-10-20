@@ -565,10 +565,12 @@ class HeffteFastFourierTransform
                                     "than local grid size" );
 
         _fft_work = Kokkos::View<Scalar*, memory_space>(
-            Kokkos::ViewAllocateWithoutInitializing( "fft_work" ),
+            Kokkos::ViewAllocateWithoutInitializing(
+                "Cabana::HeffteFastFourierTransform::work" ),
             2 * fftsize );
         _workspace = Kokkos::View<Scalar* [2], memory_space>(
-            Kokkos::ViewAllocateWithoutInitializing( "workspace" ),
+            Kokkos::ViewAllocateWithoutInitializing(
+                "Cabana::HeffteFastFourierTransform::workspace" ),
             _fft->size_workspace() );
     }
 

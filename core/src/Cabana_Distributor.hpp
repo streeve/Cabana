@@ -203,14 +203,14 @@ void distributeData(
     Kokkos::View<typename AoSoA_t::tuple_type*,
                  typename Distributor_t::memory_space>
         send_buffer( Kokkos::ViewAllocateWithoutInitializing(
-                         "distributor_send_buffer" ),
+                         "Cabana::Distributor::send_buffer" ),
                      num_send );
 
     // Allocate a receive buffer.
     Kokkos::View<typename AoSoA_t::tuple_type*,
                  typename Distributor_t::memory_space>
         recv_buffer( Kokkos::ViewAllocateWithoutInitializing(
-                         "distributor_recv_buffer" ),
+                         "Cabana::Distributor::recv_buffer" ),
                      distributor.totalNumImport() );
 
     // Get the steering vector for the sends.
@@ -526,7 +526,7 @@ void migrate( ExecutionSpace, const Distributor_t& distributor,
     Kokkos::View<typename Slice_t::value_type**, Kokkos::LayoutRight,
                  typename Distributor_t::memory_space>
         send_buffer( Kokkos::ViewAllocateWithoutInitializing(
-                         "distributor_send_buffer" ),
+                         "Cabana::Distributor::send_buffer" ),
                      num_send, num_comp );
 
     // Allocate a receive buffer. Note this one is layout right so the
@@ -534,7 +534,7 @@ void migrate( ExecutionSpace, const Distributor_t& distributor,
     Kokkos::View<typename Slice_t::value_type**, Kokkos::LayoutRight,
                  typename Distributor_t::memory_space>
         recv_buffer( Kokkos::ViewAllocateWithoutInitializing(
-                         "distributor_recv_buffer" ),
+                         "Cabana::Distributor::recv_buffer" ),
                      distributor.totalNumImport(), num_comp );
 
     // Get the steering vector for the sends.
