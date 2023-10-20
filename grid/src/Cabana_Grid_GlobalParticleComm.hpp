@@ -48,6 +48,7 @@ class GlobalParticleComm
         Kokkos::View<double* [num_space_dim][2], memory_space>;
     using destination_view_type = Kokkos::View<int*, memory_space>;
     using rank_view_type = Kokkos::View<int***, memory_space>;
+    using host_rank_view_type = Kokkos::View<int***, Kokkos::HostSpace>;
 
     //! \brief Constructor.
     GlobalParticleComm( const LocalGridType local_grid )
@@ -77,13 +78,7 @@ class GlobalParticleComm
             _rank[d] = global_grid.dimBlockId( d );
 
         auto local_mesh = createLocalMesh<memory_space>( local_grid );
-        for ( std::size_t d = 0; d < num_space_dim; ++d )
-        {
-            _local_corners( _rank[d], d, 0 ) =
-                local_mesh.lowCorner( Cabana::Grid::Own(), d );
-            _local_corners( _rank[d], d, 1 ) =
-                local_mesh.highCorner( Cabana::Grid::Own(), d );
-        }
+        storeRanks( local_mesh );
 
         // Update local boundaries from all ranks.
         auto comm = global_grid.comm();
@@ -91,41 +86,80 @@ class GlobalParticleComm
         MPI_Allreduce( MPI_IN_PLACE, _local_corners.data(),
                        _local_corners.size(), MPI_DOUBLE, MPI_SUM, comm );
 
+        scaleRanks();
+    }
+
+    template <class LocalMeshType>
+    void storeRanks( LocalMeshType local_mesh )
+    {
+        auto store_corners = KOKKOS_CLASS_LAMBDA( const std::size_t d )
+        {
+            _local_corners( _rank[d], d, 0 ) =
+                local_mesh.lowCorner( Cabana::Grid::Own(), d );
+            _local_corners( _rank[d], d, 1 ) =
+                local_mesh.highCorner( Cabana::Grid::Own(), d );
+        };
+        using exec_space = typename memory_space::execution_space;
+        Kokkos::RangePolicy<exec_space> policy( 0, num_space_dim );
+        Kokkos::parallel_for( "Cabana::Grid::GlobalParticleComm::storeCorners",
+                              policy, store_corners );
+        Kokkos::fence();
+    }
+
+    void scaleRanks()
+    {
         Kokkos::Array<int, num_space_dim> double_count;
         double_count[0] = _ranks_per_dim[1] * _ranks_per_dim[2];
         double_count[1] = _ranks_per_dim[0] * _ranks_per_dim[2];
         double_count[2] = _ranks_per_dim[0] * _ranks_per_dim[1];
 
-        for ( std::size_t d = 0; d < num_space_dim; ++d )
+        auto scale_corners = KOKKOS_CLASS_LAMBDA( const std::size_t d )
+        {
             for ( std::size_t r = 0; r < _ranks_per_dim[d]; ++r )
             {
                 _local_corners( r, d, 0 ) /= double_count[d];
                 _local_corners( r, d, 1 ) /= double_count[d];
             }
+        };
+        using exec_space = typename memory_space::execution_space;
+        Kokkos::RangePolicy<exec_space> policy( 0, num_space_dim );
+        Kokkos::parallel_for( "Cabana::Grid::GlobalParticleComm::scaleCorners",
+                              policy, scale_corners );
+        Kokkos::fence();
     }
 
     //! Store all cartesian MPI ranks.
     template <class GlobalGridType, std::size_t NSD = num_space_dim>
     std::enable_if_t<3 == NSD, void> copyRanks( GlobalGridType global_grid )
     {
-        Kokkos::resize( _global_ranks, _ranks_per_dim[0], _ranks_per_dim[1],
-                        _ranks_per_dim[2] );
+        host_rank_view_type global_ranks_host(
+            Kokkos::ViewAllocateWithoutInitializing( "ranks_host" ),
+            _ranks_per_dim[0], _ranks_per_dim[1], _ranks_per_dim[2] );
         for ( std::size_t i = 0; i < _ranks_per_dim[0]; ++i )
             for ( std::size_t j = 0; j < _ranks_per_dim[1]; ++j )
                 for ( std::size_t k = 0; k < _ranks_per_dim[2]; ++k )
                     // Not device accessible (uses MPI), so must be copied.
-                    _global_ranks( i, j, k ) = global_grid.blockRank( i, j, k );
+                    global_ranks_host( i, j, k ) =
+                        global_grid.blockRank( i, j, k );
+
+        _global_ranks = Kokkos::create_mirror_view_and_copy(
+            memory_space(), global_ranks_host );
     }
 
     //! Store all cartesian MPI ranks.
     template <class GlobalGridType, std::size_t NSD = num_space_dim>
     std::enable_if_t<2 == NSD, void> copyRanks( GlobalGridType global_grid )
     {
-        Kokkos::resize( _global_ranks, _ranks_per_dim[0], _ranks_per_dim[1] );
+        host_rank_view_type global_ranks_host(
+            Kokkos::ViewAllocateWithoutInitializing( "ranks_host" ),
+            _ranks_per_dim[0], _ranks_per_dim[1] );
         for ( std::size_t i = 0; i < _ranks_per_dim[0]; ++i )
             for ( std::size_t j = 0; j < _ranks_per_dim[1]; ++j )
                 // Not device accessible (uses MPI), so must be copied.
-                _global_ranks( i, j ) = global_grid.blockRank( i, j );
+                global_ranks_host( i, j ) = global_grid.blockRank( i, j );
+
+        _global_ranks = Kokkos::create_mirror_view_and_copy(
+            memory_space(), global_ranks_host );
     }
 
     //! Get the MPI rank.
