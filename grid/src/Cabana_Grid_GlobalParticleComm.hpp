@@ -11,7 +11,7 @@
 
 /*!
   \file Cabana_Grid_GlobalParticleComm.hpp
-  \brief Global mesh
+  \brief Global particle communication.
 */
 #ifndef CABANA_GRID_GLOBALPARTICLECOMM_HPP
 #define CABANA_GRID_GLOBALPARTICLECOMM_HPP
@@ -32,7 +32,7 @@ namespace Grid
 {
 //---------------------------------------------------------------------------//
 /*!
-  \brief Global mesh linked cell list.
+  \brief Global particle communication based on the background grid.
 */
 template <class MemorySpace, class LocalGridType>
 class GlobalParticleComm
@@ -40,14 +40,21 @@ class GlobalParticleComm
   public:
     //! Spatial dimension.
     static constexpr std::size_t num_space_dim = LocalGridType::num_space_dim;
+    //! Mesh type.
     using mesh_type = typename LocalGridType::mesh_type;
+    //! Global grid.
     using global_grid_type = Cabana::Grid::GlobalGrid<mesh_type>;
-
+    //! Kokkos memory space.
     using memory_space = MemorySpace;
+
+    //! Local boundary View type.
     using corner_view_type =
         Kokkos::View<double* [num_space_dim][2], memory_space>;
+    //! Particle destination ranks View type.
     using destination_view_type = Kokkos::View<int*, memory_space>;
+    //! Cartesian rank View type.
     using rank_view_type = Kokkos::View<int***, memory_space>;
+    //! Cartesian rank View type (host).
     using host_rank_view_type = Kokkos::View<int***, Kokkos::HostSpace>;
 
     //! \brief Constructor.
@@ -89,6 +96,7 @@ class GlobalParticleComm
         scaleRanks();
     }
 
+    //! Store local rank boundaries from the local mesh.
     template <class LocalMeshType>
     void storeRanks( LocalMeshType local_mesh )
     {
@@ -106,6 +114,7 @@ class GlobalParticleComm
         Kokkos::fence();
     }
 
+    //! Scale local rank boundaries based on double counting from MPI reduction.
     void scaleRanks()
     {
         Kokkos::Array<int, num_space_dim> double_count;
@@ -178,9 +187,13 @@ class GlobalParticleComm
         return _global_ranks( ijk[0], ijk[1] );
     }
 
-    //! Bin particles across the global grid. Because of MPI partitioning, this
-    //! is not a perfect grid (as the Core LinkedCellList is), so we use binary
-    //! search instead of direct 3d->1d indexing.
+    /*!
+      \brief Bin particles across the global grid.
+
+      Because of MPI partitioning, this is not a perfect grid (as the Core
+      LinkedCellList is), so we use binary search instead of direct 3d->1d
+      indexing.
+    */
     template <class ExecutionSpace, class PositionType>
     void build( ExecutionSpace exec_space, PositionType positions,
                 const std::size_t begin, const std::size_t end )
@@ -240,12 +253,14 @@ class GlobalParticleComm
         Kokkos::Profiling::popRegion();
     }
 
+    //! Bin particles across the global grid.
     template <class ExecutionSpace, class PositionType>
     void build( ExecutionSpace exec_space, PositionType positions )
     {
         build( exec_space, positions, 0, positions.size() );
     }
 
+    //! Bin particles across the global grid.
     template <class PositionType>
     void build( PositionType positions )
     {
@@ -254,6 +269,7 @@ class GlobalParticleComm
         build( execution_space{}, positions, 0, positions.size() );
     }
 
+    //! Migrate particles to the correct rank.
     template <class AoSoAType>
     void migrate( MPI_Comm comm, AoSoAType& aosoa )
     {
@@ -262,13 +278,17 @@ class GlobalParticleComm
     }
 
   protected:
+    //! Current rank.
     int _rank_1d;
+    //! Current cartesian rank.
     Kokkos::Array<int, num_space_dim> _rank;
+    //! Total ranks per dimension.
     Kokkos::Array<int, num_space_dim> _ranks_per_dim;
+    //! Local boundaries.
     corner_view_type _local_corners;
-
+    //! All cartesian ranks.
     rank_view_type _global_ranks;
-
+    //! Particle destination ranks.
     destination_view_type _destinations;
 };
 
