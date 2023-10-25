@@ -19,6 +19,8 @@
 #include <Cabana_Grid_Types.hpp>
 #include <Cabana_Utils.hpp> // FIXME: remove after next release.
 
+#include <Kokkos_Core.hpp>
+
 #include <array>
 #include <cmath>
 #include <limits>
@@ -59,24 +61,21 @@ class GlobalMesh
     static constexpr std::size_t num_space_dim = mesh_type::num_space_dim;
 
     //! \brief Cell size constructor where all cell dimensions are the same.
-    template <class ArrayType>
+    template <template <typename, std::size_t, typename...> class ArrayType,
+              class... Args>
     GlobalMesh(
-        const ArrayType& global_low_corner, const ArrayType& global_high_corner,
-        const scalar_type cell_size,
-        typename std::enable_if<
-            ( std::is_same<ArrayType,
-                           std::array<scalar_type, num_space_dim>>::value ||
-              std::is_same<ArrayType,
-                           Kokkos::Array<scalar_type, num_space_dim>>::value ||
-              std::is_same<ArrayType, scalar_type[num_space_dim]>::value ),
-            int>::type* = 0 )
-        : _global_low_corner( global_low_corner )
-        , _global_high_corner( global_high_corner )
+        const ArrayType<scalar_type, num_space_dim, Args...>& global_low_corner,
+        const ArrayType<scalar_type, num_space_dim, Args...>&
+            global_high_corner,
+        const scalar_type cell_size )
     {
         // Check that the domain is evenly divisible by the cell size in each
         // dimension within round-off error.
         for ( std::size_t d = 0; d < num_space_dim; ++d )
         {
+            _global_low_corner[d] = global_low_corner[d];
+            _global_high_corner[d] = global_high_corner[d];
+
             _cell_size[d] = cell_size;
             scalar_type ext = globalNumCell( d ) * _cell_size[d];
             if ( std::abs( ext - extent( d ) ) >
@@ -88,18 +87,22 @@ class GlobalMesh
     }
 
     //! \brief Cell size constructor - each cell dimension can be different.
-    template <template <typename, std::size_t> class ArrayType>
-    GlobalMesh( const ArrayType<scalar_type, num_space_dim>& global_low_corner,
-                const ArrayType<scalar_type, num_space_dim>& global_high_corner,
-                const ArrayType<scalar_type, num_space_dim>& cell_size )
-        : _global_low_corner( global_low_corner )
-        , _global_high_corner( global_high_corner )
-        , _cell_size( cell_size )
+    template <template <typename, std::size_t, class...> class ArrayType,
+              class... Args>
+    GlobalMesh(
+        const ArrayType<scalar_type, num_space_dim, Args...>& global_low_corner,
+        const ArrayType<scalar_type, num_space_dim, Args...>&
+            global_high_corner,
+        const ArrayType<scalar_type, num_space_dim, Args...>& cell_size )
     {
         // Check that the domain is evenly divisible by the cell size in each
         // dimension within round-off error.
         for ( std::size_t d = 0; d < num_space_dim; ++d )
         {
+            _global_low_corner[d] = global_low_corner[d];
+            _global_high_corner[d] = global_high_corner[d];
+            _cell_size[d] = cell_size[d];
+
             scalar_type ext = globalNumCell( d ) * _cell_size[d];
             if ( std::abs( ext - extent( d ) ) >
                  scalar_type( 100.0 ) *
@@ -110,19 +113,24 @@ class GlobalMesh
     }
 
     //! \brief Number of global cells constructor.
-    template <template <typename, std::size_t> class ArrayType,
-              template <typename, std::size_t> class IntArrayType>
-    GlobalMesh( const ArrayType<scalar_type, num_space_dim>& global_low_corner,
-                const ArrayType<scalar_type, num_space_dim>& global_high_corner,
-                const IntArrayType<int, num_space_dim>& global_num_cell )
-        : _global_low_corner( global_low_corner )
-        , _global_high_corner( global_high_corner )
+    template <template <typename, std::size_t, class...> class ArrayType,
+              template <typename, std::size_t, class...> class IntArrayType,
+              class... Args>
+    GlobalMesh(
+        const ArrayType<scalar_type, num_space_dim, Args...>& global_low_corner,
+        const ArrayType<scalar_type, num_space_dim, Args...>&
+            global_high_corner,
+        const IntArrayType<int, num_space_dim, Args...>& global_num_cell )
     {
         // Compute the cell size in each dimension.
         for ( std::size_t d = 0; d < num_space_dim; ++d )
+        {
+            _global_low_corner[d] = global_low_corner[d];
+            _global_high_corner[d] = global_high_corner[d];
+
             _cell_size[d] = ( _global_high_corner[d] - _global_low_corner[d] ) /
                             global_num_cell[d];
-
+        }
         // Check that the domain is evenly divisible by the cell size in each
         // dimension within round-off error and that we got the expected
         // number of cells.
@@ -179,9 +187,9 @@ class GlobalMesh
     }
 
   private:
-    std::array<scalar_type, num_space_dim> _global_low_corner;
-    std::array<scalar_type, num_space_dim> _global_high_corner;
-    std::array<scalar_type, num_space_dim> _cell_size;
+    Kokkos::Array<scalar_type, num_space_dim> _global_low_corner;
+    Kokkos::Array<scalar_type, num_space_dim> _global_high_corner;
+    Kokkos::Array<scalar_type, num_space_dim> _cell_size;
 };
 
 /*!
@@ -195,10 +203,11 @@ class GlobalMesh
   \return Shared pointer to a GlobalMesh.
 */
 template <class Scalar, std::size_t NumSpaceDim,
-          template <class, std::size_t> class ArrayType>
+          template <class, std::size_t, class...> class ArrayType,
+          class... Args>
 auto createUniformGlobalMesh(
-    const ArrayType<Scalar, NumSpaceDim>& global_low_corner,
-    const ArrayType<Scalar, NumSpaceDim>& global_high_corner,
+    const ArrayType<Scalar, NumSpaceDim, Args...>& global_low_corner,
+    const ArrayType<Scalar, NumSpaceDim, Args...>& global_high_corner,
     const Scalar cell_size )
 {
     return std::make_shared<GlobalMesh<UniformMesh<Scalar, NumSpaceDim>>>(
@@ -216,12 +225,13 @@ auto createUniformGlobalMesh(
   \return Shared pointer to a GlobalMesh.
 */
 template <class Scalar, std::size_t NumSpaceDim,
-          template <class, std::size_t> class ArrayType>
+          template <class, std::size_t, class...> class ArrayType,
+          class... Args>
 std::shared_ptr<GlobalMesh<UniformMesh<Scalar, NumSpaceDim>>>
 createUniformGlobalMesh(
-    const ArrayType<Scalar, NumSpaceDim>& global_low_corner,
-    const ArrayType<Scalar, NumSpaceDim>& global_high_corner,
-    const ArrayType<Scalar, NumSpaceDim>& cell_size )
+    const ArrayType<Scalar, NumSpaceDim, Args...>& global_low_corner,
+    const ArrayType<Scalar, NumSpaceDim, Args...>& global_high_corner,
+    const ArrayType<Scalar, NumSpaceDim, Args...>& cell_size )
 {
     return std::make_shared<GlobalMesh<UniformMesh<Scalar, NumSpaceDim>>>(
         global_low_corner, global_high_corner, cell_size );
@@ -238,11 +248,12 @@ createUniformGlobalMesh(
   \return Shared pointer to a GlobalMesh.
 */
 template <class Scalar, std::size_t NumSpaceDim,
-          template <class, std::size_t> class ArrayType>
+          template <class, std::size_t, class...> class ArrayType,
+          class... Args>
 auto createUniformGlobalMesh(
-    const ArrayType<Scalar, NumSpaceDim>& global_low_corner,
-    const ArrayType<Scalar, NumSpaceDim>& global_high_corner,
-    const ArrayType<int, NumSpaceDim>& global_num_cell )
+    const ArrayType<Scalar, NumSpaceDim, Args...>& global_low_corner,
+    const ArrayType<Scalar, NumSpaceDim, Args...>& global_high_corner,
+    const ArrayType<int, NumSpaceDim, Args...>& global_num_cell )
 {
     return std::make_shared<GlobalMesh<UniformMesh<Scalar, NumSpaceDim>>>(
         global_low_corner, global_high_corner, global_num_cell );
