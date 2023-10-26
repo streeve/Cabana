@@ -23,6 +23,7 @@ set(HEADERS_PUBLIC
   Cabana_Grid_IndexConversion.hpp
   Cabana_Grid_IndexSpace.hpp
   Cabana_Grid_Interpolation.hpp
+  Cabana_Grid_LinkedCellList.hpp
   Cabana_Grid_LocalGrid.hpp
   Cabana_Grid_LocalGrid_impl.hpp
   Cabana_Grid_LocalMesh.hpp

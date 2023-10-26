@@ -92,6 +92,25 @@ class LinkedCellList
         build( positions, 0, np );
     }
 
+    template <class SliceType,
+              template <typename, std::size_t, typename...> class ArrayType,
+              class... Args>
+    LinkedCellList(
+        SliceType positions,
+        const ArrayType<typename SliceType::value_type, 3> grid_delta,
+        const ArrayType<typename SliceType::value_type, 3> grid_min,
+        const ArrayType<typename SliceType::value_type, 3> grid_max,
+        typename std::enable_if<( is_slice<SliceType>::value ), int>::type* =
+            0 )
+        : _grid( grid_min[0], grid_min[1], grid_min[2], grid_max[0],
+                 grid_max[1], grid_max[2], grid_delta[0], grid_delta[1],
+                 grid_delta[2] )
+    {
+        std::size_t np = positions.size();
+        allocate( totalBins(), np );
+        build( positions, 0, np );
+    }
+
     /*!
       \brief Slice range constructor
 
@@ -115,6 +134,24 @@ class LinkedCellList
         const typename SliceType::value_type grid_delta[3],
         const typename SliceType::value_type grid_min[3],
         const typename SliceType::value_type grid_max[3],
+        typename std::enable_if<( is_slice<SliceType>::value ), int>::type* =
+            0 )
+        : _grid( grid_min[0], grid_min[1], grid_min[2], grid_max[0],
+                 grid_max[1], grid_max[2], grid_delta[0], grid_delta[1],
+                 grid_delta[2] )
+    {
+        allocate( totalBins(), end - begin );
+        build( positions, begin, end );
+    }
+
+    template <class SliceType,
+              template <typename, std::size_t, typename...> class ArrayType,
+              class... Args>
+    LinkedCellList(
+        SliceType positions, const std::size_t begin, const std::size_t end,
+        const ArrayType<typename SliceType::value_type, 3> grid_delta,
+        const ArrayType<typename SliceType::value_type, 3> grid_min,
+        const ArrayType<typename SliceType::value_type, 3> grid_max,
         typename std::enable_if<( is_slice<SliceType>::value ), int>::type* =
             0 )
         : _grid( grid_min[0], grid_min[1], grid_min[2], grid_max[0],

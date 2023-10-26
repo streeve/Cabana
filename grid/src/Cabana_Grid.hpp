@@ -26,6 +26,7 @@
 #include <Cabana_Grid_IndexConversion.hpp>
 #include <Cabana_Grid_IndexSpace.hpp>
 #include <Cabana_Grid_Interpolation.hpp>
+#include <Cabana_Grid_LinkedCellList.hpp>
 #include <Cabana_Grid_LocalGrid.hpp>
 #include <Cabana_Grid_LocalMesh.hpp>
 #include <Cabana_Grid_MpiTraits.hpp>
