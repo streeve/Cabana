@@ -271,10 +271,11 @@ auto createUniformGlobalMesh(
   \return Shared pointer to a GlobalMesh.
 */
 template <class Scalar, std::size_t NumSpaceDim,
-          template <class, std::size_t> class ArrayType>
+          template <class, std::size_t, class...> class ArrayType,
+          class... Args>
 auto createSparseGlobalMesh(
-    const ArrayType<Scalar, NumSpaceDim>& global_low_corner,
-    const ArrayType<Scalar, NumSpaceDim>& global_high_corner,
+    const ArrayType<Scalar, NumSpaceDim, Args...>& global_low_corner,
+    const ArrayType<Scalar, NumSpaceDim, Args...>& global_high_corner,
     const Scalar cell_size )
 {
     return std::make_shared<GlobalMesh<SparseMesh<Scalar, NumSpaceDim>>>(
@@ -292,11 +293,12 @@ auto createSparseGlobalMesh(
   \return Shared pointer to a GlobalMesh.
 */
 template <class Scalar, std::size_t NumSpaceDim,
-          template <class, std::size_t> class ArrayType>
+          template <class, std::size_t, class...> class ArrayType,
+          class... Args>
 auto createSparseGlobalMesh(
-    const ArrayType<Scalar, NumSpaceDim>& global_low_corner,
-    const ArrayType<Scalar, NumSpaceDim>& global_high_corner,
-    const ArrayType<Scalar, NumSpaceDim>& cell_size )
+    const ArrayType<Scalar, NumSpaceDim, Args...>& global_low_corner,
+    const ArrayType<Scalar, NumSpaceDim, Args...>& global_high_corner,
+    const ArrayType<Scalar, NumSpaceDim, Args...>& cell_size )
 {
     return std::make_shared<GlobalMesh<SparseMesh<Scalar, NumSpaceDim>>>(
         global_low_corner, global_high_corner, cell_size );
@@ -314,11 +316,12 @@ auto createSparseGlobalMesh(
 */
 template <class Scalar, std::size_t NumSpaceDim, class IntType,
           template <class, std::size_t, typename...> class ArrayType,
-          template <class, std::size_t, typename...> class IntArrayType>
+          template <class, std::size_t, typename...> class IntArrayType,
+          class... Args>
 auto createSparseGlobalMesh(
-    const ArrayType<Scalar, NumSpaceDim>& global_low_corner,
-    const ArrayType<Scalar, NumSpaceDim>& global_high_corner,
-    const IntArrayType<IntType, NumSpaceDim>& global_num_cell )
+    const ArrayType<Scalar, NumSpaceDim, Args...>& global_low_corner,
+    const ArrayType<Scalar, NumSpaceDim, Args...>& global_high_corner,
+    const IntArrayType<IntType, NumSpaceDim, Args...>& global_num_cell )
 {
     return std::make_shared<GlobalMesh<SparseMesh<Scalar, NumSpaceDim>>>(
         global_low_corner, global_high_corner, global_num_cell );
