@@ -41,11 +41,6 @@ struct LCLTestData
     double x_min = 0.0;
     double x_max = x_min + nx * dx;
 
-    // Create a grid.
-    double grid_delta[3] = { dx, dx, dx };
-    double grid_min[3] = { x_min, x_min, x_min };
-    double grid_max[3] = { x_max, x_max, x_max };
-
     using IDViewType = Kokkos::View<int* [3], TEST_MEMSPACE>;
     using PosViewType = Kokkos::View<double* [3], TEST_MEMSPACE>;
     using BinViewType = Kokkos::View<size_type***, TEST_MEMSPACE>;
@@ -237,12 +232,10 @@ void checkLinkedCell( const LCLTestData test_data,
     }
 }
 //---------------------------------------------------------------------------//
-void testLinkedList()
+template <class ArrayType>
+void testLinkedList( LCLTestData test_data, ArrayType grid_delta,
+                     ArrayType grid_min, ArrayType grid_max )
 {
-    LCLTestData test_data;
-    auto grid_delta = test_data.grid_delta;
-    auto grid_min = test_data.grid_min;
-    auto grid_max = test_data.grid_max;
     auto pos = Cabana::slice<LCLTestData::Position>( test_data.aosoa );
 
     // Bin and permute the particles in the grid. First do this by only
@@ -274,12 +267,10 @@ void testLinkedList()
 }
 
 //---------------------------------------------------------------------------//
-void testLinkedListSlice()
+template <class ArrayType>
+void testLinkedListSlice( LCLTestData test_data, ArrayType grid_delta,
+                          ArrayType grid_min, ArrayType grid_max )
 {
-    LCLTestData test_data;
-    auto grid_delta = test_data.grid_delta;
-    auto grid_min = test_data.grid_min;
-    auto grid_max = test_data.grid_max;
     auto pos = Cabana::slice<LCLTestData::Position>( test_data.aosoa );
 
     // Bin the particles in the grid and permute only the position slice.
@@ -321,10 +312,58 @@ void testLinkedListSlice()
 //---------------------------------------------------------------------------//
 // RUN TESTS
 //---------------------------------------------------------------------------//
-TEST( TEST_CATEGORY, linked_list_test ) { testLinkedList(); }
+TEST( TEST_CATEGORY, linked_list_test )
+{
+    // Create multiple grid types to test separate constructors.
+    {
+        LCLTestData data;
+        double delta[3] = { data.dx, data.dx, data.dx };
+        double min[3] = { data.x_min, data.x_min, data.x_min };
+        double max[3] = { data.x_max, data.x_max, data.x_max };
+        testLinkedList( data, delta, min, max );
+    }
+    {
+        LCLTestData data;
+        std::array<double, 3> delta = { data.dx, data.dx, data.dx };
+        std::array<double, 3> min = { data.x_min, data.x_min, data.x_min };
+        std::array<double, 3> max = { data.x_max, data.x_max, data.x_max };
+        testLinkedList( data, delta, min, max );
+    }
+    {
+        LCLTestData data;
+        Kokkos::Array<double, 3> delta = { data.dx, data.dx, data.dx };
+        Kokkos::Array<double, 3> min = { data.x_min, data.x_min, data.x_min };
+        Kokkos::Array<double, 3> max = { data.x_max, data.x_max, data.x_max };
+        testLinkedList( data, delta, min, max );
+    }
+}
 
 //---------------------------------------------------------------------------//
-TEST( TEST_CATEGORY, linked_list_slice_test ) { testLinkedListSlice(); }
+TEST( TEST_CATEGORY, linked_list_slice_test )
+{
+    // Create multiple grid types to test separate constructors.
+    {
+        LCLTestData data;
+        double delta[3] = { data.dx, data.dx, data.dx };
+        double min[3] = { data.x_min, data.x_min, data.x_min };
+        double max[3] = { data.x_max, data.x_max, data.x_max };
+        testLinkedListSlice( data, delta, min, max );
+    }
+    {
+        LCLTestData data;
+        std::array<double, 3> delta = { data.dx, data.dx, data.dx };
+        std::array<double, 3> min = { data.x_min, data.x_min, data.x_min };
+        std::array<double, 3> max = { data.x_max, data.x_max, data.x_max };
+        testLinkedListSlice( data, delta, min, max );
+    }
+    {
+        LCLTestData data;
+        Kokkos::Array<double, 3> delta = { data.dx, data.dx, data.dx };
+        Kokkos::Array<double, 3> min = { data.x_min, data.x_min, data.x_min };
+        Kokkos::Array<double, 3> max = { data.x_max, data.x_max, data.x_max };
+        testLinkedListSlice( data, delta, min, max );
+    }
+}
 
 //---------------------------------------------------------------------------//
 

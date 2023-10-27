@@ -720,6 +720,21 @@ class VerletList
                grid_max, max_neigh );
     }
 
+    template <class PositionSlice,
+              template <class, std::size_t> class ArrayType>
+    VerletList( PositionSlice x, const std::size_t begin, const std::size_t end,
+                const typename PositionSlice::value_type neighborhood_radius,
+                const typename PositionSlice::value_type cell_size_ratio,
+                const ArrayType<typename PositionSlice::value_type, 3> grid_min,
+                const ArrayType<typename PositionSlice::value_type, 3> grid_max,
+                const std::size_t max_neigh = 0,
+                typename std::enable_if<( is_slice<PositionSlice>::value ),
+                                        int>::type* = 0 )
+    {
+        build( x, begin, end, neighborhood_radius, cell_size_ratio, grid_min,
+               grid_max, max_neigh );
+    }
+
     /*!
       \brief Given a list of particle positions and a neighborhood radius
       calculate the neighbor list.
@@ -736,6 +751,26 @@ class VerletList
         build( execution_space{}, x, begin, end, neighborhood_radius,
                cell_size_ratio, grid_min, grid_max, max_neigh );
     }
+
+    /*!
+      \brief Given a list of particle positions and a neighborhood radius
+      calculate the neighbor list.
+    */
+    template <class PositionSlice,
+              template <class, std::size_t> class ArrayType>
+    void
+    build( PositionSlice x, const std::size_t begin, const std::size_t end,
+           const typename PositionSlice::value_type neighborhood_radius,
+           const typename PositionSlice::value_type cell_size_ratio,
+           const ArrayType<typename PositionSlice::value_type, 3> grid_min[3],
+           const ArrayType<typename PositionSlice::value_type, 3> grid_max[3],
+           const std::size_t max_neigh = 0 )
+    {
+        // Use the default execution space.
+        build( execution_space{}, x, begin, end, neighborhood_radius,
+               cell_size_ratio, grid_min, grid_max, max_neigh );
+    }
+
     /*!
       \brief Given a list of particle positions and a neighborhood radius
       calculate the neighbor list.
@@ -806,6 +841,28 @@ class VerletList
         _data = builder._data;
 
         Kokkos::Profiling::popRegion();
+    }
+
+    /*!
+      \brief Given a list of particle positions and a neighborhood radius
+      calculate the neighbor list.
+    */
+    template <class PositionSlice, class ExecutionSpace,
+              template <class, std::size_t> class ArrayType>
+    void build( ExecutionSpace exec_space, PositionSlice x,
+                const std::size_t begin, const std::size_t end,
+                const typename PositionSlice::value_type neighborhood_radius,
+                const typename PositionSlice::value_type cell_size_ratio,
+                const ArrayType<typename PositionSlice::value_type, 3> grid_min,
+                const ArrayType<typename PositionSlice::value_type, 3> grid_max,
+                const std::size_t max_neigh = 0 )
+    {
+        double min[3] = { grid_min[0], grid_min[1], grid_min[2] };
+        double max[3] = { grid_max[0], grid_max[1], grid_max[2] };
+
+        // Use the default execution space.
+        build( exec_space, x, begin, end, neighborhood_radius, cell_size_ratio,
+               min, max, max_neigh );
     }
 
     //! Modify a neighbor in the list; for example, mark it as a broken bond.

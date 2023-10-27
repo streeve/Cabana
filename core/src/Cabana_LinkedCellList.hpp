@@ -66,15 +66,10 @@ class LinkedCellList
     /*!
       \brief Slice constructor
 
-      \tparam SliceType Slice type for positions.
-
       \param positions Slice of positions.
-
-      \param grid_delta Grid sizes in each cardinal direction.
-
-      \param grid_min Grid minimum value in each direction.
-
-      \param grid_max Grid maximum value in each direction.
+      \param grid_delta Grid sizes in each cardinal direction (c-array).
+      \param grid_min Grid minimum value in each direction (c-array).
+      \param grid_max Grid maximum value in each direction (c-array).
     */
     template <class SliceType>
     LinkedCellList(
@@ -95,19 +90,41 @@ class LinkedCellList
     /*!
       \brief Slice range constructor
 
+      \param positions Slice of positions.
+      \param grid_delta Grid sizes in each direction (Kokkos/std array).
+      \param grid_min Grid minimum value in each direction (Kokkos/std array).
+      \param grid_max Grid maximum value in each direction (Kokkos/std array).
+    */
+    template <class SliceType,
+              template <typename, std::size_t, typename...> class ArrayType,
+              class... Args>
+    LinkedCellList(
+        SliceType positions,
+        const ArrayType<typename SliceType::value_type, 3, Args...> grid_delta,
+        const ArrayType<typename SliceType::value_type, 3, Args...> grid_min,
+        const ArrayType<typename SliceType::value_type, 3, Args...> grid_max,
+        typename std::enable_if<( is_slice<SliceType>::value ), int>::type* =
+            0 )
+        : _grid( grid_min[0], grid_min[1], grid_min[2], grid_max[0],
+                 grid_max[1], grid_max[2], grid_delta[0], grid_delta[1],
+                 grid_delta[2] )
+    {
+        std::size_t np = positions.size();
+        allocate( totalBins(), np );
+        build( positions, 0, np );
+    }
+
+    /*!
+      \brief Slice range constructor
+
       \tparam SliceType Slice type for positions.
 
       \param positions Slice of positions.
-
       \param begin The beginning index of the AoSoA range to sort.
-
       \param end The end index of the AoSoA range to sort.
-
-      \param grid_delta Grid sizes in each cardinal direction.
-
-      \param grid_min Grid minimum value in each direction.
-
-      \param grid_max Grid maximum value in each direction.
+      \param grid_delta Grid sizes in each cardinal direction (c-array).
+      \param grid_min Grid minimum value in each direction (c-array).
+      \param grid_max Grid maximum value in each direction (c-array).
     */
     template <class SliceType>
     LinkedCellList(
@@ -115,6 +132,34 @@ class LinkedCellList
         const typename SliceType::value_type grid_delta[3],
         const typename SliceType::value_type grid_min[3],
         const typename SliceType::value_type grid_max[3],
+        typename std::enable_if<( is_slice<SliceType>::value ), int>::type* =
+            0 )
+        : _grid( grid_min[0], grid_min[1], grid_min[2], grid_max[0],
+                 grid_max[1], grid_max[2], grid_delta[0], grid_delta[1],
+                 grid_delta[2] )
+    {
+        allocate( totalBins(), end - begin );
+        build( positions, begin, end );
+    }
+
+    /*!
+      \brief Slice range constructor
+
+      \param positions Slice of positions.
+      \param begin The beginning index of the AoSoA range to sort.
+      \param end The end index of the AoSoA range to sort.
+      \param grid_delta Grid sizes in each direction (Kokkos/std array).
+      \param grid_min Grid minimum value in each direction (Kokkos/std array).
+      \param grid_max Grid maximum value in each direction (Kokkos/std array).
+    */
+    template <class SliceType,
+              template <typename, std::size_t, typename...> class ArrayType,
+              class... Args>
+    LinkedCellList(
+        SliceType positions, const std::size_t begin, const std::size_t end,
+        const ArrayType<typename SliceType::value_type, 3, Args...> grid_delta,
+        const ArrayType<typename SliceType::value_type, 3, Args...> grid_min,
+        const ArrayType<typename SliceType::value_type, 3, Args...> grid_max,
         typename std::enable_if<( is_slice<SliceType>::value ), int>::type* =
             0 )
         : _grid( grid_min[0], grid_min[1], grid_min[2], grid_max[0],

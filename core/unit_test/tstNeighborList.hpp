@@ -114,15 +114,9 @@ void testVerletListFull()
     {
         Cabana::VerletList<TEST_MEMSPACE, Cabana::FullNeighborTag, LayoutTag,
                            BuildTag>
-            nlist_full( position, 0, position.size(), test_data.test_radius,
-                        test_data.cell_size_ratio, test_data.grid_min,
-                        test_data.grid_max );
-        // Test default construction.
-        Cabana::VerletList<TEST_MEMSPACE, Cabana::FullNeighborTag, LayoutTag,
-                           BuildTag>
-            nlist;
-
-        nlist = nlist_full;
+            nlist( position, 0, position.size(), test_data.test_radius,
+                   test_data.cell_size_ratio, test_data.grid_min,
+                   test_data.grid_max );
 
         checkFullNeighborList( nlist, test_data.N2_list_copy,
                                test_data.num_particle );
@@ -152,6 +146,68 @@ void testVerletListFull()
                         test_data.cell_size_ratio, test_data.grid_min,
                         test_data.grid_max, 2 );
         checkFullNeighborList( nlist_max2, test_data.N2_list_copy,
+                               test_data.num_particle );
+    }
+}
+
+template <class LayoutTag, class BuildTag>
+void testVerletListFullArray()
+{
+    // Create the AoSoA and fill with random particle positions.
+    NeighborListTestData test_data;
+    auto position = Cabana::slice<0>( test_data.aosoa );
+
+    {
+        // Copy to array to test constructors.
+        std::array<double, 3> min = { test_data.box_min, test_data.box_min,
+                                      test_data.box_min };
+        std::array<double, 3> max = { test_data.box_max, test_data.box_max,
+                                      test_data.box_max };
+
+        // Create the neighbor list.
+        Cabana::VerletList<TEST_MEMSPACE, Cabana::FullNeighborTag, LayoutTag,
+                           BuildTag>
+            nlist_full( position, 0, position.size(), test_data.test_radius,
+                        test_data.cell_size_ratio, min, max );
+
+        // Test default construction.
+        Cabana::VerletList<TEST_MEMSPACE, Cabana::FullNeighborTag, LayoutTag,
+                           BuildTag>
+            nlist;
+
+        nlist = nlist_full;
+
+        checkFullNeighborList( nlist, test_data.N2_list_copy,
+                               test_data.num_particle );
+
+        // Test rebuild function with explict execution space.
+        nlist.build( TEST_EXECSPACE{}, position, 0, position.size(),
+                     test_data.test_radius, test_data.cell_size_ratio,
+                     test_data.grid_min, test_data.grid_max );
+        checkFullNeighborList( nlist, test_data.N2_list_copy,
+                               test_data.num_particle );
+    }
+    {
+        // Copy to array to test constructors.
+        Kokkos::Array<double, 3> min = { test_data.box_min, test_data.box_min,
+                                         test_data.box_min };
+        Kokkos::Array<double, 3> max = { test_data.box_max, test_data.box_max,
+                                         test_data.box_max };
+
+        // Create the neighbor list.
+        Cabana::VerletList<TEST_MEMSPACE, Cabana::FullNeighborTag, LayoutTag,
+                           BuildTag>
+            nlist( position, 0, position.size(), test_data.test_radius,
+                   test_data.cell_size_ratio, min, max );
+
+        checkFullNeighborList( nlist, test_data.N2_list_copy,
+                               test_data.num_particle );
+
+        // Test rebuild function with explict execution space.
+        nlist.build( TEST_EXECSPACE{}, position, 0, position.size(),
+                     test_data.test_radius, test_data.cell_size_ratio,
+                     test_data.grid_min, test_data.grid_max );
+        checkFullNeighborList( nlist, test_data.N2_list_copy,
                                test_data.num_particle );
     }
 }
@@ -399,6 +455,16 @@ TEST( TEST_CATEGORY, modify_list_test )
 #endif
     testModifyNeighbors<Cabana::VerletLayout2D>();
 }
+
+//---------------------------------------------------------------------------//
+TEST( TEST_CATEGORY, constructor_test )
+{
+#ifndef KOKKOS_ENABLE_OPENMPTARGET // FIXME_OPENMPTARGET
+    testVerletListFull<Cabana::VerletLayoutCSR, Cabana::TeamOpTag>();
+#endif
+    testVerletListFull<Cabana::VerletLayout2D, Cabana::TeamOpTag>();
+}
+
 //---------------------------------------------------------------------------//
 
 } // end namespace Test
