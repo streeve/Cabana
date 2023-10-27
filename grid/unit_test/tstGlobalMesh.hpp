@@ -12,6 +12,8 @@
 #include <Cabana_Grid_GlobalMesh.hpp>
 #include <Cabana_Grid_Types.hpp>
 
+#include <Kokkos_Core.hpp>
+
 #include <gtest/gtest.h>
 
 #include <array>
@@ -24,10 +26,9 @@ using Cabana::Grid::Dim;
 
 //---------------------------------------------------------------------------//
 // Test uniform mesh with cubic cells.
-void uniformTest3D1()
+template <class ArrayType>
+void uniformTest3D1( ArrayType low_corner, ArrayType high_corner )
 {
-    std::array<double, 3> low_corner = { -1.2, 0.1, 1.1 };
-    std::array<double, 3> high_corner = { -0.3, 9.5, 1.3 };
     double cell_size = 0.05;
 
     auto global_mesh = Cabana::Grid::createUniformGlobalMesh(
@@ -53,12 +54,10 @@ void uniformTest3D1()
 
 //---------------------------------------------------------------------------//
 // Test uniform mesh with number of cells constructor.
-void uniformTest3D2()
+template <class ArrayType, class IntArrayType>
+void uniformTest3D2( ArrayType low_corner, ArrayType high_corner,
+                     IntArrayType num_cell )
 {
-    std::array<double, 3> low_corner = { -1.2, 0.1, 1.1 };
-    std::array<double, 3> high_corner = { -0.3, 9.5, 1.3 };
-    std::array<int, 3> num_cell = { 18, 188, 4 };
-
     auto global_mesh = Cabana::Grid::createUniformGlobalMesh(
         low_corner, high_corner, num_cell );
 
@@ -83,12 +82,10 @@ void uniformTest3D2()
 //---------------------------------------------------------------------------//
 // test uniform mesh with cells that can have a different size in each
 // dimension
-void uniformTest3D3()
+template <class ArrayType>
+void uniformTest3D3( ArrayType low_corner, ArrayType high_corner,
+                     ArrayType cell_size )
 {
-    std::array<double, 3> low_corner = { -1.2, 0.1, 1.1 };
-    std::array<double, 3> high_corner = { -0.3, 9.5, 1.3 };
-    std::array<double, 3> cell_size = { 0.05, 0.05, 0.05 };
-
     auto global_mesh = Cabana::Grid::createUniformGlobalMesh(
         low_corner, high_corner, cell_size );
 
@@ -112,10 +109,9 @@ void uniformTest3D3()
 
 //---------------------------------------------------------------------------//
 // Test uniform mesh with cubic cells.
-void uniformTest2D1()
+template <class ArrayType>
+void uniformTest2D1( ArrayType low_corner, ArrayType high_corner )
 {
-    std::array<double, 2> low_corner = { -1.2, 0.1 };
-    std::array<double, 2> high_corner = { -0.3, 9.5 };
     double cell_size = 0.05;
 
     auto global_mesh = Cabana::Grid::createUniformGlobalMesh(
@@ -141,12 +137,10 @@ void uniformTest2D1()
 
 //---------------------------------------------------------------------------//
 // Test uniform mesh with number of cells constructor.
-void uniformTest2D2()
+template <class ArrayType, class IntArrayType>
+void uniformTest2D2( ArrayType low_corner, ArrayType high_corner,
+                     IntArrayType num_cell )
 {
-    std::array<double, 2> low_corner = { -1.2, 0.1 };
-    std::array<double, 2> high_corner = { -0.3, 9.5 };
-    std::array<int, 2> num_cell = { 18, 188 };
-
     auto global_mesh = Cabana::Grid::createUniformGlobalMesh(
         low_corner, high_corner, num_cell );
 
@@ -171,12 +165,10 @@ void uniformTest2D2()
 //---------------------------------------------------------------------------//
 // test uniform mesh with cells that can have a different size in each
 // dimension
-void uniformTest2D3()
+template <class ArrayType>
+void uniformTest2D3( ArrayType low_corner, ArrayType high_corner,
+                     ArrayType cell_size )
 {
-    std::array<double, 2> low_corner = { -1.2, 0.1 };
-    std::array<double, 2> high_corner = { -0.3, 9.5 };
-    std::array<double, 2> cell_size = { 0.05, 0.05 };
-
     auto global_mesh = Cabana::Grid::createUniformGlobalMesh(
         low_corner, high_corner, cell_size );
 
@@ -282,18 +274,56 @@ void nonUniformTest2d()
 //---------------------------------------------------------------------------//
 // RUN TESTS
 //---------------------------------------------------------------------------//
-TEST( mesh, uniform_test_3d )
+TEST( mesh, uniform_test_3d_std )
 {
-    uniformTest3D1();
-    uniformTest3D2();
-    uniformTest3D3();
+    std::array<double, 3> low = { -1.2, 0.1, 1.1 };
+    std::array<double, 3> high = { -0.3, 9.5, 1.3 };
+    uniformTest3D1( low, high );
+
+    std::array<int, 3> num_cell = { 18, 188, 4 };
+    uniformTest3D2( low, high, num_cell );
+
+    std::array<double, 3> cell_size = { 0.05, 0.05, 0.05 };
+    uniformTest3D3( low, high, cell_size );
 }
 
-TEST( mesh, uniform_test_2d )
+TEST( mesh, uniform_test_3d_kokkos )
 {
-    uniformTest2D1();
-    uniformTest2D2();
-    uniformTest2D3();
+    Kokkos::Array<double, 3> low = { -1.2, 0.1, 1.1 };
+    Kokkos::Array<double, 3> high = { -0.3, 9.5, 1.3 };
+    uniformTest3D1( low, high );
+
+    Kokkos::Array<int, 3> num_cell = { 18, 188, 4 };
+    uniformTest3D2( low, high, num_cell );
+
+    Kokkos::Array<double, 3> cell_size = { 0.05, 0.05, 0.05 };
+    uniformTest3D3( low, high, cell_size );
+}
+
+TEST( mesh, uniform_test_2d_std )
+{
+    std::array<double, 2> low = { -1.2, 0.1 };
+    std::array<double, 2> high = { -0.3, 9.5 };
+    uniformTest2D1( low, high );
+
+    std::array<int, 2> num_cell = { 18, 188 };
+    uniformTest2D2( low, high, num_cell );
+
+    std::array<double, 2> cell_size = { 0.05, 0.05 };
+    uniformTest2D3( low, high, cell_size );
+}
+
+TEST( mesh, uniform_test_2d_kokkos )
+{
+    Kokkos::Array<double, 2> low = { -1.2, 0.1 };
+    Kokkos::Array<double, 2> high = { -0.3, 9.5 };
+    uniformTest2D1( low, high );
+
+    Kokkos::Array<int, 2> num_cell = { 18, 188 };
+    uniformTest2D2( low, high, num_cell );
+
+    Kokkos::Array<double, 2> cell_size = { 0.05, 0.05 };
+    uniformTest2D3( low, high, cell_size );
 }
 
 TEST( mesh, non_uniform_test_3d ) { nonUniformTest3d(); }
