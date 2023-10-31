@@ -62,8 +62,8 @@ void performanceTest( std::ostream& stream, const std::string& test_prefix,
         // Define problem grid.
         x_min[p] = 0.0;
         x_max[p] = 1.3 * std::pow( num_p, 1.0 / 3.0 );
-        double grid_min[3] = { x_min[p], x_min[p], x_min[p] };
-        double grid_max[3] = { x_max[p], x_max[p], x_max[p] };
+        std::array<double, 3> grid_min = { x_min[p], x_min[p], x_min[p] };
+        std::array<double, 3> grid_max = { x_max[p], x_max[p], x_max[p] };
         aosoas[p].resize( num_p );
         auto x = Cabana::slice<0>( aosoas[p], "position" );
         Cabana::createParticles( Cabana::InitRandom(), x, x.size(), grid_min,
@@ -76,7 +76,7 @@ void performanceTest( std::ostream& stream, const std::string& test_prefix,
             // rather will be periodically sorted for spatial locality. Bin them
             // in cells the size of the smallest cutoff distance.
             double cutoff = cutoff_ratios.front();
-            double sort_delta[3] = { cutoff, cutoff, cutoff };
+            std::array<double, 3> sort_delta = { cutoff, cutoff, cutoff };
             auto x = Cabana::slice<0>( aosoas[p], "position" );
             Cabana::LinkedCellList<memory_space> linked_cell_list(
                 x, sort_delta, grid_min, grid_max );
