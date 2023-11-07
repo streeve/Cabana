@@ -293,22 +293,11 @@ class Gather<HaloType, AoSoAType,
         auto recv_buffer = this->getReceiveBuffer();
         auto aosoa = this->getData();
 
-        // Get the steering vector for the sends.
-        auto steering = _halo.getExportSteering();
-        // Gather from the local data into a tuple-contiguous send buffer.
-        auto gather_send_buffer_func = KOKKOS_LAMBDA( const std::size_t i )
-        {
-            send_buffer( i ) = aosoa.getTuple( steering( i ) );
-        };
-        Kokkos::RangePolicy<ExecutionSpace> send_policy( 0, _send_size );
-        Kokkos::parallel_for( "Cabana::gather::gather_send_buffer", send_policy,
-                              gather_send_buffer_func );
-        Kokkos::fence();
-
         // The halo has it's own communication space so choose any mpi tag.
         const int mpi_tag = 2345;
 
-        // Post non-blocking receives.
+        // Post non-blocking receives. Do this before packing send buffers to
+        // give each rank more time to prepare.
         int num_n = _halo.numNeighbor();
         std::vector<MPI_Request> requests( num_n );
         std::pair<std::size_t, std::size_t> recv_range = { 0, 0 };
@@ -325,6 +314,22 @@ class Gather<HaloType, AoSoAType,
 
             recv_range.first = recv_range.second;
         }
+
+        // Get the steering vector for the sends.
+        auto steering = _halo.getExportSteering();
+        // Gather from the local data into a tuple-contiguous send buffer.
+        auto gather_send_buffer_func = KOKKOS_LAMBDA( const std::size_t i )
+        {
+            send_buffer( i ) = aosoa.getTuple( steering( i ) );
+        };
+        // Try on the host (Frontier)
+        Kokkos::RangePolicy<ExecutionSpace> send_policy( 0, _send_size );
+        Kokkos::parallel_for( "Cabana::gather::gather_send_buffer", send_policy,
+                              gather_send_buffer_func );
+        Kokkos::fence();
+
+        // Potential barrier, but likely still not needed (at least more helpful
+        // than the current)
 
         // Do blocking sends.
         std::pair<std::size_t, std::size_t> send_range = { 0, 0 };

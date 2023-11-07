@@ -216,28 +216,11 @@ void distributeData(
     // Get the steering vector for the sends.
     auto steering = distributor.getExportSteering();
 
-    // Gather the exports from the source AoSoA into the tuple-contiguous send
-    // buffer or the receive buffer if the data is staying. We know that the
-    // steering vector is ordered such that the data staying on this rank
-    // comes first.
-    auto build_send_buffer_func = KOKKOS_LAMBDA( const std::size_t i )
-    {
-        auto tpl = src.getTuple( steering( i ) );
-        if ( i < num_stay )
-            recv_buffer( i ) = tpl;
-        else
-            send_buffer( i - num_stay ) = tpl;
-    };
-    Kokkos::RangePolicy<ExecutionSpace> build_send_buffer_policy(
-        0, distributor.totalNumExport() );
-    Kokkos::parallel_for( "Cabana::Impl::distributeData::build_send_buffer",
-                          build_send_buffer_policy, build_send_buffer_func );
-    Kokkos::fence();
-
     // The distributor has its own communication space so choose any tag.
     const int mpi_tag = 1234;
 
-    // Post non-blocking receives.
+    // Post non-blocking receives. Do this before packing send buffers to give
+    // each rank more time to prepare.
     std::vector<MPI_Request> requests;
     requests.reserve( num_n );
     std::pair<std::size_t, std::size_t> recv_range = { 0, 0 };
@@ -261,6 +244,24 @@ void distributeData(
 
         recv_range.first = recv_range.second;
     }
+
+    // Gather the exports from the source AoSoA into the tuple-contiguous send
+    // buffer or the receive buffer if the data is staying. We know that the
+    // steering vector is ordered such that the data staying on this rank
+    // comes first.
+    auto build_send_buffer_func = KOKKOS_LAMBDA( const std::size_t i )
+    {
+        auto tpl = src.getTuple( steering( i ) );
+        if ( i < num_stay )
+            recv_buffer( i ) = tpl;
+        else
+            send_buffer( i - num_stay ) = tpl;
+    };
+    Kokkos::RangePolicy<ExecutionSpace> build_send_buffer_policy(
+        0, distributor.totalNumExport() );
+    Kokkos::parallel_for( "Cabana::Impl::distributeData::build_send_buffer",
+                          build_send_buffer_policy, build_send_buffer_func );
+    Kokkos::fence();
 
     // Do blocking sends.
     std::pair<std::size_t, std::size_t> send_range = { 0, 0 };
@@ -540,33 +541,11 @@ void migrate( ExecutionSpace, const Distributor_t& distributor,
     // Get the steering vector for the sends.
     auto steering = distributor.getExportSteering();
 
-    // Gather from the source Slice into the contiguous send buffer or,
-    // if it is part of the local copy, put it directly in the destination
-    // Slice.
-    auto build_send_buffer_func = KOKKOS_LAMBDA( const std::size_t i )
-    {
-        auto s_src = Slice_t::index_type::s( steering( i ) );
-        auto a_src = Slice_t::index_type::a( steering( i ) );
-        std::size_t src_offset = s_src * src.stride( 0 ) + a_src;
-        if ( i < num_stay )
-            for ( std::size_t n = 0; n < num_comp; ++n )
-                recv_buffer( i, n ) =
-                    src_data[src_offset + n * Slice_t::vector_length];
-        else
-            for ( std::size_t n = 0; n < num_comp; ++n )
-                send_buffer( i - num_stay, n ) =
-                    src_data[src_offset + n * Slice_t::vector_length];
-    };
-    Kokkos::RangePolicy<ExecutionSpace> build_send_buffer_policy(
-        0, distributor.totalNumExport() );
-    Kokkos::parallel_for( "Cabana::migrate::build_send_buffer",
-                          build_send_buffer_policy, build_send_buffer_func );
-    Kokkos::fence();
-
     // The distributor has its own communication space so choose any tag.
     const int mpi_tag = 1234;
 
-    // Post non-blocking receives.
+    // Post non-blocking receives. Do this before packing send buffers to give
+    // each rank more time to prepare.
     std::vector<MPI_Request> requests;
     requests.reserve( num_n );
     std::pair<std::size_t, std::size_t> recv_range = { 0, 0 };
@@ -591,6 +570,29 @@ void migrate( ExecutionSpace, const Distributor_t& distributor,
 
         recv_range.first = recv_range.second;
     }
+
+    // Gather from the source Slice into the contiguous send buffer or,
+    // if it is part of the local copy, put it directly in the destination
+    // Slice.
+    auto build_send_buffer_func = KOKKOS_LAMBDA( const std::size_t i )
+    {
+        auto s_src = Slice_t::index_type::s( steering( i ) );
+        auto a_src = Slice_t::index_type::a( steering( i ) );
+        std::size_t src_offset = s_src * src.stride( 0 ) + a_src;
+        if ( i < num_stay )
+            for ( std::size_t n = 0; n < num_comp; ++n )
+                recv_buffer( i, n ) =
+                    src_data[src_offset + n * Slice_t::vector_length];
+        else
+            for ( std::size_t n = 0; n < num_comp; ++n )
+                send_buffer( i - num_stay, n ) =
+                    src_data[src_offset + n * Slice_t::vector_length];
+    };
+    Kokkos::RangePolicy<ExecutionSpace> build_send_buffer_policy(
+        0, distributor.totalNumExport() );
+    Kokkos::parallel_for( "Cabana::migrate::build_send_buffer",
+                          build_send_buffer_policy, build_send_buffer_func );
+    Kokkos::fence();
 
     // Do blocking sends.
     std::pair<std::size_t, std::size_t> send_range = { 0, 0 };
