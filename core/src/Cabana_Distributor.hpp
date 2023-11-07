@@ -302,8 +302,6 @@ void distributeData(
                           extract_recv_buffer_func );
     Kokkos::fence();
 
-    // Barrier before completing to ensure synchronization.
-    MPI_Barrier( distributor.comm() );
     Kokkos::Profiling::popRegion();
 }
 
@@ -637,9 +635,6 @@ void migrate( ExecutionSpace, const Distributor_t& distributor,
                           extract_recv_buffer_policy,
                           extract_recv_buffer_func );
     Kokkos::fence();
-
-    // Barrier before completing to ensure synchronization.
-    MPI_Barrier( distributor.comm() );
 }
 
 /*!

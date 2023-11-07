@@ -360,9 +360,6 @@ class Gather<HaloType, AoSoAType,
                               recv_policy, extract_recv_buffer_func );
         Kokkos::fence();
 
-        // Barrier before completing to ensure synchronization.
-        MPI_Barrier( _halo.comm() );
-
         Kokkos::Profiling::popRegion();
     }
 
@@ -559,9 +556,6 @@ class Gather<HaloType, SliceType,
         Kokkos::parallel_for( "Cabana::gather::extract_recv_buffer",
                               recv_policy, extract_recv_buffer_func );
         Kokkos::fence();
-
-        // Barrier before completing to ensure synchronization.
-        MPI_Barrier( _halo.comm() );
 
         Kokkos::Profiling::popRegion();
     }
@@ -814,8 +808,6 @@ class Scatter
                               recv_policy, scatter_recv_buffer_func );
         Kokkos::fence();
 
-        // Barrier before completing to ensure synchronization.
-        MPI_Barrier( _halo.comm() );
         Kokkos::Profiling::popRegion();
     }
 
