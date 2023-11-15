@@ -16,6 +16,8 @@ namespace Cabana
 {
 namespace Grid
 {
+// Documented in hpp file
+//! \cond Impl
 //---------------------------------------------------------------------------//
 // Constructor.
 template <class MeshType>
@@ -91,7 +93,6 @@ LocalGrid<MeshType>::neighborRank( const int off_i, const int off_j ) const
     return neighborRank( off_ijk );
 }
 
-//! \cond Impl
 //---------------------------------------------------------------------------//
 // Get the index space for a given combination of decomposition, entity, and
 // index types.
@@ -1278,7 +1279,6 @@ LocalGrid<MeshType>::edgeBoundaryIndexSpace( Ghost, Edge<Dir>,
     return IndexSpace<3>( min, max );
 }
 //! \endcond
-
 //---------------------------------------------------------------------------//
 
 } // namespace Grid
