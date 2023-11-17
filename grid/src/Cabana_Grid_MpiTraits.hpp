@@ -51,10 +51,42 @@ struct MpiTraits<int>
 
 //! MPI type trait
 template <>
+struct MpiTraits<unsigned int>
+{
+    //! MPI long type
+    static MPI_Datatype type() { return MPI_UNSIGNED; }
+};
+
+//! MPI type trait
+template <>
 struct MpiTraits<long>
 {
     //! MPI long type
     static MPI_Datatype type() { return MPI_LONG; }
+};
+
+//! MPI type trait
+template <>
+struct MpiTraits<unsigned long>
+{
+    //! MPI long type
+    static MPI_Datatype type() { return MPI_UNSIGNED_LONG; }
+};
+
+//! MPI type trait
+template <>
+struct MpiTraits<short>
+{
+    //! MPI long type
+    static MPI_Datatype type() { return MPI_SHORT; }
+};
+
+//! MPI type trait
+template <>
+struct MpiTraits<unsigned short>
+{
+    //! MPI long type
+    static MPI_Datatype type() { return MPI_UNSIGNED_SHORT; }
 };
 
 //! MPI type trait
