@@ -61,6 +61,14 @@ struct BovFormat<short>
 
 //! BOV Format traits.
 template <>
+struct BovFormat<unsigned short>
+{
+    //! Get BOV value type.
+    static std::string value() { return "USHORT"; }
+};
+
+//! BOV Format traits.
+template <>
 struct BovFormat<int>
 {
     //! Get BOV value type.
