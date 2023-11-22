@@ -49,22 +49,26 @@ void checkRandomParticles( const int num_particle,
 }
 
 template <class PositionType>
-void checkRandomDistances( const int min_distance,
+void checkRandomDistances( const double min_distance,
                            const PositionType host_positions )
 {
     std::size_t num_particle = host_positions.size();
 
     // Check that none of the particles are are too close.
     for ( std::size_t i = 0; i < num_particle; ++i )
-        for ( std::size_t j = 0; j < num_particle; ++j )
+        for ( std::size_t j = 1; j < num_particle; ++j )
         {
-            double dsqr = 0.0;
-            for ( int d = 0; d < 3; ++d )
+            if ( i != j )
             {
-                double diff = host_positions( i, d ) - host_positions( j, d );
-                dsqr += diff * diff;
+                double dsqr = 0.0;
+                for ( int d = 0; d < 3; ++d )
+                {
+                    double diff =
+                        host_positions( i, d ) - host_positions( j, d );
+                    dsqr += diff * diff;
+                }
+                EXPECT_GE( dsqr, min_distance * min_distance );
             }
-            EXPECT_GE( dsqr, min_distance * min_distance );
         }
 }
 
