@@ -156,7 +156,8 @@ struct VerletListBuilder
 
     // Constructor.
     VerletListBuilder( PositionType positions, const std::size_t begin,
-                       const std::size_t end,
+                       const std::size_t end, const std::size_t candidate_begin,
+                       const std::size_t candidate_end,
                        const PositionValueType neighborhood_radius,
                        const PositionValueType cell_size_ratio,
                        const PositionValueType grid_min[3],
@@ -180,14 +181,16 @@ struct VerletListBuilder
         _position = positions;
 
         // Bin the particles in the grid. Don't actually sort them but make a
-        // permutation vector. Note that we are binning all particles here and
-        // not just the requested range. This is because all particles are
-        // treated as candidates for neighbors.
+        // permutation vector. Note that we are binning the requested candidate
+        // neighbor range which is (potentially) a different subset from the
+        // range which will store neighbors. One common use case is to use the
+        // full range of particles as candidates (both local and ghosted
+        // particles), while only storing neighbors for local particles.
         double grid_size = cell_size_ratio * neighborhood_radius;
         PositionValueType grid_delta[3] = { grid_size, grid_size, grid_size };
         linked_cell_list = createLinkedCellList<memory_space>(
-            _position, grid_delta, grid_min, grid_max, neighborhood_radius,
-            cell_size_ratio );
+            _position, candidate_begin, candidate_end, grid_delta, grid_min,
+            grid_max, neighborhood_radius, cell_size_ratio );
         bin_data_1d = linked_cell_list.binningData();
 
         // We will use the square of the distance for neighbor determination.
@@ -626,26 +629,66 @@ class VerletList
       a neighborhood radius calculate the neighbor list.
 
       \param x The particle positions
-
       \param begin The beginning particle index to compute neighbors for.
-
       \param end The end particle index to compute neighbors for.
-
+      \param candidate_begin The beginning particle index within which we search
+      for neighbors.
+      \param candidate_end The end particle index within which we search for
+      neighbors.
       \param neighborhood_radius The radius of the neighborhood. Particles
       within this radius are considered neighbors. This is effectively the
       grid cell size in each dimension.
-
       \param cell_size_ratio The ratio of the cell size in the Cartesian grid
       to the neighborhood radius. For example, if the cell size ratio is 0.5
       then the cells will be half the size of the neighborhood radius in each
       dimension.
-
       \param grid_min The minimum value of the grid containing the particles
       in each dimension.
-
       \param grid_max The maximum value of the grid containing the particles
       in each dimension.
+      \param max_neigh Optional maximum number of neighbors per particle to
+      pre-allocate the neighbor list. Potentially avoids recounting with 2D
+      layout only.
 
+      Particles outside of the neighborhood radius will not be considered
+      neighbors. Only compute the neighbors of those that are within the given
+      range within the (potentially different) range of candidate neighbors.
+    */
+    template <class PositionSlice>
+    VerletList( PositionSlice x, const std::size_t begin, const std::size_t end,
+                const std::size_t candidate_begin,
+                const std::size_t candidate_end,
+                const typename PositionSlice::value_type neighborhood_radius,
+                const typename PositionSlice::value_type cell_size_ratio,
+                const typename PositionSlice::value_type grid_min[3],
+                const typename PositionSlice::value_type grid_max[3],
+                const std::size_t max_neigh = 0,
+                typename std::enable_if<( is_slice<PositionSlice>::value ),
+                                        int>::type* = 0 )
+    {
+        build( x, begin, end, candidate_begin, candidate_end,
+               neighborhood_radius, cell_size_ratio, grid_min, grid_max,
+               max_neigh );
+    }
+
+    /*!
+      \brief VerletList constructor. Given a list of particle positions and
+      a neighborhood radius calculate the neighbor list.
+
+      \param x The slice containing the particle positions
+      \param begin The beginning particle index to compute neighbors for.
+      \param end The end particle index to compute neighbors for.
+      \param neighborhood_radius The radius of the neighborhood. Particles
+      within this radius are considered neighbors. This is effectively the
+      grid cell size in each dimension.
+      \param cell_size_ratio The ratio of the cell size in the Cartesian grid
+      to the neighborhood radius. For example, if the cell size ratio is 0.5
+      then the cells will be half the size of the neighborhood radius in each
+      dimension.
+      \param grid_min The minimum value of the grid containing the particles
+      in each dimension.
+      \param grid_max The maximum value of the grid containing the particles
+      in each dimension.
       \param max_neigh Optional maximum number of neighbors per particle to
       pre-allocate the neighbor list. Potentially avoids recounting with 2D
       layout only.
@@ -653,7 +696,9 @@ class VerletList
       Particles outside of the neighborhood radius will not be considered
       neighbors. Only compute the neighbors of those that are within the given
       range. All particles are candidates for being a neighbor, regardless of
-      whether or not they are in the range.
+      whether or not they are in the range (e.g. ghosted particles can be
+      neighbors of other particles, but do not need to store neighbors
+      themselves).
     */
     template <class PositionType>
     VerletList(
@@ -667,6 +712,7 @@ class VerletList
                                   Kokkos::is_view<PositionType>::value ),
                                 int>::type* = 0 )
     {
+        // Call the overload with default (full) candidate range.
         build( x, begin, end, neighborhood_radius, cell_size_ratio, grid_min,
                grid_max, max_neigh );
     }
@@ -687,10 +733,50 @@ class VerletList
                                      Kokkos::is_view<PositionType>::value ),
                                    int>::type* = 0 )
     {
-        // Use the default execution space.
-        build( execution_space{}, x, begin, end, neighborhood_radius,
+        // Use the default execution space and default (full) candidate range.
+        build( execution_space{}, x, begin, end, 0, x.size(),
+               neighborhood_radius, cell_size_ratio, grid_min, grid_max,
+               max_neigh );
+    }
+
+    /*!
+      \brief Given a list of particle positions and a neighborhood radius
+      calculate the neighbor list.
+    */
+    template <class PositionSlice, class ExecutionSpace>
+    void build( ExecutionSpace exec_space, PositionSlice x,
+                const std::size_t begin, const std::size_t end,
+                const typename PositionSlice::value_type neighborhood_radius,
+                const typename PositionSlice::value_type cell_size_ratio,
+                const typename PositionSlice::value_type grid_min[3],
+                const typename PositionSlice::value_type grid_max[3],
+                const std::size_t max_neigh = 0 )
+    {
+        // Use the default execution space and default (full) candidate range.
+        build( exec_space, x, begin, end, 0, x.size(), neighborhood_radius,
                cell_size_ratio, grid_min, grid_max, max_neigh );
     }
+
+    /*!
+      \brief Given a list of particle positions and a neighborhood radius
+      calculate the neighbor list.
+    */
+    template <class PositionSlice>
+    void build( PositionSlice x, const std::size_t begin, const std::size_t end,
+                const std::size_t candidate_begin,
+                const std::size_t candidate_end,
+                const typename PositionSlice::value_type neighborhood_radius,
+                const typename PositionSlice::value_type cell_size_ratio,
+                const typename PositionSlice::value_type grid_min[3],
+                const typename PositionSlice::value_type grid_max[3],
+                const std::size_t max_neigh = 0 )
+    {
+        // Use the default execution space.
+        build( execution_space{}, x, begin, end, candidate_begin, candidate_end,
+               neighborhood_radius, cell_size_ratio, grid_min, grid_max,
+               max_neigh );
+    }
+
     /*!
       \brief Given a list of particle positions and a neighborhood radius
       calculate the neighbor list.
@@ -698,7 +784,8 @@ class VerletList
     template <class PositionType, class ExecutionSpace>
     void
     build( ExecutionSpace, PositionType x, const std::size_t begin,
-           const std::size_t end,
+           const std::size_t end, const std::size_t candidate_begin,
+           const std::size_t candidate_end,
            const typename PositionType::value_type neighborhood_radius,
            const typename PositionType::value_type cell_size_ratio,
            const typename PositionType::value_type grid_min[3],
@@ -721,8 +808,9 @@ class VerletList
         auto builder =
             Impl::createVerletListBuilder<device_type, PositionType,
                                           AlgorithmTag, LayoutTag, BuildTag>(
-                x, begin, end, neighborhood_radius, cell_size_ratio, grid_min,
-                grid_max, max_neigh );
+                x, begin, end, candidate_begin, candidate_end,
+                neighborhood_radius, cell_size_ratio, grid_min, grid_max,
+                max_neigh );
 
         // For each particle in the range check each neighboring bin for
         // neighbor particles. Bins are at least the size of the neighborhood
