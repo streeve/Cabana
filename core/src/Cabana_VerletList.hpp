@@ -133,9 +133,9 @@ class NeighborDiscriminator<FullNeighborTag>
     // that the particle does not neighbor itself (i.e. the particle index
     // "p" is not the same as the neighbor index "n").
     KOKKOS_INLINE_FUNCTION
-    static bool isValid( const std::size_t p, const double, const double,
-                         const double, const std::size_t n, const double,
-                         const double, const double )
+    bool operator()( const std::size_t p, const double, const double,
+                     const double, const std::size_t n, const double,
+                     const double, const double ) const
     {
         return ( p != n );
     }
@@ -154,9 +154,9 @@ class NeighborDiscriminator<HalfNeighborTag>
     // then the y direction is checked next and finally the z direction if the
     // y coordinates are the same.
     KOKKOS_INLINE_FUNCTION
-    static bool isValid( const std::size_t p, const double xp, const double yp,
-                         const double zp, const std::size_t n, const double xn,
-                         const double yn, const double zn )
+    bool operator()( const std::size_t p, const double xp, const double yp,
+                     const double zp, const std::size_t n, const double xn,
+                     const double yn, const double zn ) const
     {
         return ( ( p != n ) &&
                  ( ( xn > xp ) ||
@@ -215,8 +215,8 @@ struct LinkedCellStencil
 //---------------------------------------------------------------------------//
 // Verlet List Builder
 //---------------------------------------------------------------------------//
-template <class DeviceType, class PositionSlice, class AlgorithmTag,
-          class LayoutTag, class BuildOpTag>
+template <class DeviceType, class PositionSlice, class DiscriminatorType,
+          class AlgorithmTag, class LayoutTag, class BuildOpTag>
 struct VerletListBuilder
 {
     // Types.
@@ -244,6 +244,10 @@ struct VerletListBuilder
     // Cell stencil.
     LinkedCellStencil<PositionValueType> cell_stencil;
 
+    // Neighbor discriminator - may or may not depend on AlgorithmTag or other
+    // build details.
+    DiscriminatorType neigh_discriminator;
+
     // Check to count or refill.
     bool refill;
     bool count;
@@ -258,11 +262,13 @@ struct VerletListBuilder
                        const PositionValueType cell_size_ratio,
                        const PositionValueType grid_min[3],
                        const PositionValueType grid_max[3],
+                       DiscriminatorType discriminator,
                        const std::size_t max_neigh )
         : pid_begin( begin )
         , pid_end( end )
         , cell_stencil( neighborhood_radius, cell_size_ratio, grid_min,
                         grid_max )
+        , neigh_discriminator( discriminator )
         , alloc_n( max_neigh )
     {
         count = true;
@@ -405,8 +411,7 @@ struct VerletListBuilder
         double z_n = position( nid, 2 );
 
         // If this could be a valid neighbor, continue.
-        if ( NeighborDiscriminator<AlgorithmTag>::isValid(
-                 pid, x_p, y_p, z_p, nid, x_n, y_n, z_n ) )
+        if ( neigh_discriminator( pid, x_p, y_p, z_p, nid, x_n, y_n, z_n ) )
         {
             // Calculate the distance between the particle and its candidate
             // neighbor.
@@ -612,8 +617,7 @@ struct VerletListBuilder
         double z_n = position( nid, 2 );
 
         // If this could be a valid neighbor, continue.
-        if ( NeighborDiscriminator<AlgorithmTag>::isValid(
-                 pid, x_p, y_p, z_p, nid, x_n, y_n, z_n ) )
+        if ( neigh_discriminator( pid, x_p, y_p, z_p, nid, x_n, y_n, z_n ) )
         {
             // Calculate the distance between the particle and its candidate
             // neighbor.
@@ -720,8 +724,59 @@ class VerletList
                 typename std::enable_if<( is_slice<PositionSlice>::value ),
                                         int>::type* = 0 )
     {
-        build( x, begin, end, neighborhood_radius, cell_size_ratio, grid_min,
-               grid_max, max_neigh );
+        // Use the internal discriminator.
+        Impl::NeighborDiscriminator<AlgorithmTag> discriminator;
+        build( execution_space{}, x, begin, end, neighborhood_radius,
+               cell_size_ratio, grid_min, grid_max, discriminator, max_neigh );
+    }
+
+    /*!
+      \brief VerletList constructor. Given a list of particle positions and
+      a neighborhood radius calculate the neighbor list.
+
+      \param x The slice containing the particle positions
+
+      \param begin The beginning particle index to compute neighbors for.
+
+      \param end The end particle index to compute neighbors for.
+
+      \param neighborhood_radius The radius of the neighborhood. Particles
+      within this radius are considered neighbors. This is effectively the
+      grid cell size in each dimension.
+
+      \param cell_size_ratio The ratio of the cell size in the Cartesian grid
+      to the neighborhood radius. For example, if the cell size ratio is 0.5
+      then the cells will be half the size of the neighborhood radius in each
+      dimension.
+
+      \param grid_min The minimum value of the grid containing the particles
+      in each dimension.
+
+      \param grid_max The maximum value of the grid containing the particles
+      in each dimension.
+
+      \param max_neigh Optional maximum number of neighbors per particle to
+      pre-allocate the neighbor list. Potentially avoids recounting with 2D
+      layout only.
+
+      Particles outside of the neighborhood radius will not be considered
+      neighbors. Only compute the neighbors of those that are within the given
+      range. All particles are candidates for being a neighbor, regardless of
+      whether or not they are in the range.
+    */
+    template <class PositionSlice, class FunctorType>
+    VerletList( PositionSlice x, const std::size_t begin, const std::size_t end,
+                const typename PositionSlice::value_type neighborhood_radius,
+                const typename PositionSlice::value_type cell_size_ratio,
+                const typename PositionSlice::value_type grid_min[3],
+                const typename PositionSlice::value_type grid_max[3],
+                FunctorType discriminator, const std::size_t max_neigh = 0,
+                typename std::enable_if<(is_slice<PositionSlice>::value &&
+                                         !std::is_integral_v<FunctorType>),
+                                        int>::type* = 0 )
+    {
+        build( execution_space{}, x, begin, end, neighborhood_radius,
+               cell_size_ratio, grid_min, grid_max, discriminator, max_neigh );
     }
 
     /*!
@@ -740,17 +795,35 @@ class VerletList
         build( execution_space{}, x, begin, end, neighborhood_radius,
                cell_size_ratio, grid_min, grid_max, max_neigh );
     }
+
+    template <class PositionSlice, class ExecutionSpace>
+    void build( ExecutionSpace exec_space, PositionSlice x,
+                const std::size_t begin, const std::size_t end,
+                const typename PositionSlice::value_type neighborhood_radius,
+                const typename PositionSlice::value_type cell_size_ratio,
+                const typename PositionSlice::value_type grid_min[3],
+                const typename PositionSlice::value_type grid_max[3],
+                const std::size_t max_neigh = 0 )
+    {
+        // Use the internal discriminator.
+        Impl::NeighborDiscriminator<AlgorithmTag> discriminator;
+        build( exec_space, x, begin, end, neighborhood_radius, cell_size_ratio,
+               grid_min, grid_max, discriminator, max_neigh );
+    }
+
     /*!
       \brief Given a list of particle positions and a neighborhood radius
       calculate the neighbor list.
     */
-    template <class PositionSlice, class ExecutionSpace>
+    template <class PositionSlice, class ExecutionSpace,
+              class DiscriminatorType>
     void build( ExecutionSpace, PositionSlice x, const std::size_t begin,
                 const std::size_t end,
                 const typename PositionSlice::value_type neighborhood_radius,
                 const typename PositionSlice::value_type cell_size_ratio,
                 const typename PositionSlice::value_type grid_min[3],
                 const typename PositionSlice::value_type grid_max[3],
+                DiscriminatorType discriminator,
                 const std::size_t max_neigh = 0 )
     {
         Kokkos::Profiling::pushRegion( "Cabana::VerletList::build" );
@@ -764,10 +837,12 @@ class VerletList
 
         // Create a builder functor.
         using builder_type =
-            Impl::VerletListBuilder<device_type, PositionSlice, AlgorithmTag,
-                                    LayoutTag, BuildTag>;
+            Impl::VerletListBuilder<device_type, PositionSlice,
+                                    DiscriminatorType, AlgorithmTag, LayoutTag,
+                                    BuildTag>;
         builder_type builder( x, begin, end, neighborhood_radius,
-                              cell_size_ratio, grid_min, grid_max, max_neigh );
+                              cell_size_ratio, grid_min, grid_max,
+                              discriminator, max_neigh );
 
         // For each particle in the range check each neighboring bin for
         // neighbor particles. Bins are at least the size of the neighborhood
