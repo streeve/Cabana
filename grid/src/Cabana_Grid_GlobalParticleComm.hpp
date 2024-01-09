@@ -239,7 +239,10 @@ class GlobalParticleComm
                 // Check if outside the box in this dimension.
                 if ( ( positions( p, d ) < local_corners( min, d, 0 ) ) ||
                      ( positions( p, d ) > local_corners( max - 1, d, 1 ) ) )
+                {
                     destinations( p ) = -1;
+                    return;
+                }
 
                 // Do a binary search for this particle in this dimension.
                 while ( max - min > 1 )
