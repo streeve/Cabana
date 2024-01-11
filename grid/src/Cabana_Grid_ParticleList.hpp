@@ -113,6 +113,13 @@ struct is_particle_list_impl<
 {
 };
 
+template <class MemorySpace, int VectorLength, class... FieldTags>
+struct is_particle_list_impl<
+    Cabana::ParticleList<MemorySpace, VectorLength, FieldTags...>>
+    : public std::true_type
+{
+};
+
 //! ParticleList static type checker.
 template <class T>
 struct is_particle_list
