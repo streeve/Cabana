@@ -12,3 +12,7 @@ repos:
         types_or: [c++]
         args: ["-style=file", "-i"]
 
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.2.6
+    hooks:
+      - id: codespell
