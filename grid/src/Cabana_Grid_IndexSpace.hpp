@@ -210,6 +210,23 @@ createExecutionPolicy( const IndexSpace_t& index_space, const ExecutionSpace& )
 
 //---------------------------------------------------------------------------//
 /*!
+  \brief Create a multi-dimensional execution policy over an index space.
+  \param index_space Indices describing minimum and maximum ranges in each
+  dimension.
+  \param tiling Indices describing range policy tiling.
+  \return Kokkos::MDRangePolicy
+*/
+template <class IndexSpace_t, class Tiling_t, class ExecutionSpace>
+auto createExecutionPolicy( const IndexSpace_t& index_space,
+                            const Tiling_t tiling, const ExecutionSpace& )
+{
+    return Kokkos::MDRangePolicy<ExecutionSpace,
+                                 Kokkos::Rank<IndexSpace_t::Rank>>(
+        index_space.min(), index_space.max(), tiling );
+}
+
+//---------------------------------------------------------------------------//
+/*!
   \brief Create a multi-dimensional execution policy over an index space with
   a work tag.
   \return Kokkos::MDRangePolicy
