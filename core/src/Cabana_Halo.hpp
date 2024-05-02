@@ -164,6 +164,24 @@ class Halo : public CommunicationPlan<MemorySpace>
                                     element_export_ids );
     }
 
+    // Variant with import ids.
+    template <class IdViewType, class RankViewType>
+    Halo( MPI_Comm comm, const std::size_t num_local,
+          const IdViewType& element_export_ids,
+          const RankViewType& element_export_ranks,
+          const IdViewType& element_import_ids,
+          const RankViewType& element_import_ranks )
+        : CommunicationPlan<MemorySpace>( comm )
+        , _num_local( num_local )
+    {
+        if ( element_export_ids.size() != element_export_ranks.size() )
+            throw std::runtime_error( "Export ids and ranks different sizes!" );
+
+        auto neighbor_ids = this->createFromExportsOnly( element_export_ranks );
+        this->createExportSteering( neighbor_ids, element_export_ranks,
+                                    element_export_ids );
+    }
+
     /*!
       \brief Get the number of elements locally owned by this rank.
 
