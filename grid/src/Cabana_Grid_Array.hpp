@@ -294,6 +294,9 @@ class Array
     //! Get a view of the array data.
     view_type view() const { return _data; }
 
+    //! Set a view of the array data.
+    void setView( view_type data ) { _data = data; }
+
     //! Get the array label.
     std::string label() const { return _data.label(); }
 
@@ -399,6 +402,14 @@ createSubarray( const Array<Scalar, EntityType, MeshType, Params...>& array,
         typename Array<Scalar, EntityType, MeshType,
                        Params...>::subview_memory_traits>>( sub_layout,
                                                             sub_view );
+}
+
+template <class ArrayType, class ViewType>
+auto create_mirror_view_and_copy( ArrayType array, ViewType view )
+{
+    auto mirror = Kokkos::create_mirror_view_and_copy(
+        typename ArrayType::memory_space{}, view );
+    array.setView( mirror );
 }
 
 //---------------------------------------------------------------------------//
