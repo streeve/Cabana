@@ -174,7 +174,8 @@ get( ParticleView<VectorLength, FieldTags...>& particle, FieldTag,
 
 //---------------------------------------------------------------------------//
 //! List of particle fields stored in AoSoA.
-template <class MemorySpace, int VectorLength, class... FieldTags>
+template <class MemorySpace, int VectorLength, class... FieldTags,
+          class... TypeFieldTags>
 class ParticleList
 {
   public:
@@ -200,15 +201,23 @@ class ParticleList
     using particle_view_type =
         ParticleView<aosoa_type::vector_length, FieldTags...>;
 
-    //! Default constructor.
-    ParticleList( const std::string& label )
+    //! AoSoA type-based member field types.
+    using type_map_traits = ParticleTraits<TypeFieldTags...>;
+    //! AoSoA type-based member types.
+    using type_map_member_types = typename type_map_traits::member_types;
+
+    using type_map_type =
+        //! Default constructor.
+        ParticleList( const std::string& label )
         : _aosoa( label )
+    , _type_map( label + "_per_type", 1 )
     {
     }
 
     //! Constructor from existing AoSoA.
     ParticleList( const aosoa_type& aosoa )
         : _aosoa( aosoa )
+        , _type_map( label + "_per_type", 1 )
     {
     }
 
@@ -249,6 +258,17 @@ class ParticleList
     //! Get the AoSoA label.
     const std::string& label() const { return _aosoa.label(); }
 
+    //! Get a type-based field.
+    template <class TypeFieldTag>
+    auto typeField( TypeFieldTag ) const
+    {
+        auto id = Cabana::slice<TypeIndexer<Field::Id, FieldTags...>::index>(
+            _aosoa, Field::Id::label() );
+        return Cabana::slice<
+            TypeIndexer<TypeFieldTag, TypeFieldTags...>::index>(
+            _type_map, TypeFieldTag::label() );
+    }
+
     //! Get a slice of a given field.
     template <class FieldTag>
     slice_type<TypeIndexer<FieldTag, FieldTags...>::index>
@@ -261,6 +281,8 @@ class ParticleList
   protected:
     //! Particle AoSoA.
     aosoa_type _aosoa;
+    //! Type-based properties.
+    type_map_type _type_map;
 };
 
 template <class>

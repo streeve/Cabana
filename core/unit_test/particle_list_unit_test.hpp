@@ -26,6 +26,12 @@ struct CommRank : Cabana::Field::Scalar<int>
     static std::string label() { return "comm_rank"; }
 };
 
+struct Mass : Scalar<double>
+{
+    static std::string label() { return "mass"; }
+    static bool type() { return true; }
+};
+
 struct Foo : Cabana::Field::Scalar<double>
 {
     static std::string label() { return "foo"; }
@@ -46,14 +52,16 @@ void setParticleListTestData( ParticleList& plist )
 
     // Populate fields.
     auto px = plist.slice( Cabana::Field::Position<3>() );
-    auto pm = plist.slice( Foo() );
+    auto pf = plist.slice( Foo() );
     auto pc = plist.slice( CommRank() );
-    auto pf = plist.slice( Bar() );
+    auto pb = plist.slice( Bar() );
+    auto pm = plist.slice( Mass() );
 
     Cabana::deep_copy( px, 1.23 );
-    Cabana::deep_copy( pm, 3.3 );
+    Cabana::deep_copy( pf, 3.3 );
     Cabana::deep_copy( pc, 5 );
-    Cabana::deep_copy( pf, -1.2 );
+    Cabana::deep_copy( pb, -1.2 );
+    Cabana::deep_copy( pm, 7.5 );
 }
 
 template <class ParticleList>
@@ -63,13 +71,13 @@ void checkParticleListLabels( const ParticleList plist )
 
     // Check the slices.
     auto px = plist.slice( Cabana::Field::Position<3>() );
-    auto pm = plist.slice( Foo() );
+    auto pf = plist.slice( Foo() );
     auto pc = plist.slice( CommRank() );
-    auto pf = plist.slice( Bar() );
+    auto pb = plist.slice( Bar() );
     EXPECT_EQ( px.label(), "position" );
-    EXPECT_EQ( pm.label(), "foo" );
+    EXPECT_EQ( pf.label(), "foo" );
     EXPECT_EQ( pc.label(), "comm_rank" );
-    EXPECT_EQ( pf.label(), "bar" );
+    EXPECT_EQ( pb.label(), "bar" );
 }
 
 template <class ParticleList>
@@ -80,21 +88,21 @@ void checkParticleListInitial( const ParticleList plist )
     auto aosoa_host =
         Cabana::create_mirror_view_and_copy( Kokkos::HostSpace(), aosoa );
     auto px_h = Cabana::slice<0>( aosoa_host );
-    auto pm_h = Cabana::slice<1>( aosoa_host );
+    auto pf_h = Cabana::slice<1>( aosoa_host );
     auto pc_h = Cabana::slice<2>( aosoa_host );
-    auto pf_h = Cabana::slice<3>( aosoa_host );
+    auto pb_h = Cabana::slice<3>( aosoa_host );
     for ( std::size_t p = 0; p < aosoa_host.size(); ++p )
     {
         for ( int d = 0; d < 3; ++d )
             EXPECT_DOUBLE_EQ( px_h( p, d ), 1.23 );
 
-        EXPECT_DOUBLE_EQ( pm_h( p ), 3.3 );
+        EXPECT_DOUBLE_EQ( pf_h( p ), 3.3 );
 
         EXPECT_EQ( pc_h( p ), 5 );
 
         for ( int i = 0; i < 3; ++i )
             for ( int j = 0; j < 3; ++j )
-                EXPECT_DOUBLE_EQ( pf_h( p, i, j ), -1.2 );
+                EXPECT_DOUBLE_EQ( pb_h( p, i, j ), -1.2 );
     }
 }
 
@@ -106,21 +114,21 @@ void checkParticleListFinal( const ParticleList plist )
     auto aosoa_host =
         Cabana::create_mirror_view_and_copy( Kokkos::HostSpace(), aosoa );
     auto px_h = Cabana::slice<0>( aosoa_host );
-    auto pm_h = Cabana::slice<1>( aosoa_host );
+    auto pf_h = Cabana::slice<1>( aosoa_host );
     auto pc_h = Cabana::slice<2>( aosoa_host );
-    auto pf_h = Cabana::slice<3>( aosoa_host );
+    auto pb_h = Cabana::slice<3>( aosoa_host );
     for ( std::size_t p = 0; p < aosoa_host.size(); ++p )
     {
         for ( int d = 0; d < 3; ++d )
             EXPECT_DOUBLE_EQ( px_h( p, d ), 1.23 + p + d );
 
-        EXPECT_DOUBLE_EQ( pm_h( p ), 3.3 + p );
+        EXPECT_DOUBLE_EQ( pf_h( p ), 3.3 + p );
 
         EXPECT_EQ( pc_h( p ), 5 + p );
 
         for ( int i = 0; i < 3; ++i )
             for ( int j = 0; j < 3; ++j )
-                EXPECT_DOUBLE_EQ( pf_h( p, i, j ), -1.2 + p + i + j );
+                EXPECT_DOUBLE_EQ( pb_h( p, i, j ), -1.2 + p + i + j );
     }
 }
 

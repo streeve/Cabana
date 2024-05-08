@@ -92,6 +92,17 @@ struct Position : Vector<double, NumSpaceDim>
 {
     //! Field label.
     static std::string label() { return "position"; }
+    //! Type-based property
+    static bool type() { return false; }
+};
+
+//! Particle type.
+struct Type : Scalar<int>
+{
+    //! Field label.
+    static std::string label() { return "type"; }
+    //! Type-based property
+    static bool type() { return false; }
 };
 
 } // namespace Field
