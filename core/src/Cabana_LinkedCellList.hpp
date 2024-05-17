@@ -941,14 +941,7 @@ class NeighborList<LinkedCellList<MemorySpace, Scalar, NumSpaceDim>>
                     {
                         int particle_id = list.binOffset( ijk ) +
                                           ( neighbor_index - previous_count );
-                        if ( list.sorted() )
-                        {
-                            return particle_id + list.getParticleBegin();
-                        }
-                        else
-                        {
-                            return list.permutation( particle_id );
-                        }
+                        return list.getParticle( particle_id );
                     }
                     // Update previous to all bins so far.
                     previous_count = total_count;
@@ -986,14 +979,7 @@ class NeighborList<LinkedCellList<MemorySpace, Scalar, NumSpaceDim>>
                 {
                     int particle_id = list.binOffset( ij ) +
                                       ( neighbor_index - previous_count );
-                    if ( list.sorted() )
-                    {
-                        return particle_id + list.getParticleBegin();
-                    }
-                    else
-                    {
-                        return list.permutation( particle_id );
-                    }
+                    return list.getParticle( particle_id );
                 }
                 // Update previous to all bins so far.
                 previous_count = total_count;
