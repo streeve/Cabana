@@ -192,9 +192,9 @@ struct VerletListBuilder
         for ( std::size_t d = 0; d < num_space_dim; ++d )
             grid_delta[d] = grid_size;
 
-        linked_cell_list = createLinkedCellList<memory_space>(
-            position, grid_delta, grid_min, grid_max, neighborhood_radius,
-            cell_size_ratio );
+        linked_cell_list =
+            createLinkedCellList( position, grid_delta, grid_min, grid_max,
+                                  neighborhood_radius, cell_size_ratio );
         bin_data_1d = linked_cell_list.binningData();
 
         // We will use the square of the distance for neighbor determination.

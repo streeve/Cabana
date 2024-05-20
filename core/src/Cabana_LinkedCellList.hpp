@@ -730,30 +730,30 @@ class LinkedCellList
   \brief Creation function for linked cell list.
   \return LinkedCellList.
 */
-template <class MemorySpace, class SliceType, class Scalar,
-          std::size_t NumSpaceDim = 3>
+template <class SliceType, class Scalar, std::size_t NumSpaceDim = 3>
 auto createLinkedCellList( SliceType positions,
                            const Scalar grid_delta[NumSpaceDim],
                            const Scalar grid_min[NumSpaceDim],
                            const Scalar grid_max[NumSpaceDim] )
 {
-    return LinkedCellList<MemorySpace, Scalar>( positions, grid_delta, grid_min,
-                                                grid_max );
+    using memory_space = typename SliceType::memory_space;
+    return LinkedCellList<memory_space, Scalar>( positions, grid_delta,
+                                                 grid_min, grid_max );
 }
 
 /*!
   \brief Creation function for linked cell list with partial range.
   \return LinkedCellList.
 */
-template <class MemorySpace, class SliceType, class Scalar,
-          std::size_t NumSpaceDim = 3>
+template <class SliceType, class Scalar, std::size_t NumSpaceDim = 3>
 auto createLinkedCellList( SliceType positions, const std::size_t begin,
                            const std::size_t end,
                            const Scalar grid_delta[NumSpaceDim],
                            const Scalar grid_min[NumSpaceDim],
                            const Scalar grid_max[NumSpaceDim] )
 {
-    return LinkedCellList<MemorySpace, Scalar>(
+    using memory_space = typename SliceType::memory_space;
+    return LinkedCellList<memory_space, Scalar>(
         positions, begin, end, grid_delta, grid_min, grid_max );
 }
 
@@ -762,8 +762,7 @@ auto createLinkedCellList( SliceType positions, const std::size_t begin,
   cell ratio.
   \return LinkedCellList.
 */
-template <class MemorySpace, class SliceType, class Scalar,
-          std::size_t NumSpaceDim = 3>
+template <class SliceType, class Scalar, std::size_t NumSpaceDim = 3>
 auto createLinkedCellList( SliceType positions,
                            const Scalar grid_delta[NumSpaceDim],
                            const Scalar grid_min[NumSpaceDim],
@@ -771,9 +770,10 @@ auto createLinkedCellList( SliceType positions,
                            const Scalar neighborhood_radius,
                            const Scalar cell_size_ratio = 1.0 )
 {
-    return LinkedCellList<MemorySpace, Scalar>( positions, grid_delta, grid_min,
-                                                grid_max, neighborhood_radius,
-                                                cell_size_ratio );
+    using memory_space = typename SliceType::memory_space;
+    return LinkedCellList<memory_space, Scalar>(
+        positions, grid_delta, grid_min, grid_max, neighborhood_radius,
+        cell_size_ratio );
 }
 
 /*!
@@ -781,8 +781,7 @@ auto createLinkedCellList( SliceType positions,
   cutoff radius and/or cell ratio.
   \return LinkedCellList.
 */
-template <class MemorySpace, class SliceType, class Scalar,
-          std::size_t NumSpaceDim = 3>
+template <class SliceType, class Scalar, std::size_t NumSpaceDim = 3>
 auto createLinkedCellList( SliceType positions, const std::size_t begin,
                            const std::size_t end,
                            const Scalar grid_delta[NumSpaceDim],
@@ -791,7 +790,8 @@ auto createLinkedCellList( SliceType positions, const std::size_t begin,
                            const Scalar neighborhood_radius,
                            const Scalar cell_size_ratio = 1.0 )
 {
-    return LinkedCellList<MemorySpace, Scalar>(
+    using memory_space = typename SliceType::memory_space;
+    return LinkedCellList<memory_space, Scalar>(
         positions, begin, end, grid_delta, grid_min, grid_max,
         neighborhood_radius, cell_size_ratio );
 }
