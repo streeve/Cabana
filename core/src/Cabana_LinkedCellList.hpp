@@ -737,8 +737,8 @@ auto createLinkedCellList( SliceType positions,
                            const Scalar grid_max[NumSpaceDim] )
 {
     using memory_space = typename SliceType::memory_space;
-    return LinkedCellList<memory_space, Scalar>( positions, grid_delta,
-                                                 grid_min, grid_max );
+    return LinkedCellList<memory_space, Scalar, NumSpaceDim>(
+        positions, grid_delta, grid_min, grid_max );
 }
 
 /*!
@@ -753,7 +753,7 @@ auto createLinkedCellList( SliceType positions, const std::size_t begin,
                            const Scalar grid_max[NumSpaceDim] )
 {
     using memory_space = typename SliceType::memory_space;
-    return LinkedCellList<memory_space, Scalar>(
+    return LinkedCellList<memory_space, Scalar, NumSpaceDim>(
         positions, begin, end, grid_delta, grid_min, grid_max );
 }
 
@@ -771,7 +771,7 @@ auto createLinkedCellList( SliceType positions,
                            const Scalar cell_size_ratio = 1.0 )
 {
     using memory_space = typename SliceType::memory_space;
-    return LinkedCellList<memory_space, Scalar>(
+    return LinkedCellList<memory_space, Scalar, NumSpaceDim>(
         positions, grid_delta, grid_min, grid_max, neighborhood_radius,
         cell_size_ratio );
 }
@@ -791,7 +791,7 @@ auto createLinkedCellList( SliceType positions, const std::size_t begin,
                            const Scalar cell_size_ratio = 1.0 )
 {
     using memory_space = typename SliceType::memory_space;
-    return LinkedCellList<memory_space, Scalar>(
+    return LinkedCellList<memory_space, Scalar, NumSpaceDim>(
         positions, begin, end, grid_delta, grid_min, grid_max,
         neighborhood_radius, cell_size_ratio );
 }
