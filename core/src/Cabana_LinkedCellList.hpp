@@ -61,7 +61,8 @@ struct LinkedCellStencil
         Scalar grid_dx[num_space_dim];
         for ( std::size_t d = 0; d < num_space_dim; ++d )
             grid_dx[d] = dx;
-        grid = Impl::CartesianGrid<Scalar>( grid_min, grid_max, grid_dx );
+        grid = Impl::CartesianGrid<Scalar, num_space_dim>( grid_min, grid_max,
+                                                           grid_dx );
         cell_range = std::ceil( 1 / cell_size_ratio );
         max_cells_dir = 2 * cell_range + 1;
         max_cells = max_cells_dir * max_cells_dir * max_cells_dir;
