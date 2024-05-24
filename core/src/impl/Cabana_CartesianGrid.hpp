@@ -53,10 +53,11 @@ class CartesianGrid
             _rdx[d] = 1.0 / _dx[d];
         }
     }
+    template <std::size_t NSD = num_space_dim>
     CartesianGrid( const Real min_x, const Real min_y, const Real min_z,
                    const Real max_x, const Real max_y, const Real max_z,
                    const Real delta_x, const Real delta_y, const Real delta_z,
-                   typename std::enable_if<num_space_dim == 3, int>::type* = 0 )
+                   typename std::enable_if<NSD == 3, int>::type* = 0 )
         : _min( { min_x, min_y, min_z } )
         , _max( { max_x, max_y, max_z } )
     {
@@ -241,18 +242,18 @@ class CartesianGrid
     KOKKOS_INLINE_FUNCTION std::enable_if_t<2 == NSD, void>
     ijkBinIndex( const int cardinal, int& i, int& j ) const
     {
-        i = cardinal / ( _nx[1] * _nx[2] );
-        j = ( cardinal / _nx[2] ) % _nx[1];
+        i = cardinal / ( _nx[1] );
+        j = cardinal % _nx[1];
     }
 
     KOKKOS_INLINE_FUNCTION void
     ijkBinIndex( const int cardinal,
                  Kokkos::Array<int, num_space_dim>& ijk ) const
     {
-        ijk[0] = cardinal / ( _nx[1] * _nx[2] );
-        ijk[1] = ( cardinal / _nx[2] ) % _nx[1];
-        if constexpr ( num_space_dim > 1 )
-            ijk[2] = cardinal % _nx[2];
+        if constexpr ( num_space_dim == 3 )
+            return ijkBinIndex( cardinal, ijk[0], ijk[1], ijk[2] );
+        else
+            return ijkBinIndex( cardinal, ijk[0], ijk[1] );
     }
 
     // Calculate the number of full cells between 2 points.
