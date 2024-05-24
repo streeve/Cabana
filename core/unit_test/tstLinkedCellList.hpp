@@ -22,6 +22,7 @@ namespace Test
 //---------------------------------------------------------------------------//
 // Test data
 //---------------------------------------------------------------------------//
+template <std::size_t Dim>
 struct LCLTestData
 {
     enum MyFields
@@ -29,7 +30,7 @@ struct LCLTestData
         Position = 0,
         CellId = 1
     };
-    using data_types = Cabana::MemberTypes<double[3], int[3]>;
+    using data_types = Cabana::MemberTypes<double[Dim], int[Dim]>;
     using aosoa_type = Cabana::AoSoA<data_types, TEST_MEMSPACE>;
     using size_type = typename aosoa_type::memory_space::size_type;
     std::size_t num_p = 1000;
@@ -47,17 +48,17 @@ struct LCLTestData
     double x_max = x_min + nx * dx;
 
     // Create a grid.
-    double grid_delta[3] = { dx, dx, dx };
-    double grid_min[3] = { x_min, x_min, x_min };
-    double grid_max[3] = { x_max, x_max, x_max };
+    double grid_delta[Dim] = { dx, dx, dx };
+    double grid_min[Dim] = { x_min, x_min, x_min };
+    double grid_max[Dim] = { x_max, x_max, x_max };
 
-    using IDViewType = Kokkos::View<int* [3], TEST_MEMSPACE>;
-    using PosViewType = Kokkos::View<double* [3], TEST_MEMSPACE>;
+    using IDViewType = Kokkos::View<int* [Dim], TEST_MEMSPACE>;
+    using PosViewType = Kokkos::View<double* [Dim], TEST_MEMSPACE>;
     using BinViewType = Kokkos::View<size_type***, TEST_MEMSPACE>;
 
     using layout = typename TEST_EXECSPACE::array_layout;
-    Kokkos::View<int* [3], layout, Kokkos::HostSpace> ids_mirror;
-    Kokkos::View<double* [3], layout, Kokkos::HostSpace> pos_mirror;
+    Kokkos::View<int* [Dim], layout, Kokkos::HostSpace> ids_mirror;
+    Kokkos::View<double* [Dim], layout, Kokkos::HostSpace> pos_mirror;
     Kokkos::View<size_type***, layout, Kokkos::HostSpace> bin_size_mirror;
     Kokkos::View<size_type***, layout, Kokkos::HostSpace> bin_offset_mirror;
 
@@ -101,19 +102,19 @@ struct LCLTestData
 };
 
 void copyListToHost(
-    LCLTestData& test_data,
+    LCLTestData<3>& test_data,
     const Cabana::LinkedCellList<TEST_MEMSPACE, double> cell_list )
 {
     // Copy data to the host for testing.
     auto np = test_data.num_p;
     auto nx = test_data.nx;
-    auto pos_slice = Cabana::slice<LCLTestData::Position>( test_data.aosoa );
-    auto id_slice = Cabana::slice<LCLTestData::CellId>( test_data.aosoa );
+    auto pos_slice = Cabana::slice<LCLTestData<3>::Position>( test_data.aosoa );
+    auto id_slice = Cabana::slice<LCLTestData<3>::CellId>( test_data.aosoa );
 
-    LCLTestData::IDViewType ids( "cell_ids", np );
-    LCLTestData::PosViewType pos( "cell_ids", np );
-    LCLTestData::BinViewType bin_size( "bin_size", nx, nx, nx );
-    LCLTestData::BinViewType bin_offset( "bin_offset", nx, nx, nx );
+    LCLTestData<3>::IDViewType ids( "cell_ids", np );
+    LCLTestData<3>::PosViewType pos( "cell_ids", np );
+    LCLTestData<3>::BinViewType bin_size( "bin_size", nx, nx, nx );
+    LCLTestData<3>::BinViewType bin_offset( "bin_offset", nx, nx, nx );
     Kokkos::parallel_for(
         "copy bin data", Kokkos::RangePolicy<TEST_EXECSPACE>( 0, nx ),
         KOKKOS_LAMBDA( const int i ) {
@@ -145,7 +146,7 @@ void copyListToHost(
 //---------------------------------------------------------------------------//
 // Main Linked Cell List tests
 //---------------------------------------------------------------------------//
-void checkBins( const LCLTestData test_data,
+void checkBins( const LCLTestData<3> test_data,
                 const Cabana::LinkedCellList<TEST_MEMSPACE, double> cell_list )
 {
     auto nx = test_data.nx;
@@ -160,7 +161,7 @@ void checkBins( const LCLTestData test_data,
 // Check LinkedCell data, where either a subset (begin->end) or all data is
 // sorted and where the IDs are sorted or not based on whether the entire AoSoA
 // or only the position slice was permuted.
-void checkLinkedCell( const LCLTestData test_data,
+void checkLinkedCell( const LCLTestData<3> test_data,
                       const std::size_t check_begin,
                       const std::size_t check_end, const bool sorted_ids )
 {
@@ -208,7 +209,7 @@ void checkLinkedCell( const LCLTestData test_data,
                     // right offset.
                     EXPECT_EQ( bin_size_mirror( i, j, k ), 1 );
                     EXPECT_EQ( bin_offset_mirror( i, j, k ),
-                               LCLTestData::size_type( particle_id ) );
+                               LCLTestData<3>::size_type( particle_id ) );
 
                     // Increment the particle id.
                     ++particle_id;
@@ -248,8 +249,7 @@ void checkLinkedCell( const LCLTestData test_data,
 
 //---------------------------------------------------------------------------//
 // Linked cell list cell stencil test.
-
-void testLinkedCellStencil()
+void testLinkedCellStencil3d()
 {
     // Point in the middle
     {
@@ -324,14 +324,77 @@ void testLinkedCellStencil()
     }
 }
 
+void testLinkedCellStencil2d()
+{
+    // Point in the middle
+    {
+        double min[2] = { 0.0, 0.0 };
+        double max[2] = { 10.0, 10.0 };
+        double radius = 1.0;
+        double ratio = 1.0;
+        Cabana::LinkedCellStencil<double, 2> stencil( radius, ratio, min, max );
+
+        Kokkos::Array<double, 2> xp = { 4.5, 5.5 };
+        Kokkos::Array<int, 2> ic;
+        stencil.grid.locatePoint( xp, ic );
+        int cell = stencil.grid.cardinalCellIndex( ic );
+        Kokkos::Array<int, 2> cmin, cmax;
+        stencil.getCells( cell, cmin, cmax );
+        EXPECT_EQ( cmin[0], 3 );
+        EXPECT_EQ( cmax[0], 6 );
+        EXPECT_EQ( cmin[1], 4 );
+        EXPECT_EQ( cmax[1], 7 );
+    }
+
+    // Point in the lower right corner
+    {
+        double min[2] = { 0.0, 0.0 };
+        double max[2] = { 10.0, 10.0 };
+        double radius = 1.0;
+        double ratio = 1.0;
+        Cabana::LinkedCellStencil<double, 2> stencil( radius, ratio, min, max );
+
+        Kokkos::Array<double, 2> xp = { 0.5, 0.5 };
+        Kokkos::Array<int, 2> ic;
+        stencil.grid.locatePoint( xp, ic );
+        int cell = stencil.grid.cardinalCellIndex( ic );
+        Kokkos::Array<int, 2> cmin, cmax;
+        stencil.getCells( cell, cmin, cmax );
+        EXPECT_EQ( cmin[0], 0 );
+        EXPECT_EQ( cmax[0], 2 );
+        EXPECT_EQ( cmin[1], 0 );
+        EXPECT_EQ( cmax[1], 2 );
+    }
+
+    // Point in the upper left corner
+    {
+        double min[2] = { 0.0, 0.0 };
+        double max[2] = { 10.0, 10.0 };
+        double radius = 1.0;
+        double ratio = 1.0;
+        Cabana::LinkedCellStencil<double, 2> stencil( radius, ratio, min, max );
+
+        Kokkos::Array<double, 2> xp = { 9.5, 9.5 };
+        Kokkos::Array<int, 2> ic;
+        stencil.grid.locatePoint( xp, ic );
+        int cell = stencil.grid.cardinalCellIndex( ic );
+        Kokkos::Array<int, 2> cmin, cmax;
+        stencil.getCells( cell, cmin, cmax );
+        EXPECT_EQ( cmin[0], 8 );
+        EXPECT_EQ( cmax[0], 10 );
+        EXPECT_EQ( cmin[1], 8 );
+        EXPECT_EQ( cmax[1], 10 );
+    }
+}
+
 //---------------------------------------------------------------------------//
 void testLinkedList()
 {
-    LCLTestData test_data;
+    LCLTestData<3> test_data;
     auto grid_delta = test_data.grid_delta;
     auto grid_min = test_data.grid_min;
     auto grid_max = test_data.grid_max;
-    auto pos = Cabana::slice<LCLTestData::Position>( test_data.aosoa );
+    auto pos = Cabana::slice<LCLTestData<3>::Position>( test_data.aosoa );
 
     // Bin and permute the particles in the grid. First do this by only
     // operating on a subset of the particles.
@@ -365,11 +428,11 @@ void testLinkedList()
 //---------------------------------------------------------------------------//
 void testLinkedListSlice()
 {
-    LCLTestData test_data;
+    LCLTestData<3> test_data;
     auto grid_delta = test_data.grid_delta;
     auto grid_min = test_data.grid_min;
     auto grid_max = test_data.grid_max;
-    auto pos = Cabana::slice<LCLTestData::Position>( test_data.aosoa );
+    auto pos = Cabana::slice<LCLTestData<3>::Position>( test_data.aosoa );
 
     // Bin the particles in the grid and permute only the position slice.
     // First do this by only operating on a subset of the particles.
@@ -770,8 +833,7 @@ void testLinkedListView()
 //---------------------------------------------------------------------------//
 // RUN TESTS
 //---------------------------------------------------------------------------//
-//---------------------------------------------------------------------------//
-TEST( LinkedCellList, Stencil ) { testLinkedCellStencil(); }
+TEST( LinkedCellList, Stencil3d ) { testLinkedCellStencil3d(); }
 
 TEST( LinkedCellList, AoSoA ) { testLinkedList(); }
 
@@ -783,8 +845,9 @@ TEST( LinkedCellList, ParallelFor ) { testLinkedCellParallel(); }
 
 TEST( LinkedCellList, ParallelReduce ) { testLinkedCellReduce(); }
 
-//---------------------------------------------------------------------------//
-TEST( LinkedCellList, linked_list_view_test ) { testLinkedListView(); }
+TEST( LinkedCellList, View ) { testLinkedListView(); }
+
+TEST( LinkedCellList, Stencil2d ) { testLinkedCellStencil2d(); }
 
 //---------------------------------------------------------------------------//
 
