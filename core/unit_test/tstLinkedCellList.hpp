@@ -143,27 +143,67 @@ void copyListToHost(
         Kokkos::create_mirror_view_and_copy( Kokkos::HostSpace(), bin_offset );
 }
 
+void copyListToHost(
+    LCLTestData<2>& test_data,
+    const Cabana::LinkedCellList<TEST_MEMSPACE, double, 2> cell_list )
+{
+    // Copy data to the host for testing.
+    auto np = test_data.num_p;
+    auto nx = test_data.nx;
+    auto pos_slice = Cabana::slice<LCLTestData<2>::Position>( test_data.aosoa );
+    auto id_slice = Cabana::slice<LCLTestData<2>::CellId>( test_data.aosoa );
+
+    LCLTestData<2>::IDViewType ids( "cell_ids", np );
+    LCLTestData<2>::PosViewType pos( "cell_ids", np );
+    LCLTestData<2>::BinViewType bin_size( "bin_size", nx, nx );
+    LCLTestData<2>::BinViewType bin_offset( "bin_offset", nx, nx );
+    Kokkos::parallel_for(
+        "copy bin data", Kokkos::RangePolicy<TEST_EXECSPACE>( 0, nx ),
+        KOKKOS_LAMBDA( const int i ) {
+            for ( int j = 0; j < nx; ++j )
+            {
+                std::size_t original_id = i + j * nx;
+                ids( original_id, 0 ) = id_slice( original_id, 0 );
+                ids( original_id, 1 ) = id_slice( original_id, 1 );
+                pos( original_id, 0 ) = pos_slice( original_id, 0 );
+                pos( original_id, 1 ) = pos_slice( original_id, 1 );
+                bin_size( i, j ) = cell_list.binSize( i, j );
+                bin_offset( i, j ) = cell_list.binOffset( i, j );
+            }
+        } );
+    Kokkos::fence();
+    test_data.ids_mirror =
+        Kokkos::create_mirror_view_and_copy( Kokkos::HostSpace(), ids );
+    test_data.pos_mirror =
+        Kokkos::create_mirror_view_and_copy( Kokkos::HostSpace(), pos );
+    test_data.bin_size_mirror =
+        Kokkos::create_mirror_view_and_copy( Kokkos::HostSpace(), bin_size );
+    test_data.bin_offset_mirror =
+        Kokkos::create_mirror_view_and_copy( Kokkos::HostSpace(), bin_offset );
+}
+
 //---------------------------------------------------------------------------//
 // Main Linked Cell List tests
 //---------------------------------------------------------------------------//
-void checkBins( const LCLTestData<3> test_data,
-                const Cabana::LinkedCellList<TEST_MEMSPACE, double> cell_list )
+template <std::size_t Dim>
+void checkBins(
+    const LCLTestData<Dim> test_data,
+    const Cabana::LinkedCellList<TEST_MEMSPACE, double, Dim> cell_list )
 {
     auto nx = test_data.nx;
 
     // Checking the binning.
-    EXPECT_EQ( cell_list.totalBins(), nx * nx * nx );
-    EXPECT_EQ( cell_list.numBin( 0 ), nx );
-    EXPECT_EQ( cell_list.numBin( 1 ), nx );
-    EXPECT_EQ( cell_list.numBin( 2 ), nx );
+    EXPECT_EQ( cell_list.totalBins(), std::pow( nx, Dim ) );
+    for ( std::size_t d = 0; d < Dim; ++d )
+        EXPECT_EQ( cell_list.numBin( d ), nx );
 }
 
 // Check LinkedCell data, where either a subset (begin->end) or all data is
 // sorted and where the IDs are sorted or not based on whether the entire AoSoA
 // or only the position slice was permuted.
-void checkLinkedCell( const LCLTestData<3> test_data,
-                      const std::size_t check_begin,
-                      const std::size_t check_end, const bool sorted_ids )
+void checkLinkedCell3d( const LCLTestData<3> test_data,
+                        const std::size_t check_begin,
+                        const std::size_t check_end, const bool sorted_ids )
 {
     auto nx = test_data.nx;
     auto ids_mirror = test_data.ids_mirror;
@@ -242,6 +282,82 @@ void checkLinkedCell( const LCLTestData<3> test_data,
                     EXPECT_EQ( ids_mirror( particle_id, 1 ), j );
                     EXPECT_EQ( ids_mirror( particle_id, 2 ), k );
                 }
+            }
+        }
+    }
+}
+
+void checkLinkedCell2d( const LCLTestData<2> test_data,
+                        const std::size_t check_begin,
+                        const std::size_t check_end, const bool sorted_ids )
+{
+    auto nx = test_data.nx;
+    auto ids_mirror = test_data.ids_mirror;
+    auto bin_size_mirror = test_data.bin_size_mirror;
+    auto bin_offset_mirror = test_data.bin_offset_mirror;
+
+    // The order should be reversed with the i index moving the slowest
+    // for those that are actually in the binning range. Do this pass
+    // first. We do this by looping through in the sorted order and
+    // check those that had original indices in the sorting range.
+    std::size_t particle_id = 0;
+    for ( int i = 0; i < nx; ++i )
+    {
+        for ( int j = 0; j < nx; ++j )
+        {
+            std::size_t original_id = i + j * nx;
+            if ( check_begin <= original_id && original_id < check_end )
+            {
+                // Get what should be the local id of the particle
+                // in the newly sorted decomposition. We are looping
+                // through this in k-fastest order (the indexing of
+                // the grid cells) and therefore should get the
+                // particles in their sorted order.
+                int sort_id = check_begin + particle_id;
+
+                // Back calculate what we think the ijk indices of
+                // the particle are based on k-fastest ordering.
+                int grid_id = i * nx * nx + j * nx;
+                int grid_i = grid_id / ( nx * nx );
+                int grid_j = ( grid_id / nx ) % nx;
+
+                // Check the indices of the particle, if sorted.
+                if ( sorted_ids )
+                {
+                    EXPECT_EQ( ids_mirror( sort_id, 0 ), grid_i );
+                    EXPECT_EQ( ids_mirror( sort_id, 1 ), grid_j );
+                }
+                // Check that we binned the particle and got the
+                // right offset.
+                EXPECT_EQ( bin_size_mirror( i, j ), 1 );
+                EXPECT_EQ( bin_offset_mirror( i, j ),
+                           LCLTestData<3>::size_type( particle_id ) );
+
+                // Increment the particle id.
+                ++particle_id;
+            }
+        }
+    }
+
+    // For those that are outside the binned range IDs should be
+    // unchanged and the bins should empty.
+    particle_id = 0;
+    for ( int j = 0; j < nx; ++j )
+    {
+        for ( int i = 0; i < nx; ++i, ++particle_id )
+        {
+            if ( check_begin > particle_id || particle_id >= check_end )
+            {
+                EXPECT_EQ( ids_mirror( particle_id, 0 ), i );
+                EXPECT_EQ( ids_mirror( particle_id, 1 ), j );
+                EXPECT_EQ( bin_size_mirror( i, j ), 0 );
+            }
+            else if ( not sorted_ids )
+            {
+                // If sorted by position slice, IDs in range should
+                // still not be sorted.
+                EXPECT_EQ( ids_mirror( particle_id, 0 ), i );
+                EXPECT_EQ( ids_mirror( particle_id, 1 ), j );
             }
         }
     }
@@ -388,20 +504,21 @@ void testLinkedCellStencil2d()
 }
 
 //---------------------------------------------------------------------------//
+template <std::size_t Dim>
 void testLinkedList()
 {
-    LCLTestData<3> test_data;
+    LCLTestData<Dim> test_data;
     auto grid_delta = test_data.grid_delta;
     auto grid_min = test_data.grid_min;
     auto grid_max = test_data.grid_max;
-    auto pos = Cabana::slice<LCLTestData<3>::Position>( test_data.aosoa );
+    auto pos = Cabana::slice<LCLTestData<Dim>::Position>( test_data.aosoa );
 
     // Bin and permute the particles in the grid. First do this by only
     // operating on a subset of the particles.
     {
         auto begin = test_data.begin;
         auto end = test_data.end;
-        auto cell_list = Cabana::createLinkedCellList<3>(
+        auto cell_list = Cabana::createLinkedCellList<Dim>(
             pos, begin, end, grid_delta, grid_min, grid_max,
             test_data.grid_delta[0], 1.0 );
         Cabana::permute( cell_list, test_data.aosoa );
@@ -414,7 +531,7 @@ void testLinkedList()
 
     // Now bin and permute all of the particles.
     {
-        auto cell_list = Cabana::createLinkedCellList<3>(
+        auto cell_list = Cabana::createLinkedCellList<Dim>(
             pos, grid_delta, grid_min, grid_max, test_data.grid_delta[0] );
         Cabana::permute( cell_list, test_data.aosoa );
 
@@ -426,20 +543,21 @@ void testLinkedList()
 }
 
 //---------------------------------------------------------------------------//
+template <std::size_t Dim>
 void testLinkedListSlice()
 {
-    LCLTestData<3> test_data;
+    LCLTestData<Dim> test_data;
     auto grid_delta = test_data.grid_delta;
     auto grid_min = test_data.grid_min;
     auto grid_max = test_data.grid_max;
-    auto pos = Cabana::slice<LCLTestData<3>::Position>( test_data.aosoa );
+    auto pos = Cabana::slice<LCLTestData<Dim>::Position>( test_data.aosoa );
 
     // Bin the particles in the grid and permute only the position slice.
     // First do this by only operating on a subset of the particles.
     {
         auto begin = test_data.begin;
         auto end = test_data.end;
-        auto cell_list = Cabana::createLinkedCellList<3>(
+        auto cell_list = Cabana::createLinkedCellList<Dim>(
             pos, begin, end, grid_delta, grid_min, grid_max, grid_delta[0] );
         Cabana::permute( cell_list, pos );
 
@@ -450,7 +568,7 @@ void testLinkedListSlice()
     }
     // Now bin and permute all of the particles.
     {
-        auto cell_list = Cabana::createLinkedCellList<3>(
+        auto cell_list = Cabana::createLinkedCellList<Dim>(
             pos, grid_delta, grid_min, grid_max, grid_delta[0] );
         Cabana::permute( cell_list, pos );
 
@@ -772,11 +890,23 @@ void testLinkedCellReduce()
 //---------------------------------------------------------------------------//
 // RUN TESTS
 //---------------------------------------------------------------------------//
-TEST( TEST_CATEGORY, linked_cell_stencil_test ) { testLinkedCellStencil3d(); }
+TEST( TEST_CATEGORY, linked_cell_stencil_test )
+{
+    testLinkedCellStencil3d();
+    testLinkedCellStencil2d();
+}
 
-TEST( TEST_CATEGORY, linked_list_test ) { testLinkedList(); }
+TEST( TEST_CATEGORY, linked_list_test )
+{
+    testLinkedList<3>();
+    testLinkedList<2>();
+}
 
-TEST( TEST_CATEGORY, linked_list_slice_test ) { testLinkedListSlice(); }
+TEST( TEST_CATEGORY, linked_list_slice_test )
+{
+    testLinkedListSlice<3>();
+    testLinkedListSlice<2>();
+}
 
 TEST( TEST_CATEGORY, linked_list_neighbor_test )
 {
@@ -787,7 +917,7 @@ TEST( TEST_CATEGORY, linked_list_parallel_test ) { testLinkedCellParallel(); }
 
 TEST( TEST_CATEGORY, linked_list_reduce_test ) { testLinkedCellReduce(); }
 
-TEST( TEST_CATEGORY, linked_cell_stencil_2d_test )
+TEST( TEST_CATEGORY, 2d_linked_cell_stencil_test )
 {
     testLinkedCellStencil2d();
 }
