@@ -142,6 +142,8 @@ struct VerletListBuilder
 
     // Neighbor cutoff.
     PositionValueType rsqr;
+    // Per-particle cutoff, if used.
+    Kokkos::View<PositionValueType*, memory_space> rsqr_p;
 
     // Positions.
     RandomAccessPositionSlice position;
@@ -169,6 +171,39 @@ struct VerletListBuilder
         : pid_begin( begin )
         , pid_end( end )
         , alloc_n( max_neigh )
+    {
+        init( slice, neighborhood_radius, cell_size_ratio, grid_min, grid_max );
+    }
+
+    // Constructor.
+    VerletListBuilder(
+        PositionSlice slice, const std::size_t begin, const std::size_t end,
+        const PositionValueType neighborhood_radius,
+        const Kokkos::View<PositionValueType*, memory_space> radius,
+        const PositionValueType cell_size_ratio,
+        const PositionValueType grid_min[num_space_dim],
+        const PositionValueType grid_max[num_space_dim],
+        const std::size_t max_neigh )
+        : pid_begin( begin )
+        , pid_end( end )
+        , alloc_n( max_neigh )
+    {
+        assert( slice.size() == radius.size() );
+        init( slice, neighborhood_radius, cell_size_ratio, grid_min, grid_max );
+
+        // We will use the square of the distance, per particle, for neighbor
+        // determination.
+        Kokkos::RangePolicy<execution_space> policy( begin, end );
+        Kokkos::parallel_for(
+            policy, KOKKOS_LAMBDA( const int p ) {
+                rsqr_p( p ) = radius( p ) * radius( p );
+            } );
+    }
+
+    void init( PositionSlice slice, const PositionValueType neighborhood_radius,
+               const PositionValueType cell_size_ratio,
+               const PositionValueType grid_min[num_space_dim],
+               const PositionValueType grid_max[num_space_dim] )
     {
         count = true;
         refill = false;
@@ -199,6 +234,15 @@ struct VerletListBuilder
 
         // We will use the square of the distance for neighbor determination.
         rsqr = neighborhood_radius * neighborhood_radius;
+    }
+
+    // TODO: test performance here.
+    KOKKOS_INLINE_FUNCTION auto cutoff( const int p ) const
+    {
+        if ( rsqr_p.size() > 0 )
+            return rsqr_p( p );
+        else
+            return rsqr;
     }
 
     // Neighbor count team operator (only used for CSR lists).
@@ -296,7 +340,7 @@ struct VerletListBuilder
     {
         // See if we should actually check this box for neighbors.
         if ( linked_cell_list.cellStencil().grid.minDistanceToPoint(
-                 xp, ijk ) <= rsqr )
+                 xp, ijk ) <= cutoff( pid ) )
         {
             std::size_t n_offset = linked_cell_list.binOffset( ijk );
             std::size_t num_n = linked_cell_list.binSize( ijk );
@@ -365,7 +409,7 @@ struct VerletListBuilder
             }
 
             // If within the cutoff add to the count.
-            if ( dist_sqr <= rsqr )
+            if ( dist_sqr <= cutoff( pid ) )
                 local_count += 1;
         }
     }
@@ -543,7 +587,7 @@ struct VerletListBuilder
     {
         // See if we should actually check this box for neighbors.
         if ( linked_cell_list.cellStencil().grid.minDistanceToPoint(
-                 xp, ijk ) <= rsqr )
+                 xp, ijk ) <= cutoff( pid ) )
         {
             // Check the particles in this bin to see if they are neighbors.
             std::size_t n_offset = linked_cell_list.binOffset( ijk );
@@ -604,7 +648,7 @@ struct VerletListBuilder
 
             // If within the cutoff increment the neighbor count and add as a
             // neighbor at that index.
-            if ( dist_sqr <= rsqr )
+            if ( dist_sqr <= cutoff( pid ) )
             {
                 _data.addNeighbor( pid, nid );
             }
