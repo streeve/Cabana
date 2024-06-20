@@ -22,15 +22,19 @@ namespace Test
 //---------------------------------------------------------------------------//
 // Test data
 //---------------------------------------------------------------------------//
+
 template <std::size_t Dim>
-struct LCLTestData
+struct LCLTestData;
+
+template <>
+struct LCLTestData<3>
 {
     enum MyFields
     {
         Position = 0,
         CellId = 1
     };
-    using data_types = Cabana::MemberTypes<double[Dim], int[Dim]>;
+    using data_types = Cabana::MemberTypes<double[3], int[3]>;
     using aosoa_type = Cabana::AoSoA<data_types, TEST_MEMSPACE>;
     using size_type = typename aosoa_type::memory_space::size_type;
     std::size_t num_p = 1000;
@@ -48,17 +52,17 @@ struct LCLTestData
     double x_max = x_min + nx * dx;
 
     // Create a grid.
-    double grid_delta[Dim] = { dx, dx, dx };
-    double grid_min[Dim] = { x_min, x_min, x_min };
-    double grid_max[Dim] = { x_max, x_max, x_max };
+    double grid_delta[3] = { dx, dx, dx };
+    double grid_min[3] = { x_min, x_min, x_min };
+    double grid_max[3] = { x_max, x_max, x_max };
 
-    using IDViewType = Kokkos::View<int* [Dim], TEST_MEMSPACE>;
-    using PosViewType = Kokkos::View<double* [Dim], TEST_MEMSPACE>;
+    using IDViewType = Kokkos::View<int* [3], TEST_MEMSPACE>;
+    using PosViewType = Kokkos::View<double* [3], TEST_MEMSPACE>;
     using BinViewType = Kokkos::View<size_type***, TEST_MEMSPACE>;
 
     using layout = typename TEST_EXECSPACE::array_layout;
-    Kokkos::View<int* [Dim], layout, Kokkos::HostSpace> ids_mirror;
-    Kokkos::View<double* [Dim], layout, Kokkos::HostSpace> pos_mirror;
+    Kokkos::View<int* [3], layout, Kokkos::HostSpace> ids_mirror;
+    Kokkos::View<double* [3], layout, Kokkos::HostSpace> pos_mirror;
     Kokkos::View<size_type***, layout, Kokkos::HostSpace> bin_size_mirror;
     Kokkos::View<size_type***, layout, Kokkos::HostSpace> bin_offset_mirror;
 
@@ -101,9 +105,77 @@ struct LCLTestData
     }
 };
 
+template <>
+struct LCLTestData<2> : public LCLTestData<3>
+{
+    using base_type = LCLTestData<3>;
+    using base_type::begin;
+    using base_type::end;
+    using base_type::MyFields;
+    using base_type::num_p;
+
+    using data_types = Cabana::MemberTypes<double[2], int[2]>;
+    using aosoa_type = Cabana::AoSoA<data_types, TEST_MEMSPACE>;
+    using size_type = typename aosoa_type::memory_space::size_type;
+    aosoa_type aosoa;
+
+    using base_type::dx;
+    using base_type::nx;
+    using base_type::x_max;
+    using base_type::x_min;
+
+    // Create a grid.
+    double grid_delta[2] = { dx, dx };
+    double grid_min[2] = { x_min, x_min };
+    double grid_max[2] = { x_max, x_max };
+
+    using IDViewType = Kokkos::View<int* [2], TEST_MEMSPACE>;
+    using PosViewType = Kokkos::View<double* [2], TEST_MEMSPACE>;
+    using BinViewType = Kokkos::View<size_type**, TEST_MEMSPACE>;
+
+    using layout = typename TEST_EXECSPACE::array_layout;
+    Kokkos::View<int* [2], layout, Kokkos::HostSpace> ids_mirror;
+    Kokkos::View<double* [2], layout, Kokkos::HostSpace> pos_mirror;
+    Kokkos::View<size_type**, layout, Kokkos::HostSpace> bin_size_mirror;
+    Kokkos::View<size_type**, layout, Kokkos::HostSpace> bin_offset_mirror;
+
+    LCLTestData()
+    {
+        aosoa = aosoa_type( "aosoa", num_p );
+
+        createParticles();
+    }
+
+    void createParticles()
+    {
+        // Create local variables for lambda capture
+        auto nx_ = nx;
+        auto x_min_ = x_min;
+        auto dx_ = dx;
+
+        // Fill the AoSoA with positions and ijk cell ids.
+        auto pos = Cabana::slice<Position>( aosoa, "position" );
+        auto cell_id = Cabana::slice<CellId>( aosoa, "cell_id" );
+        Kokkos::parallel_for(
+            "initialize", Kokkos::RangePolicy<TEST_EXECSPACE>( 0, nx_ ),
+            KOKKOS_LAMBDA( const int j ) {
+                for ( int i = 0; i < nx_; ++i )
+                {
+                    std::size_t particle_id = i + j * nx_;
+
+                    cell_id( particle_id, 0 ) = i;
+                    cell_id( particle_id, 1 ) = j;
+
+                    pos( particle_id, 0 ) = x_min_ + ( i + 0.5 ) * dx_;
+                    pos( particle_id, 1 ) = x_min_ + ( j + 0.5 ) * dx_;
+                }
+            } );
+    }
+};
+
 void copyListToHost(
     LCLTestData<3>& test_data,
-    const Cabana::LinkedCellList<TEST_MEMSPACE, double> cell_list )
+    const Cabana::LinkedCellList<TEST_MEMSPACE, double, 3> cell_list )
 {
     // Copy data to the host for testing.
     auto np = test_data.num_p;
@@ -113,8 +185,10 @@ void copyListToHost(
 
     LCLTestData<3>::IDViewType ids( "cell_ids", np );
     LCLTestData<3>::PosViewType pos( "cell_ids", np );
-    LCLTestData<3>::BinViewType bin_size( "bin_size", nx, nx, nx );
-    LCLTestData<3>::BinViewType bin_offset( "bin_offset", nx, nx, nx );
+    using BinViewType =
+        Kokkos::View<typename LCLTestData<3>::size_type***, TEST_MEMSPACE>;
+    BinViewType bin_size( "bin_size", nx, nx, nx );
+    BinViewType bin_offset( "bin_offset", nx, nx, nx );
     Kokkos::parallel_for(
         "copy bin data", Kokkos::RangePolicy<TEST_EXECSPACE>( 0, nx ),
         KOKKOS_LAMBDA( const int i ) {
@@ -155,8 +229,10 @@ void copyListToHost(
 
     LCLTestData<2>::IDViewType ids( "cell_ids", np );
     LCLTestData<2>::PosViewType pos( "cell_ids", np );
-    LCLTestData<2>::BinViewType bin_size( "bin_size", nx, nx );
-    LCLTestData<2>::BinViewType bin_offset( "bin_offset", nx, nx );
+    using BinViewType =
+        Kokkos::View<typename LCLTestData<3>::size_type**, TEST_MEMSPACE>;
+    BinViewType bin_size( "bin_size", nx, nx );
+    BinViewType bin_offset( "bin_offset", nx, nx );
     Kokkos::parallel_for(
         "copy bin data", Kokkos::RangePolicy<TEST_EXECSPACE>( 0, nx ),
         KOKKOS_LAMBDA( const int i ) {
@@ -167,8 +243,9 @@ void copyListToHost(
                 ids( original_id, 1 ) = id_slice( original_id, 1 );
                 pos( original_id, 0 ) = pos_slice( original_id, 0 );
                 pos( original_id, 1 ) = pos_slice( original_id, 1 );
-                bin_size( i, j ) = cell_list.binSize( i, j );
-                bin_offset( i, j ) = cell_list.binOffset( i, j );
+                Kokkos::Array<int, 2> ij = { i, j };
+                bin_size( i, j ) = cell_list.binSize( ij );
+                bin_offset( i, j ) = cell_list.binOffset( ij );
             }
         } );
     Kokkos::fence();
@@ -201,9 +278,9 @@ void checkBins(
 // Check LinkedCell data, where either a subset (begin->end) or all data is
 // sorted and where the IDs are sorted or not based on whether the entire AoSoA
 // or only the position slice was permuted.
-void checkLinkedCell3d( const LCLTestData<3> test_data,
-                        const std::size_t check_begin,
-                        const std::size_t check_end, const bool sorted_ids )
+void checkLinkedCell( const LCLTestData<3> test_data,
+                      const std::size_t check_begin,
+                      const std::size_t check_end, const bool sorted_ids )
 {
     auto nx = test_data.nx;
     auto ids_mirror = test_data.ids_mirror;
@@ -287,9 +364,9 @@ void checkLinkedCell3d( const LCLTestData<3> test_data,
     }
 }
 
-void checkLinkedCell2d( const LCLTestData<2> test_data,
-                        const std::size_t check_begin,
-                        const std::size_t check_end, const bool sorted_ids )
+void checkLinkedCell( const LCLTestData<2> test_data,
+                      const std::size_t check_begin,
+                      const std::size_t check_end, const bool sorted_ids )
 {
     auto nx = test_data.nx;
     auto ids_mirror = test_data.ids_mirror;
@@ -331,7 +408,7 @@ void checkLinkedCell2d( const LCLTestData<2> test_data,
                 // right offset.
                 EXPECT_EQ( bin_size_mirror( i, j ), 1 );
                 EXPECT_EQ( bin_offset_mirror( i, j ),
-                           LCLTestData<3>::size_type( particle_id ) );
+                           LCLTestData<2>::size_type( particle_id ) );
 
                 // Increment the particle id.
                 ++particle_id;
