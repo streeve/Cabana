@@ -701,7 +701,7 @@ class LinkedCellList
 
     // Building the linked cell.
     BinningData<MemorySpace> _bin_data;
-    Impl::CartesianGrid<Scalar> _grid;
+    Impl::CartesianGrid<Scalar, num_space_dim> _grid;
 
     CountView _counts;
     OffsetView _offsets;
@@ -815,8 +815,8 @@ struct is_linked_cell_list_impl : public std::false_type
 {
 };
 
-template <typename MemorySpace, typename Scalar>
-struct is_linked_cell_list_impl<LinkedCellList<MemorySpace, Scalar>>
+template <typename MemorySpace, typename Scalar, std::size_t Dim>
+struct is_linked_cell_list_impl<LinkedCellList<MemorySpace, Scalar, Dim>>
     : public std::true_type
 {
 };
