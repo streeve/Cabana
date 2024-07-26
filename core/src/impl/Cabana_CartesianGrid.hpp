@@ -58,13 +58,20 @@ class CartesianGrid
         , _max_y( max_y )
         , _max_z( max_z )
     {
+        assert( min_x < max_x );
+        assert( min_y < max_y );
+        assert( min_z < max_z );
+
         _nx = cellsBetween( max_x, min_x, 1.0 / delta_x );
         _ny = cellsBetween( max_y, min_y, 1.0 / delta_y );
         _nz = cellsBetween( max_z, min_z, 1.0 / delta_z );
+        assert( _nx > 0 );
+        assert( _ny > 0 );
+        assert( _nz > 0 );
 
-        _dx = ( max_x - min_x ) / _nx;
-        _dy = ( max_y - min_y ) / _ny;
-        _dz = ( max_z - min_z ) / _nz;
+        _dx = ( max_x - min_x ) / static_cast<double>( _nx );
+        _dy = ( max_y - min_y ) / static_cast<double>( _ny );
+        _dz = ( max_z - min_z ) / static_cast<double>( _nz );
 
         _rdx = 1.0 / _dx;
         _rdy = 1.0 / _dy;
