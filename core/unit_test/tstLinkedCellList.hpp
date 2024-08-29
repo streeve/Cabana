@@ -657,6 +657,7 @@ void testLinkedCellNeighborInterface()
 }
 
 //---------------------------------------------------------------------------//
+// This tests a partial range of particles with a partial range of candidates.
 void testLinkedCellParallel()
 {
     // Create the AoSoA and fill with random particle positions.
@@ -706,6 +707,31 @@ void testLinkedCellReduce()
                                    test_data.end, test_data.test_radius );
 }
 
+// This tests a partial range of particles with a full range of candidates.
+void testLinkedCellParallelPartialRange()
+{
+    // Create the AoSoA and fill with random particle positions.
+    NeighborListTestData test_data;
+    auto positions = Cabana::slice<0>( test_data.aosoa );
+    // Create the linked cell list.
+    double grid_size = test_data.cell_size_ratio * test_data.test_radius;
+    double grid_delta[3] = { grid_size, grid_size, grid_size };
+    // Bin over all particles so that they are candidate neighbors.
+    auto nlist = Cabana::createLinkedCellList<TEST_MEMSPACE>(
+        positions, grid_delta, test_data.grid_min, test_data.grid_max,
+        test_data.test_radius, test_data.cell_size_ratio );
+
+    checkLinkedCellNeighborParallel( nlist, test_data.N2_list_copy,
+                                     test_data.begin, test_data.end, positions,
+                                     test_data.test_radius );
+
+    Cabana::permute( nlist, positions );
+
+    checkLinkedCellNeighborParallel( nlist, test_data.N2_list_copy,
+                                     test_data.begin, test_data.end, positions,
+                                     test_data.test_radius );
+}
+
 //---------------------------------------------------------------------------//
 // RUN TESTS
 //---------------------------------------------------------------------------//
@@ -723,6 +749,11 @@ TEST( TEST_CATEGORY, linked_list_neighbor_test )
 TEST( TEST_CATEGORY, linked_list_parallel_test ) { testLinkedCellParallel(); }
 
 TEST( TEST_CATEGORY, linked_list_reduce_test ) { testLinkedCellReduce(); }
+
+TEST( TEST_CATEGORY, linked_list_parallel_partial_range_test )
+{
+    testLinkedCellParallelPartialRange();
+}
 
 //---------------------------------------------------------------------------//
 
