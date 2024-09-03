@@ -96,6 +96,16 @@ class ParticleList
             local_grid.haloCellWidth(), force_redistribute );
     }
 
+    template <class PositionFieldTag, class LocalGridType, class CommSpace>
+    bool redistribute( const LocalGridType& local_grid, PositionFieldTag,
+                       CommSpace comm_space,
+                       const bool force_redistribute = false )
+    {
+        return particleGridMigrate(
+            local_grid, this->slice( PositionFieldTag() ), _aosoa, comm_space,
+            local_grid.haloCellWidth(), force_redistribute );
+    }
+
   protected:
     //! Particle AoSoA.
     using base::_aosoa;

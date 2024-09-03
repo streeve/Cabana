@@ -237,10 +237,10 @@ int migrateCount( const LocalGridType& local_grid,
 
   \return Distributor for later migration.
 */
-template <class LocalGridType, class PositionSliceType>
-Cabana::Distributor<typename PositionSliceType::memory_space>
-createParticleGridDistributor( const LocalGridType& local_grid,
-                               PositionSliceType& positions )
+template <class LocalGridType, class PositionSliceType, class CommMemorySpace>
+auto createParticleGridDistributor( const LocalGridType& local_grid,
+                                    PositionSliceType& positions,
+                                    CommMemorySpace )
 {
     using memory_space = typename PositionSliceType::memory_space;
 
@@ -261,9 +261,21 @@ createParticleGridDistributor( const LocalGridType& local_grid,
                                   positions );
 
     // Create the Cabana distributor.
-    Cabana::Distributor<memory_space> distributor(
-        local_grid.globalGrid().comm(), destinations, topology );
+    // Copy the destinations in case the space is not accessible.
+    auto destinations_copy =
+        Kokkos::create_mirror_view_and_copy( CommMemorySpace{}, destinations );
+    Cabana::Distributor<CommMemorySpace> distributor(
+        local_grid.globalGrid().comm(), destinations_copy, topology );
     return distributor;
+}
+
+template <class LocalGridType, class PositionSliceType>
+auto createParticleGridDistributor( const LocalGridType& local_grid,
+                                    PositionSliceType& positions )
+{
+    using particle_space = typename PositionSliceType::memory_space;
+    return createParticleGridDistributor( local_grid, positions,
+                                          particle_space{} );
 }
 
 //---------------------------------------------------------------------------//
@@ -285,10 +297,11 @@ createParticleGridDistributor( const LocalGridType& local_grid,
   ghosted halo.
   \return Whether any particle migration occurred.
 */
-template <class LocalGridType, class ParticlePositions, class ParticleContainer>
+template <class LocalGridType, class ParticlePositions, class ParticleContainer,
+          class CommSpace>
 bool particleGridMigrate( const LocalGridType& local_grid,
                           const ParticlePositions& positions,
-                          ParticleContainer& particles,
+                          ParticleContainer& particles, CommSpace comm_space,
                           const int min_halo_width,
                           const bool force_migrate = false )
 {
@@ -306,11 +319,24 @@ bool particleGridMigrate( const LocalGridType& local_grid,
             return false;
     }
 
-    auto distributor = createParticleGridDistributor( local_grid, positions );
+    auto distributor =
+        createParticleGridDistributor( local_grid, positions, comm_space );
 
     // Redistribute the particles.
     migrate( distributor, particles );
     return true;
+}
+
+template <class LocalGridType, class ParticlePositions, class ParticleContainer>
+bool particleGridMigrate( const LocalGridType& local_grid,
+                          const ParticlePositions& positions,
+                          ParticleContainer& particles,
+                          const int min_halo_width,
+                          const bool force_migrate = false )
+{
+    using memory_space = typename ParticlePositions::memory_space;
+    return particleGridMigrate( local_grid, positions, particles,
+                                memory_space{}, min_halo_width, force_migrate );
 }
 
 //---------------------------------------------------------------------------//
