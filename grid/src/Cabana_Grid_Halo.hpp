@@ -184,6 +184,14 @@ struct Replace
 
 } // end namespace ScatterReduce
 
+//! Infer array memory space.
+template <class ArrayT, class... Types>
+struct ArrayPackMemorySpace
+{
+    //! Memory space.
+    using type = typename ArrayT::memory_space;
+};
+
 //---------------------------------------------------------------------------//
 // Halo
 // ---------------------------------------------------------------------------//
@@ -326,8 +334,10 @@ class Halo
             if ( 0 < _owned_buffers[n].size() )
             {
                 // Pack the send buffer.
+                // Copy into the comm space if necessary.
                 packBuffer( exec_space, _owned_buffers[n], _owned_steering[n],
-                            arrays.view()... );
+                            Kokkos::create_mirror_view_and_copy(
+                                memory_space{}, arrays.view() )... );
 
                 // Post a send.
                 MPI_Isend( _owned_buffers[n].data(), _owned_buffers[n].size(),
@@ -353,12 +363,16 @@ class Halo
             }
 
             // Otherwise unpack the next buffer.
+            // Copy back to the array memory space if necessary.
             else
             {
+                using array_memory_space =
+                    typename ArrayPackMemorySpace<ArrayTypes...>::type;
                 unpackBuffer( ScatterReduce::Replace(), exec_space,
                               _ghosted_buffers[unpack_index],
                               _ghosted_steering[unpack_index],
-                              arrays.view()... );
+                              Kokkos::create_mirror_view_and_copy(
+                                  array_memory_space{}, arrays.view() )... );
             }
         }
 
@@ -930,13 +944,6 @@ class Halo
 //---------------------------------------------------------------------------//
 // Creation function.
 //---------------------------------------------------------------------------//
-//! Infer array memory space.
-template <class ArrayT, class... Types>
-struct ArrayPackMemorySpace
-{
-    //! Memory space.
-    using type = typename ArrayT::memory_space;
-};
 
 //---------------------------------------------------------------------------//
 /*!
