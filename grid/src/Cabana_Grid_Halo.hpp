@@ -985,22 +985,6 @@ template <class ArrayT, class... Types>
 using ArrayPackMemorySpace CAJITA_DEPRECATED =
     Cabana::Grid::ArrayPackMemorySpace<ArrayT, Types...>;
 
-template <std::size_t NumSpaceDim>
-using HaloPattern CAJITA_DEPRECATED = Cabana::Grid::HaloPattern<NumSpaceDim>;
-template <std::size_t NumSpaceDim>
-using NodeHaloPattern CAJITA_DEPRECATED =
-    Cabana::Grid::NodeHaloPattern<NumSpaceDim>;
-template <std::size_t NumSpaceDim>
-using FaceHaloPattern CAJITA_DEPRECATED =
-    Cabana::Grid::FaceHaloPattern<NumSpaceDim>;
-
-template <class MemorySpace>
-using Halo CAJITA_DEPRECATED = Cabana::Grid::Halo<MemorySpace>;
-
-template <class ArrayT, class... Types>
-using ArrayPackMemorySpace CAJITA_DEPRECATED =
-    Cabana::Grid::ArrayPackMemorySpace<ArrayT, Types...>;
-
 template <class... Args>
 CAJITA_DEPRECATED auto createHalo( Args&&... args )
 {
