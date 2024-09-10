@@ -366,13 +366,91 @@ class Halo
             // Copy back to the array memory space if necessary.
             else
             {
-                using array_memory_space =
-                    typename ArrayPackMemorySpace<ArrayTypes...>::type;
                 unpackBuffer( ScatterReduce::Replace(), exec_space,
                               _ghosted_buffers[unpack_index],
                               _ghosted_steering[unpack_index],
-                              Kokkos::create_mirror_view_and_copy(
-                                  array_memory_space{}, arrays.view() )... );
+			      arrays.view()... );
+            }
+        }
+
+        // Wait on send requests.
+        MPI_Waitall( num_n, requests.data() + num_n, MPI_STATUSES_IGNORE );
+    }
+
+    template <class ExecutionSpace, class... ViewTypes>
+    void gather( const ExecutionSpace& exec_space,
+		 const MPI_Comm& comm,
+                 const ViewTypes&... views ) const
+    {
+        Kokkos::Profiling::ScopedRegion region( "Cabana::Grid::gather" );
+
+        // Get the number of neighbors. Return if we have none.
+        int num_n = _neighbor_ranks.size();
+        if ( 0 == num_n )
+            return;
+
+        // Allocate requests.
+        std::vector<MPI_Request> requests( 2 * num_n, MPI_REQUEST_NULL );
+
+        // Pick a tag to use for communication. This object has its own
+        // communication space so any tag will do.
+        const int mpi_tag = 1234;
+
+        // Post receives.
+        for ( int n = 0; n < num_n; ++n )
+        {
+            // Only process this neighbor if there is work to do.
+            if ( 0 < _ghosted_buffers[n].size() )
+            {
+                MPI_Irecv( _ghosted_buffers[n].data(),
+                           _ghosted_buffers[n].size(), MPI_BYTE,
+                           _neighbor_ranks[n], mpi_tag + _receive_tags[n], comm,
+                           &requests[n] );
+            }
+        }
+
+        // Pack send buffers and post sends.
+        for ( int n = 0; n < num_n; ++n )
+        {
+            // Only process this neighbor if there is work to do.
+            if ( 0 < _owned_buffers[n].size() )
+            {
+                // Pack the send buffer.
+                // Copy into the comm space if necessary.
+                packBuffer( exec_space, _owned_buffers[n], _owned_steering[n],
+			    views... );
+
+                // Post a send.
+                MPI_Isend( _owned_buffers[n].data(), _owned_buffers[n].size(),
+                           MPI_BYTE, _neighbor_ranks[n],
+                           mpi_tag + _send_tags[n], comm,
+                           &requests[num_n + n] );
+            }
+        }
+
+        // Unpack receive buffers.
+        bool unpack_complete = false;
+        while ( !unpack_complete )
+        {
+            // Get the next buffer to unpack.
+            int unpack_index = MPI_UNDEFINED;
+            MPI_Waitany( num_n, requests.data(), &unpack_index,
+                         MPI_STATUS_IGNORE );
+
+            // If there are no more buffers to unpack we are done.
+            if ( MPI_UNDEFINED == unpack_index )
+            {
+                unpack_complete = true;
+            }
+
+            // Otherwise unpack the next buffer.
+            // Copy back to the array memory space if necessary.
+            else
+            {
+                unpackBuffer( ScatterReduce::Replace(), exec_space,
+                              _ghosted_buffers[unpack_index],
+                              _ghosted_steering[unpack_index],
+                              views... );
             }
         }
 
@@ -959,6 +1037,22 @@ auto createHalo( const Pattern& pattern, const int width,
 {
     using memory_space = typename ArrayPackMemorySpace<ArrayTypes...>::type;
     return std::make_shared<Halo<memory_space>>( pattern, width, arrays... );
+}
+
+/*!
+\brief Halo creation function.
+\note CommMemorySpace The memory space in which to communicate. If this is not
+accessible from the \ space the grid data resides in, a mirror copy is performed
+before and after communicating. \param pattern The pattern to build the halo
+from. \param width Must be less than or equal to the width of the array halo.
+\param arrays The arrays over which to build the halo.
+\return Shared pointer to a Halo.
+*/
+template <class CommMemorySpace, class Pattern, class... ArrayTypes>
+auto createHalo( CommMemorySpace, const Pattern& pattern, const int width,
+                 const ArrayTypes&... arrays )
+{
+    return std::make_shared<Halo<CommMemorySpace>>( pattern, width, arrays... );
 }
 
 //---------------------------------------------------------------------------//
