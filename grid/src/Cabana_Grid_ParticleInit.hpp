@@ -666,6 +666,172 @@ void createParticles(
     createParticles( tag, exec_space{}, positions, particles_per_cell_dim,
                      local_grid, previous_num_particles );
 }
+
+//---------------------------------------------------------------------------//
+/*!
+  \brief Initialize a uniform number of particles in each cell.
+
+  \param exec_space Kokkos execution space.
+  \param create_functor A functor which populates a particle given the logical
+  position of a particle. This functor returns true if a particle was created
+  and false if it was not giving the signature:
+
+      bool createFunctor( const double pid, const double px[3], const double pv
+                           );
+  \param positions Particle positions slice. This should be already the size of
+  the number of grid cells times particles_per_cell.s
+  \param particles_per_cell_dim The number of particles to populate each cell
+  dimension with.
+  \param local_grid The LocalGrid over which particles will be created.
+  \param previous_num_particles Optionally specify how many particles are
+  already in the container (and should be unchanged).
+*/
+template <class ExecutionSpace, class InitFunctor, class AoSoAType,
+          class PositionType, class LocalGridType>
+int createParticles(
+    Cabana::InitUniform, const ExecutionSpace& exec_space,
+    const InitFunctor& create_functor, AoSoAType& aosoa,
+    PositionType& positions, const int particles_per_cell_dim,
+    LocalGridType& local_grid, const std::size_t previous_num_particles = 0,
+    const bool shrink_to_fit = true,
+    typename std::enable_if<( Cabana::is_slice<PositionType>::value ||
+                              Kokkos::is_view<PositionType>::value ),
+                            int>::type* = 0 )
+{
+    // Create a local mesh.
+    auto local_mesh = createLocalMesh<ExecutionSpace>( local_grid );
+
+    // Get the local set of owned cell indices.
+    auto owned_cells = local_grid.indexSpace( Own(), Cell(), Local() );
+
+    int particles_per_cell = particles_per_cell_dim * particles_per_cell_dim *
+                             particles_per_cell_dim;
+    std::size_t num_particles =
+        static_cast<std::size_t>( particles_per_cell * owned_cells.size() );
+
+    // Ensure correct space for the particles.
+    assert( positions.size() == num_particles + previous_num_particles );
+
+    // Creation status.
+    using memory_space = typename PositionType::memory_space;
+    Kokkos::View<bool*, memory_space> particle_created(
+        Kokkos::ViewAllocateWithoutInitializing( "particle_created" ),
+        num_particles );
+
+    // Initialize particles.
+    int local_num_create = 0;
+    grid_parallel_reduce(
+        "Cabana::Grid::ParticleInit::Uniform", exec_space, owned_cells,
+        KOKKOS_LAMBDA( const int i, const int j, const int k, int& count ) {
+            // Compute the owned local cell id.
+            int i_own = i - owned_cells.min( Dim::I );
+            int j_own = j - owned_cells.min( Dim::J );
+            int k_own = k - owned_cells.min( Dim::K );
+            int cell_id =
+                i_own + owned_cells.extent( Dim::I ) *
+                            ( j_own + k_own * owned_cells.extent( Dim::J ) );
+
+            // Get the coordinates of the low cell node.
+            int low_node[3] = { i, j, k };
+            double low_coords[3];
+            local_mesh.coordinates( Node(), low_node, low_coords );
+
+            // Get the coordinates of the high cell node.
+            int high_node[3] = { i + 1, j + 1, k + 1 };
+            double high_coords[3];
+            local_mesh.coordinates( Node(), high_node, high_coords );
+
+            // Compute the particle spacing in each dimension.
+            double spacing[3] = { ( high_coords[Dim::I] - low_coords[Dim::I] ) /
+                                      particles_per_cell_dim,
+                                  ( high_coords[Dim::J] - low_coords[Dim::J] ) /
+                                      particles_per_cell_dim,
+                                  ( high_coords[Dim::K] - low_coords[Dim::K] ) /
+                                      particles_per_cell_dim };
+
+            // Particle position.
+            double px[3];
+            // Particle volume.
+            double pv =
+                local_mesh.measure( Cell(), low_node ) / particles_per_cell;
+
+            // Create particles.
+            for ( int ip = 0; ip < particles_per_cell_dim; ++ip )
+                for ( int jp = 0; jp < particles_per_cell_dim; ++jp )
+                    for ( int kp = 0; kp < particles_per_cell_dim; ++kp )
+                    {
+                        // Set the particle position in logical coordinates.
+                        px[Dim::I] = 0.5 * spacing[Dim::I] +
+                                     ip * spacing[Dim::I] + low_coords[Dim::I];
+                        px[Dim::J] = 0.5 * spacing[Dim::J] +
+                                     jp * spacing[Dim::J] + low_coords[Dim::J];
+                        px[Dim::K] = 0.5 * spacing[Dim::K] +
+                                     kp * spacing[Dim::K] + low_coords[Dim::K];
+
+                        // Local particle id.
+                        int pid = cell_id * particles_per_cell + ip +
+                                  particles_per_cell_dim *
+                                      ( jp + particles_per_cell_dim * kp );
+                        int new_pid = previous_num_particles + pid;
+
+                        // Define properties with the user functor.
+                        particle_created( pid ) =
+                            create_functor( new_pid, px, pv );
+
+                        // If we created a new particle update the count.
+                        if ( particle_created( pid ) )
+                        {
+                            positions( new_pid, 0 ) = px[Dim::I];
+                            positions( new_pid, 1 ) = px[Dim::J];
+                            positions( new_pid, 2 ) = px[Dim::K];
+                            ++count;
+                        }
+                    }
+        },
+        local_num_create );
+
+    // Filter empties.
+    filterEmpties( exec_space, local_num_create, previous_num_particles,
+                   particle_created, aosoa, shrink_to_fit );
+
+    return aosoa.size();
+}
+
+//---------------------------------------------------------------------------//
+/*!
+  \brief Initialize a uniform number of particles in each cell.
+
+  \param tag Initialization type tag.
+  \param create_functor A functor which populates a particle given the logical
+  position of a particle. This functor returns true if a particle was created
+  and false if it was not giving the signature:
+
+      bool createFunctor( const double pid, const double px[3], const double pv,
+                          typename ParticleAoSoA::tuple_type& particle );
+  \param positions Particle positions slice. This should be already the size of
+  the number of grid cells times particles_per_cell.s
+  \param particles_per_cell_dim The number of particles to populate each cell
+  dimension with.
+  \param local_grid The LocalGrid over which particles will be created.
+  \param previous_num_particles Optionally specify how many particles are
+  already in the container (and should be unchanged).
+*/
+template <class InitFunctor, class AoSoAType, class PositionType,
+          class LocalGridType>
+void createParticles(
+    Cabana::InitUniform tag, const InitFunctor& create_functor,
+    AoSoAType& aosoa, PositionType& positions, const int particles_per_cell_dim,
+    LocalGridType& local_grid, const std::size_t previous_num_particles = 0,
+    const bool shrink_to_fit = true,
+    typename std::enable_if<( Cabana::is_slice<PositionType>::value ||
+                              Kokkos::is_view<PositionType>::value ),
+                            int>::type* = 0 )
+{
+    using exec_space = typename PositionType::execution_space;
+    createParticles( tag, exec_space{}, create_functor, aosoa, positions,
+                     particles_per_cell_dim, local_grid, previous_num_particles,
+                     shrink_to_fit );
+}
 } // namespace Grid
 } // namespace Cabana
 

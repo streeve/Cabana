@@ -226,6 +226,100 @@ void initSliceTest( InitType init_type, int ppc, const int multiplier = 1 )
 }
 
 //---------------------------------------------------------------------------//
+template <class InitType>
+void initAoSoATest( InitType init_type, int ppc, const int multiplier = 1 )
+{
+    // Global bounding box.
+    double cell_size = 0.23;
+    std::array<int, 3> global_num_cell = { 17, 10, 23 };
+    std::array<double, 3> global_low_corner = { 1.2, 3.3, -2.8 };
+    std::array<double, 3> global_high_corner = {
+        global_low_corner[0] + cell_size * global_num_cell[0],
+        global_low_corner[1] + cell_size * global_num_cell[1],
+        global_low_corner[2] + cell_size * global_num_cell[2] };
+    auto global_mesh = Cabana::Grid::createUniformGlobalMesh(
+        global_low_corner, global_high_corner, global_num_cell );
+
+    std::array<bool, 3> is_dim_periodic = { true, true, true };
+    Cabana::Grid::DimBlockPartitioner<3> partitioner;
+    auto global_grid = Cabana::Grid::createGlobalGrid(
+        MPI_COMM_WORLD, global_mesh, is_dim_periodic, partitioner );
+    auto local_grid = Cabana::Grid::createLocalGrid( global_grid, 0 );
+    auto owned_cells = local_grid->indexSpace(
+        Cabana::Grid::Own(), Cabana::Grid::Cell(), Cabana::Grid::Local() );
+
+    // Make a particle list.
+    int num_particle =
+        owned_cells.size() * totalParticlesPerCell( init_type, ppc );
+    Cabana::AoSoA<Cabana::MemberTypes<double[3], double>, TEST_MEMSPACE> aosoa(
+        "random", num_particle );
+
+    // Particle initialization functor.
+    const Kokkos::Array<double, 6> box = {
+        global_low_corner[Dim::I] + cell_size,
+        global_high_corner[Dim::I] - cell_size,
+        global_low_corner[Dim::J] + cell_size,
+        global_high_corner[Dim::J] - cell_size,
+        global_low_corner[Dim::K] + cell_size,
+        global_high_corner[Dim::K] - cell_size };
+    auto init_func = KOKKOS_LAMBDA( const int, const double x[3], const double )
+    {
+        // Put particles in a box that is one cell smaller than the global
+        // mesh. This will give us a layer of empty cells.
+        if ( x[Dim::I] > box[0] && x[Dim::I] < box[1] && x[Dim::J] > box[2] &&
+             x[Dim::J] < box[3] && x[Dim::K] > box[4] && x[Dim::K] < box[5] )
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    };
+
+    // Initialize particles (potentially multiple times).
+    int created_particles = 0;
+    int prev_particle = 0;
+    for ( int m = 0; m < multiplier; ++m )
+    {
+        aosoa.resize( prev_particle + num_particle );
+        auto positions = Cabana::slice<0>( aosoa );
+        created_particles = Cabana::Grid::createParticles(
+            init_type, TEST_EXECSPACE(), init_func, aosoa, positions, ppc,
+            *local_grid, prev_particle );
+        prev_particle = created_particles;
+    }
+    // Check that we made particles.
+    EXPECT_TRUE( created_particles > 0 );
+
+    // Compute the global number of particles.
+    int global_num_particle = aosoa.size();
+    MPI_Allreduce( MPI_IN_PLACE, &global_num_particle, 1, MPI_INT, MPI_SUM,
+                   MPI_COMM_WORLD );
+    int expect_num_particle =
+        multiplier * totalParticlesPerCell( init_type, ppc ) *
+        ( global_grid->globalNumEntity( Cabana::Grid::Cell(), Dim::I ) - 2 ) *
+        ( global_grid->globalNumEntity( Cabana::Grid::Cell(), Dim::J ) - 2 ) *
+        ( global_grid->globalNumEntity( Cabana::Grid::Cell(), Dim::K ) - 2 );
+    EXPECT_EQ( global_num_particle, expect_num_particle );
+
+    // Check that all particles are in the box and got initialized correctly.
+    auto host_particles =
+        Cabana::create_mirror_view_and_copy( Kokkos::HostSpace(), aosoa );
+    auto px = Cabana::slice<0>( host_particles );
+    for ( int p = 0; p < created_particles; ++p )
+    {
+        for ( int d = 0; d < 3; ++d )
+        {
+            EXPECT_TRUE( px( p, d ) > box[2 * d] );
+            EXPECT_TRUE( px( p, d ) < box[2 * d + 1] );
+        }
+        // Could be done in a separate kernel.
+        // EXPECT_DOUBLE_EQ( pv, volume );
+    }
+}
+
+//---------------------------------------------------------------------------//
 // RUN TESTS
 //---------------------------------------------------------------------------//
 TEST( TEST_CATEGORY, random_init_test )
@@ -238,6 +332,7 @@ TEST( TEST_CATEGORY, uniform_init_test )
 {
     initParticleListTest( Cabana::InitUniform(), 3 );
     initSliceTest( Cabana::InitUniform(), 2 );
+    initAoSoATest( Cabana::InitUniform(), 3 );
 }
 
 TEST( TEST_CATEGORY, multiple_random_init_test )
@@ -250,6 +345,7 @@ TEST( TEST_CATEGORY, multiple_uniform_init_test )
 {
     initParticleListTest( Cabana::InitUniform(), 2, 5 );
     initSliceTest( Cabana::InitRandom(), 2, 3 );
+    initAoSoATest( Cabana::InitUniform(), 3, 4 );
 }
 //---------------------------------------------------------------------------//
 
