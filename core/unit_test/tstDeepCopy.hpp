@@ -57,7 +57,7 @@ void checkParticleListMembers( ParticleListType dst_plist, const float fval,
 
     for ( std::size_t p = 0; p < mirror.size(); ++p )
     {
-        // Positon, Velocity
+        // Position, Velocity
         for ( int i = 0; i < 3; ++i )
         {
             EXPECT_DOUBLE_EQ( px( p, i ), dval * i );
@@ -236,7 +236,7 @@ void testParticleListDeepCopy()
         Kokkos::RangePolicy<typename SrcMemorySpace::execution_space>( 0,
                                                                        num_p ),
         KOKKOS_LAMBDA( const int p ) {
-            // Positon, Velocity
+            // Position, Velocity
             for ( int i = 0; i < 3; ++i )
             {
                 px( p, i ) = dval * i;

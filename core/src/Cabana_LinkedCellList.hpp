@@ -635,7 +635,7 @@ class LinkedCellList
             Kokkos::view_alloc( Kokkos::WithoutInitializing, "permutes" ),
             nparticles );
         // This is only used for iterating over the particles (not building the
-        // permutaion vector).
+        // permutation vector).
         _particle_bins = CountView(
             Kokkos::view_alloc( Kokkos::WithoutInitializing, "counts" ),
             nparticles );
