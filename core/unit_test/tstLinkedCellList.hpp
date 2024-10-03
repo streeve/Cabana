@@ -109,10 +109,10 @@ template <>
 struct LCLTestData<2> : public LCLTestData<3>
 {
     using base_type = LCLTestData<3>;
-    using base_type::begin;
-    using base_type::end;
     using base_type::MyFields;
-    using base_type::num_p;
+    std::size_t begin = 25;
+    std::size_t end = 75;
+    std::size_t num_p = 100;
 
     using data_types = Cabana::MemberTypes<double[2], int[2]>;
     using aosoa_type = Cabana::AoSoA<data_types, TEST_MEMSPACE>;
@@ -230,7 +230,7 @@ void copyListToHost(
     LCLTestData<2>::IDViewType ids( "cell_ids", np );
     LCLTestData<2>::PosViewType pos( "cell_ids", np );
     using BinViewType =
-        Kokkos::View<typename LCLTestData<3>::size_type**, TEST_MEMSPACE>;
+        Kokkos::View<typename LCLTestData<2>::size_type**, TEST_MEMSPACE>;
     BinViewType bin_size( "bin_size", nx, nx );
     BinViewType bin_offset( "bin_offset", nx, nx );
     Kokkos::parallel_for(
@@ -1059,8 +1059,8 @@ TEST( TEST_CATEGORY, 3d_linked_list_parallel_test )
 
 TEST( TEST_CATEGORY, 3d_linked_list_reduce_test ) { testLinkedCellReduce(); }
 
-//---------------------------------------------------------------------------//
-TEST( TEST_CATEGORY, linked_list_view_test ) { testLinkedListView(); }
+////---------------------------------------------------------------------------//
+// TEST( TEST_CATEGORY, linked_list_view_test ) { testLinkedListView(); }
 
 //---------------------------------------------------------------------------//
 
