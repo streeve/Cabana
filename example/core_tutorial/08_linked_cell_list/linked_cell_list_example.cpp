@@ -108,8 +108,8 @@ void linkedCellListExample()
       auto cell_list = Cabana::createLinkedCellList(
           positions, start, end, grid_delta, grid_min, grid_max );
      */
-    auto cell_list = Cabana::createLinkedCellList( positions, grid_delta,
-                                                   grid_min, grid_max );
+    auto cell_list = Cabana::createLinkedCellList<3>( positions, grid_delta,
+                                                      grid_min, grid_max );
 
     /*
       Now permute the AoSoA (i.e. reorder the data) using the linked cell list.
