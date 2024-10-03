@@ -743,8 +743,8 @@ auto createLinkedCellList(
     const typename PositionType::value_type grid_min[NumSpaceDim],
     const typename PositionType::value_type grid_max[NumSpaceDim] )
 {
-    using memory_space = typename SliceType::memory_space;
-    using scalar_type = typename SliceType::value_type;
+    using memory_space = typename PositionType::memory_space;
+    using scalar_type = typename PositionType::value_type;
     return LinkedCellList<memory_space, scalar_type, NumSpaceDim>(
         positions, grid_delta, grid_min, grid_max );
 }
@@ -760,8 +760,8 @@ auto createLinkedCellList(
     const typename PositionType::value_type grid_min[NumSpaceDim],
     const typename PositionType::value_type grid_max[NumSpaceDim] )
 {
-    using memory_space = typename SliceType::memory_space;
-    using scalar_type = typename SliceType::value_type;
+    using memory_space = typename PositionType::memory_space;
+    using scalar_type = typename PositionType::value_type;
     return LinkedCellList<memory_space, scalar_type, NumSpaceDim>(
         positions, begin, end, grid_delta, grid_min, grid_max );
 }
@@ -780,8 +780,8 @@ auto createLinkedCellList(
     const typename PositionType::value_type neighborhood_radius,
     const typename PositionType::value_type cell_size_ratio = 1.0 )
 {
-    using memory_space = typename SliceType::memory_space;
-    using scalar_type = typename SliceType::value_type;
+    using memory_space = typename PositionType::memory_space;
+    using scalar_type = typename PositionType::value_type;
     return LinkedCellList<memory_space, scalar_type, NumSpaceDim>(
         positions, grid_delta, grid_min, grid_max, neighborhood_radius,
         cell_size_ratio );
@@ -801,8 +801,8 @@ auto createLinkedCellList(
     const typename PositionType::value_type neighborhood_radius,
     const typename PositionType::value_type cell_size_ratio = 1.0 )
 {
-    using memory_space = typename SliceType::memory_space;
-    using scalar_type = typename SliceType::value_type;
+    using memory_space = typename PositionType::memory_space;
+    using scalar_type = typename PositionType::value_type;
     return LinkedCellList<memory_space, scalar_type, NumSpaceDim>(
         positions, begin, end, grid_delta, grid_min, grid_max,
         neighborhood_radius, cell_size_ratio );
