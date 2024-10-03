@@ -965,16 +965,18 @@ void testLinkedCellReduce()
 }
 
 //---------------------------------------------------------------------------//
+template <std::size_t Dim>
 void testLinkedListView()
 {
-    LCLTestData test_data;
+    LCLTestData<Dim> test_data;
     auto grid_delta = test_data.grid_delta;
     auto grid_min = test_data.grid_min;
     auto grid_max = test_data.grid_max;
-    auto slice = Cabana::slice<LCLTestData::Position>( test_data.aosoa );
+    auto slice = Cabana::slice<LCLTestData<Dim>::Position>( test_data.aosoa );
 
     // Copy manually into a View.
-    Kokkos::View<double**, TEST_MEMSPACE> view( "positions", slice.size(), 3 );
+    Kokkos::View<double**, TEST_MEMSPACE> view( "positions", slice.size(),
+                                                Dim );
     copySliceToView( view, slice, 0, slice.size() );
 
     // Bin the particles in the grid and permute only the position slice.
@@ -982,7 +984,7 @@ void testLinkedListView()
     {
         auto begin = test_data.begin;
         auto end = test_data.end;
-        Cabana::LinkedCellList<TEST_MEMSPACE> cell_list(
+        auto cell_list = Cabana::createLinkedCellList<Dim>(
             view, begin, end, grid_delta, grid_min, grid_max );
         Cabana::permute( cell_list, view );
 
@@ -996,12 +998,12 @@ void testLinkedListView()
     }
     // Now bin and permute all of the particles.
     {
-        Cabana::LinkedCellList<TEST_MEMSPACE> cell_list( view, grid_delta,
-                                                         grid_min, grid_max );
+        auto cell_list = Cabana::createLinkedCellList<Dim>(
+            view, grid_delta, grid_min, grid_max );
 
         // Copy manually into a View.
         Kokkos::View<double**, TEST_MEMSPACE> view( "positions", slice.size(),
-                                                    3 );
+                                                    Dim );
         copySliceToView( view, slice, 0, slice.size() );
 
         Cabana::permute( cell_list, view );
@@ -1059,8 +1061,10 @@ TEST( TEST_CATEGORY, 3d_linked_list_parallel_test )
 
 TEST( TEST_CATEGORY, 3d_linked_list_reduce_test ) { testLinkedCellReduce(); }
 
-////---------------------------------------------------------------------------//
-// TEST( TEST_CATEGORY, linked_list_view_test ) { testLinkedListView(); }
+//---------------------------------------------------------------------------//
+TEST( TEST_CATEGORY, 3d_linked_list_view_test ) { testLinkedListView<3>(); }
+
+TEST( TEST_CATEGORY, 2d_linked_list_view_test ) { testLinkedListView<2>(); }
 
 //---------------------------------------------------------------------------//
 
