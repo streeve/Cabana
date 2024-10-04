@@ -890,15 +890,18 @@ void checkLinkedCellNeighborReduce( const ListType& nlist,
 }
 
 //---------------------------------------------------------------------------//
+template <std::size_t Dim>
 void testLinkedCellNeighborInterface()
 {
     // Create the AoSoA and fill with random particle positions.
-    NeighborListTestData test_data;
+    NeighborListTestData<Dim> test_data;
     auto positions = Cabana::slice<0>( test_data.aosoa );
     // Create the linked cell list.
     double grid_size = test_data.cell_size_ratio * test_data.test_radius;
-    double grid_delta[3] = { grid_size, grid_size, grid_size };
-    auto nlist = Cabana::createLinkedCellList<3>(
+    double grid_delta[Dim];
+    for ( std::size_t d = 0; d < Dim; ++d )
+        grid_delta[d] = grid_size;
+    auto nlist = Cabana::createLinkedCellList<Dim>(
         positions, test_data.begin, test_data.end, grid_delta,
         test_data.grid_min, test_data.grid_max, test_data.test_radius,
         test_data.cell_size_ratio );
@@ -915,15 +918,18 @@ void testLinkedCellNeighborInterface()
 }
 
 //---------------------------------------------------------------------------//
+template <std::size_t Dim>
 void testLinkedCellParallel()
 {
     // Create the AoSoA and fill with random particle positions.
-    NeighborListTestData test_data;
+    NeighborListTestData<Dim> test_data;
     auto positions = Cabana::slice<0>( test_data.aosoa );
     // Create the linked cell list.
     double grid_size = test_data.cell_size_ratio * test_data.test_radius;
-    double grid_delta[3] = { grid_size, grid_size, grid_size };
-    auto nlist = Cabana::createLinkedCellList<3>(
+    double grid_delta[Dim];
+    for ( std::size_t d = 0; d < Dim; ++d )
+        grid_delta[d] = grid_size;
+    auto nlist = Cabana::createLinkedCellList<Dim>(
         positions, test_data.begin, test_data.end, grid_delta,
         test_data.grid_min, test_data.grid_max, test_data.test_radius,
         test_data.cell_size_ratio );
@@ -940,15 +946,18 @@ void testLinkedCellParallel()
 }
 
 //---------------------------------------------------------------------------//
+template <std::size_t Dim>
 void testLinkedCellReduce()
 {
     // Create the AoSoA and fill with random particle positions.
-    NeighborListTestData test_data;
+    NeighborListTestData<Dim> test_data;
     auto positions = Cabana::slice<0>( test_data.aosoa );
     // Create the linked cell list.
     double grid_size = test_data.cell_size_ratio * test_data.test_radius;
-    double grid_delta[3] = { grid_size, grid_size, grid_size };
-    auto nlist = Cabana::createLinkedCellList<3>(
+    double grid_delta[Dim];
+    for ( std::size_t d = 0; d < Dim; ++d )
+        grid_delta[d] = grid_size;
+    auto nlist = Cabana::createLinkedCellList<Dim>(
         positions, test_data.begin, test_data.end, grid_delta,
         test_data.grid_min, test_data.grid_max, test_data.test_radius,
         test_data.cell_size_ratio );
@@ -1036,11 +1045,11 @@ TEST( LinkedCellList, AoSoA3d ) { testLinkedList<3>(); }
 
 TEST( LinkedCellList, Slice3d ) { testLinkedListSlice<3>(); }
 
-TEST( LinkedCellList, Neighbor ) { testLinkedCellNeighborInterface(); }
+TEST( LinkedCellList, Neighbor3d ) { testLinkedCellNeighborInterface<3>(); }
 
-TEST( LinkedCellList, ParallelFor ) { testLinkedCellParallel(); }
+TEST( LinkedCellList, ParallelFor ) { testLinkedCellParallel<3>(); }
 
-TEST( LinkedCellList, ParallelReduce ) { testLinkedCellReduce(); }
+TEST( LinkedCellList, ParallelReduce ) { testLinkedCellReduce<3>(); }
 
 TEST( LinkedCellList, View3d ) { testLinkedListView<3>(); }
 
@@ -1049,6 +1058,8 @@ TEST( LinkedCellList, Stencil2d ) { testLinkedCellStencil2d(); }
 TEST( LinkedCellList, AoSoA2d ) { testLinkedList<2>(); }
 
 TEST( LinkedCellList, Slice2d ) { testLinkedListSlice<2>(); }
+
+TEST( LinkedCellList, Neighbor2d ) { testLinkedCellNeighborInterface<2>(); }
 
 TEST( LinkedCellList, View2d ) { testLinkedListView<2>(); }
 

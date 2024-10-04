@@ -24,11 +24,11 @@ namespace Test
 {
 
 //---------------------------------------------------------------------------//
-template <class LayoutTag, class BuildTag>
+template <std::size_t Dim, class LayoutTag, class BuildTag>
 void testVerletListFull()
 {
     // Create the AoSoA and fill with random particle positions.
-    NeighborListTestData test_data;
+    NeighborListTestData<Dim> test_data;
     auto position = Cabana::slice<0>( test_data.aosoa );
 
     // Create the neighbor list.
@@ -78,11 +78,11 @@ void testVerletListFull()
 }
 
 //---------------------------------------------------------------------------//
-template <class LayoutTag, class BuildTag>
+template <std::size_t Dim, class LayoutTag, class BuildTag>
 void testVerletListHalf()
 {
     // Create the AoSoA and fill with random particle positions.
-    NeighborListTestData test_data;
+    NeighborListTestData<Dim> test_data;
     auto position = Cabana::slice<0>( test_data.aosoa );
 
     // Create the neighbor list.
@@ -120,11 +120,11 @@ void testVerletListHalf()
 }
 
 //---------------------------------------------------------------------------//
-template <class LayoutTag, class BuildTag>
+template <std::size_t Dim, class LayoutTag, class BuildTag>
 void testVerletListFullPartialRange()
 {
     // Create the AoSoA and fill with random particle positions.
-    NeighborListTestData test_data;
+    NeighborListTestData<Dim> test_data;
     auto position = Cabana::slice<0>( test_data.aosoa );
 
     // Create the neighbor list.
@@ -141,11 +141,11 @@ void testVerletListFullPartialRange()
 }
 
 //---------------------------------------------------------------------------//
-template <class LayoutTag>
+template <std::size_t Dim, class LayoutTag>
 void testNeighborParallelFor()
 {
     // Create the AoSoA and fill with random particle positions.
-    NeighborListTestData test_data;
+    NeighborListTestData<Dim> test_data;
     auto position = Cabana::slice<0>( test_data.aosoa );
 
     // Create the neighbor list.
@@ -176,11 +176,11 @@ void testNeighborParallelFor()
 }
 
 //---------------------------------------------------------------------------//
-template <class LayoutTag>
+template <std::size_t Dim, class LayoutTag>
 void testNeighborParallelReduce()
 {
     // Create the AoSoA and fill with random particle positions.
-    NeighborListTestData test_data;
+    NeighborListTestData<Dim> test_data;
     auto position = Cabana::slice<0>( test_data.aosoa );
 
     // Create the neighbor list.
@@ -208,11 +208,11 @@ void testNeighborParallelReduce()
 }
 
 //---------------------------------------------------------------------------//
-template <class LayoutTag>
+template <std::size_t Dim, class LayoutTag>
 void testModifyNeighbors()
 {
     // Create the AoSoA and fill with random particle positions.
-    NeighborListTestData test_data;
+    NeighborListTestData<Dim> test_data;
     auto position = Cabana::slice<0>( test_data.aosoa );
 
     // Create the neighbor list.
@@ -247,11 +247,11 @@ void testModifyNeighbors()
 }
 
 //---------------------------------------------------------------------------//
-template <class LayoutTag>
+template <std::size_t Dim, class LayoutTag>
 void testNeighborView()
 {
     // Create the AoSoA and fill with random particle positions.
-    NeighborListTestData test_data;
+    NeighborListTestData<Dim> test_data;
     auto slice = Cabana::slice<0>( test_data.aosoa );
 
     // Copy manually into a View.
@@ -335,75 +335,76 @@ void testNeighborHistogram()
 //---------------------------------------------------------------------------//
 // TESTS
 //---------------------------------------------------------------------------//
-TEST( VerletList, Full )
+TEST( VerletList, Full3d )
 {
 #ifndef KOKKOS_ENABLE_OPENMPTARGET // FIXME_OPENMPTARGET
-    testVerletListFull<Cabana::VerletLayoutCSR, Cabana::TeamOpTag>();
+    testVerletListFull<3, Cabana::VerletLayoutCSR, Cabana::TeamOpTag>();
 #endif
-    testVerletListFull<Cabana::VerletLayout2D, Cabana::TeamOpTag>();
+    testVerletListFull<3, Cabana::VerletLayout2D, Cabana::TeamOpTag>();
 
 #ifndef KOKKOS_ENABLE_OPENMPTARGET // FIXME_OPENMPTARGET
-    testVerletListFull<Cabana::VerletLayoutCSR, Cabana::TeamVectorOpTag>();
+    testVerletListFull<3, Cabana::VerletLayoutCSR, Cabana::TeamVectorOpTag>();
 #endif
-    testVerletListFull<Cabana::VerletLayout2D, Cabana::TeamVectorOpTag>();
+    testVerletListFull<3, Cabana::VerletLayout2D, Cabana::TeamVectorOpTag>();
 }
 
 //---------------------------------------------------------------------------//
-TEST( VerletList, Half )
+TEST( VerletList, Half3d )
 {
 #ifndef KOKKOS_ENABLE_OPENMPTARGET // FIXME_OPENMPTARGET
-    testVerletListHalf<Cabana::VerletLayoutCSR, Cabana::TeamOpTag>();
+    testVerletListHalf<3, Cabana::VerletLayoutCSR, Cabana::TeamOpTag>();
 #endif
-    testVerletListHalf<Cabana::VerletLayout2D, Cabana::TeamOpTag>();
+    testVerletListHalf<3, Cabana::VerletLayout2D, Cabana::TeamOpTag>();
 
 #ifndef KOKKOS_ENABLE_OPENMPTARGET // FIXME_OPENMPTARGET
-    testVerletListHalf<Cabana::VerletLayoutCSR, Cabana::TeamVectorOpTag>();
+    testVerletListHalf<3, Cabana::VerletLayoutCSR, Cabana::TeamVectorOpTag>();
 #endif
-    testVerletListHalf<Cabana::VerletLayout2D, Cabana::TeamVectorOpTag>();
+    testVerletListHalf<3, Cabana::VerletLayout2D, Cabana::TeamVectorOpTag>();
 }
 
 //---------------------------------------------------------------------------//
-TEST( VerletList, FullRange )
+TEST( VerletList, FullRange3d )
 {
 #ifndef KOKKOS_ENABLE_OPENMPTARGET // FIXME_OPENMPTARGET
-    testVerletListFullPartialRange<Cabana::VerletLayoutCSR,
+    testVerletListFullPartialRange<3, Cabana::VerletLayoutCSR,
                                    Cabana::TeamOpTag>();
 #endif
-    testVerletListFullPartialRange<Cabana::VerletLayout2D, Cabana::TeamOpTag>();
+    testVerletListFullPartialRange<3, Cabana::VerletLayout2D,
+                                   Cabana::TeamOpTag>();
 
 #ifndef KOKKOS_ENABLE_OPENMPTARGET // FIXME_OPENMPTARGET
-    testVerletListFullPartialRange<Cabana::VerletLayoutCSR,
+    testVerletListFullPartialRange<3, Cabana::VerletLayoutCSR,
                                    Cabana::TeamVectorOpTag>();
 #endif
-    testVerletListFullPartialRange<Cabana::VerletLayout2D,
+    testVerletListFullPartialRange<3, Cabana::VerletLayout2D,
                                    Cabana::TeamVectorOpTag>();
 }
 
 //---------------------------------------------------------------------------//
-TEST( VerletList, ParallelFor )
+TEST( VerletList, ParallelFor3d )
 {
 #ifndef KOKKOS_ENABLE_OPENMPTARGET // FIXME_OPENMPTARGET
-    testNeighborParallelFor<Cabana::VerletLayoutCSR>();
+    testNeighborParallelFor<3, Cabana::VerletLayoutCSR>();
 #endif
-    testNeighborParallelFor<Cabana::VerletLayout2D>();
+    testNeighborParallelFor<3, Cabana::VerletLayout2D>();
 }
 
 //---------------------------------------------------------------------------//
-TEST( VerletList, ParallelReduce )
+TEST( VerletList, ParallelReduce3d )
 {
 #ifndef KOKKOS_ENABLE_OPENMPTARGET // FIXME_OPENMPTARGET
-    testNeighborParallelReduce<Cabana::VerletLayoutCSR>();
+    testNeighborParallelReduce<3, Cabana::VerletLayoutCSR>();
 #endif
-    testNeighborParallelReduce<Cabana::VerletLayout2D>();
+    testNeighborParallelReduce<3, Cabana::VerletLayout2D>();
 }
 
 //---------------------------------------------------------------------------//
-TEST( VerletList, ModifyList )
+TEST( VerletList, ModifyList3d )
 {
 #ifndef KOKKOS_ENABLE_OPENMPTARGET // FIXME_OPENMPTARGET
-    testModifyNeighbors<Cabana::VerletLayoutCSR>();
+    testModifyNeighbors<3, Cabana::VerletLayoutCSR>();
 #endif
-    testModifyNeighbors<Cabana::VerletLayout2D>();
+    testModifyNeighbors<3, Cabana::VerletLayout2D>();
 }
 
 //---------------------------------------------------------------------------//
@@ -414,12 +415,12 @@ TEST( VerletList, NeighborHistogram )
 #endif
     testNeighborHistogram<Cabana::VerletLayout2D>();
 }
-TEST( TEST_CATEGORY, view_test )
+TEST( VerletList, View3d )
 {
 #ifndef KOKKOS_ENABLE_OPENMPTARGET // FIXME_OPENMPTARGET
-    testNeighborView<Cabana::VerletLayoutCSR>();
+    testNeighborView<3, Cabana::VerletLayoutCSR>();
 #endif
-    testNeighborView<Cabana::VerletLayout2D>();
+    testNeighborView<3, Cabana::VerletLayout2D>();
 }
 
 //---------------------------------------------------------------------------//
