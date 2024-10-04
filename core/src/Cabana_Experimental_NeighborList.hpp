@@ -133,7 +133,7 @@ struct AccessTraits<Positions, PrimitivesTag,
     //! Get the particle at the index.
     template <std::size_t NSD = num_space_dim>
     static KOKKOS_FUNCTION std::enable_if_t<2 == NSD, Point>
-    get( Slice const& x, size_type i )
+    get( Positions const& x, size_type i )
     {
         return { static_cast<float>( x( i, 0 ) ),
                  static_cast<float>( x( i, 1 ) ) };
