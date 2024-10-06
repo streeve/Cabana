@@ -148,7 +148,8 @@ struct VerletListBuilder
 
     // Binning Data.
     BinningData<memory_space> bin_data_1d;
-    LinkedCellList<memory_space, PositionValueType> linked_cell_list;
+    LinkedCellList<memory_space, PositionValueType, num_space_dim>
+        linked_cell_list;
 
     // Check to count or refill.
     bool refill;
@@ -626,7 +627,7 @@ auto createVerletListBuilder(
 {
     using RandomAccessPositionType = typename PositionType::random_access_slice;
     return VerletListBuilder<DeviceType, PositionType, RandomAccessPositionType,
-                             AlgorithmTag, LayoutTag, BuildOpTag>(
+                             AlgorithmTag, LayoutTag, BuildOpTag, NumSpaceDim>(
         x, begin, end, radius, cell_size_ratio, grid_min, grid_max, max_neigh );
 }
 
@@ -646,7 +647,7 @@ auto createVerletListBuilder(
         Kokkos::View<typename PositionType::value_type**, DeviceType,
                      Kokkos::MemoryTraits<Kokkos::RandomAccess>>;
     return VerletListBuilder<DeviceType, PositionType, RandomAccessPositionType,
-                             AlgorithmTag, LayoutTag, BuildOpTag>(
+                             AlgorithmTag, LayoutTag, BuildOpTag, NumSpaceDim>(
         x, begin, end, radius, cell_size_ratio, grid_min, grid_max, max_neigh );
 }
 
@@ -855,16 +856,17 @@ class VerletList
 // Neighbor list interface implementation.
 //---------------------------------------------------------------------------//
 //! CSR VerletList NeighborList interface.
-template <class MemorySpace, class AlgorithmTag, class BuildTag>
+template <class MemorySpace, class AlgorithmTag, class BuildTag,
+          std::size_t Dim>
 class NeighborList<
-    VerletList<MemorySpace, AlgorithmTag, VerletLayoutCSR, BuildTag>>
+    VerletList<MemorySpace, AlgorithmTag, VerletLayoutCSR, BuildTag, Dim>>
 {
   public:
     //! Kokkos memory space.
     using memory_space = MemorySpace;
     //! Neighbor list type.
     using list_type =
-        VerletList<MemorySpace, AlgorithmTag, VerletLayoutCSR, BuildTag>;
+        VerletList<MemorySpace, AlgorithmTag, VerletLayoutCSR, BuildTag, Dim>;
 
     //! Get the total number of neighbors across all particles.
     KOKKOS_INLINE_FUNCTION
@@ -904,16 +906,17 @@ class NeighborList<
 
 //---------------------------------------------------------------------------//
 //! 2D VerletList NeighborList interface.
-template <class MemorySpace, class AlgorithmTag, class BuildTag>
+template <class MemorySpace, class AlgorithmTag, class BuildTag,
+          std::size_t Dim>
 class NeighborList<
-    VerletList<MemorySpace, AlgorithmTag, VerletLayout2D, BuildTag>>
+    VerletList<MemorySpace, AlgorithmTag, VerletLayout2D, BuildTag, Dim>>
 {
   public:
     //! Kokkos memory space.
     using memory_space = MemorySpace;
     //! Neighbor list type.
     using list_type =
-        VerletList<MemorySpace, AlgorithmTag, VerletLayout2D, BuildTag>;
+        VerletList<MemorySpace, AlgorithmTag, VerletLayout2D, BuildTag, Dim>;
 
     //! Get the total number of neighbors across all particles.
     KOKKOS_INLINE_FUNCTION
