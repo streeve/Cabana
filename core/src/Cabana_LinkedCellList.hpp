@@ -139,7 +139,7 @@ class LinkedCellList
     //! Offset view type.
     using OffsetView = Kokkos::View<size_type*, memory_space>;
     //! Stencil type.
-    using stencil_type = Cabana::LinkedCellStencil<Scalar>;
+    using stencil_type = Cabana::LinkedCellStencil<Scalar, NumSpaceDim>;
 
     //! Spatial dimension.
     static constexpr std::size_t num_space_dim = NumSpaceDim;
