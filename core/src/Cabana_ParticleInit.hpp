@@ -248,7 +248,8 @@ void createParticles(
                               Kokkos::is_view<PositionType>::value ),
                             int>::type* = 0 )
 {
-    create<3>( tag, exec_space, positions, num_particles, box_min, box_max );
+    create<3>( tag, exec_space, positions, num_particles, box_min, box_max,
+               previous_num_particles, seed );
 }
 
 /*!
