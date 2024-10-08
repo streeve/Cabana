@@ -26,7 +26,7 @@ namespace Test
 void testArborXListFull()
 {
     // Create the AoSoA and fill with random particle positions.
-    NeighborListTestData test_data;
+    NeighborListTestData<3> test_data;
     auto position = Cabana::slice<0>( test_data.aosoa );
 
     // Check CSR neighbor lists.
@@ -87,7 +87,7 @@ void testArborXListFull()
 void testArborXListHalf()
 {
     // Create the AoSoA and fill with random particle positions.
-    NeighborListTestData test_data;
+    NeighborListTestData<3> test_data;
     auto position = Cabana::slice<0>( test_data.aosoa );
 
     // Check CSR neighbor lists.
@@ -148,7 +148,7 @@ void testArborXListHalf()
 void testArborXListFullPartialRange()
 {
     // Create the AoSoA and fill with random particle positions.
-    NeighborListTestData test_data;
+    NeighborListTestData<3> test_data;
     auto position = Cabana::slice<0>( test_data.aosoa );
 
     {
@@ -179,7 +179,7 @@ void testArborXListFullPartialRange()
 void testNeighborArborXParallelFor()
 {
     // Create the AoSoA and fill with random particle positions.
-    NeighborListTestData test_data;
+    NeighborListTestData<3> test_data;
     auto position = Cabana::slice<0>( test_data.aosoa );
 
     {
@@ -238,7 +238,7 @@ void testNeighborArborXParallelFor()
 void testNeighborArborXParallelReduce()
 {
     // Create the AoSoA and fill with random particle positions.
-    NeighborListTestData test_data;
+    NeighborListTestData<3> test_data;
     auto position = Cabana::slice<0>( test_data.aosoa );
 
     {
