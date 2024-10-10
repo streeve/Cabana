@@ -736,16 +736,19 @@ class LinkedCellList
   \brief Creation function for linked cell list.
   \return LinkedCellList.
 */
-template <std::size_t NumSpaceDim, class PositionType>
-auto createLinkedCellList(
-    PositionType positions,
-    const typename PositionType::value_type grid_delta[NumSpaceDim],
-    const typename PositionType::value_type grid_min[NumSpaceDim],
-    const typename PositionType::value_type grid_max[NumSpaceDim] )
+template <class PositionType, class DeltaArrayType, class MinArrayType,
+          class MaxArrayType>
+auto createLinkedCellList( PositionType positions,
+                           const DeltaArrayType grid_delta,
+                           const MinArrayType grid_min,
+                           const MaxArrayType grid_max )
 {
     using memory_space = typename PositionType::memory_space;
     using scalar_type = typename PositionType::value_type;
-    return LinkedCellList<memory_space, scalar_type, NumSpaceDim>(
+    using data_type = typename PositionType::data_type;
+    static constexpr std::size_t num_space_dim =
+        Cabana::arraySize( data_type{} );
+    return LinkedCellList<memory_space, scalar_type, num_space_dim>(
         positions, grid_delta, grid_min, grid_max );
 }
 
@@ -753,16 +756,20 @@ auto createLinkedCellList(
   \brief Creation function for linked cell list with partial range.
   \return LinkedCellList.
 */
-template <std::size_t NumSpaceDim, class PositionType>
-auto createLinkedCellList(
-    PositionType positions, const std::size_t begin, const std::size_t end,
-    const typename PositionType::value_type grid_delta[NumSpaceDim],
-    const typename PositionType::value_type grid_min[NumSpaceDim],
-    const typename PositionType::value_type grid_max[NumSpaceDim] )
+template <class PositionType, class DeltaArrayType, class MinArrayType,
+          class MaxArrayType>
+auto createLinkedCellList( PositionType positions, const std::size_t begin,
+                           const std::size_t end,
+                           const DeltaArrayType grid_delta,
+                           const MinArrayType grid_min,
+                           const MaxArrayType grid_max )
 {
     using memory_space = typename PositionType::memory_space;
     using scalar_type = typename PositionType::value_type;
-    return LinkedCellList<memory_space, scalar_type, NumSpaceDim>(
+    using data_type = typename PositionType::data_type;
+    static constexpr std::size_t num_space_dim =
+        Cabana::arraySize( data_type{} );
+    return LinkedCellList<memory_space, scalar_type, num_space_dim>(
         positions, begin, end, grid_delta, grid_min, grid_max );
 }
 
@@ -771,18 +778,20 @@ auto createLinkedCellList(
   cell ratio.
   \return LinkedCellList.
 */
-template <std::size_t NumSpaceDim, class PositionType>
+template <class PositionType, class DeltaArrayType, class MinArrayType,
+          class MaxArrayType>
 auto createLinkedCellList(
-    PositionType positions,
-    const typename PositionType::value_type grid_delta[NumSpaceDim],
-    const typename PositionType::value_type grid_min[NumSpaceDim],
-    const typename PositionType::value_type grid_max[NumSpaceDim],
+    PositionType positions, const DeltaArrayType grid_delta,
+    const MinArrayType grid_min, const MaxArrayType grid_max,
     const typename PositionType::value_type neighborhood_radius,
     const typename PositionType::value_type cell_size_ratio = 1.0 )
 {
     using memory_space = typename PositionType::memory_space;
     using scalar_type = typename PositionType::value_type;
-    return LinkedCellList<memory_space, scalar_type, NumSpaceDim>(
+    using data_type = typename PositionType::data_type;
+    static constexpr std::size_t num_space_dim =
+        Cabana::arraySize( data_type{} );
+    return LinkedCellList<memory_space, scalar_type, num_space_dim>(
         positions, grid_delta, grid_min, grid_max, neighborhood_radius,
         cell_size_ratio );
 }
@@ -792,18 +801,21 @@ auto createLinkedCellList(
   cutoff radius and/or cell ratio.
   \return LinkedCellList.
 */
-template <std::size_t NumSpaceDim, class PositionType>
+template <class PositionType, class DeltaArrayType, class MinArrayType,
+          class MaxArrayType>
 auto createLinkedCellList(
     PositionType positions, const std::size_t begin, const std::size_t end,
-    const typename PositionType::value_type grid_delta[NumSpaceDim],
-    const typename PositionType::value_type grid_min[NumSpaceDim],
-    const typename PositionType::value_type grid_max[NumSpaceDim],
+    const DeltaArrayType grid_delta, const MinArrayType grid_min,
+    const MaxArrayType grid_max,
     const typename PositionType::value_type neighborhood_radius,
     const typename PositionType::value_type cell_size_ratio = 1.0 )
 {
     using memory_space = typename PositionType::memory_space;
     using scalar_type = typename PositionType::value_type;
-    return LinkedCellList<memory_space, scalar_type, NumSpaceDim>(
+    using data_type = typename PositionType::data_type;
+    static constexpr std::size_t num_space_dim =
+        Cabana::arraySize( data_type{} );
+    return LinkedCellList<memory_space, scalar_type, num_space_dim>(
         positions, begin, end, grid_delta, grid_min, grid_max,
         neighborhood_radius, cell_size_ratio );
 }

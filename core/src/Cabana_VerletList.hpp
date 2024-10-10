@@ -192,9 +192,9 @@ struct VerletListBuilder
         for ( std::size_t d = 0; d < num_space_dim; ++d )
             grid_delta[d] = grid_size;
 
-        linked_cell_list = createLinkedCellList<num_space_dim>(
-            _position, grid_delta, grid_min, grid_max, neighborhood_radius,
-            cell_size_ratio );
+        linked_cell_list =
+            createLinkedCellList( _position, grid_delta, grid_min, grid_max,
+                                  neighborhood_radius, cell_size_ratio );
         bin_data_1d = linked_cell_list.binningData();
 
         // We will use the square of the distance for neighbor determination.
@@ -643,8 +643,9 @@ auto createVerletListBuilder(
     typename std::enable_if<( Kokkos::is_view<PositionType>::value ),
                             int>::type* = 0 )
 {
+    using memory_space = typename DeviceType::memory_space;
     using RandomAccessPositionType =
-        Kokkos::View<typename PositionType::value_type**, DeviceType,
+        Kokkos::View<typename PositionType::data_type, memory_space,
                      Kokkos::MemoryTraits<Kokkos::RandomAccess>>;
     return VerletListBuilder<DeviceType, PositionType, RandomAccessPositionType,
                              AlgorithmTag, LayoutTag, BuildOpTag, NumSpaceDim>(

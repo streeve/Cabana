@@ -114,8 +114,12 @@ struct AccessTraits<Positions, PrimitivesTag,
     using memory_space = typename Positions::memory_space;
     //! Size type.
     using size_type = typename Positions::size_type;
+    //! Position array data type.
+    using data_type = typename Positions::data_type;
     //! Spatial dimension.
-    static constexpr std::size_t num_space_dim = 3;
+    static constexpr std::size_t num_space_dim =
+        Cabana::arraySize( data_type{} );
+
     //! Get number of particles.
     static KOKKOS_FUNCTION size_type size( Positions const& x )
     {

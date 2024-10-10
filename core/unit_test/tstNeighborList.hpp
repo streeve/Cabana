@@ -255,10 +255,11 @@ void testNeighborView()
     auto slice = Cabana::slice<0>( test_data.aosoa );
 
     // Copy manually into a View.
-    Kokkos::View<double**, TEST_MEMSPACE> view( "positions", slice.size(), 3 );
+    Kokkos::View<double* [Dim], TEST_MEMSPACE> view( "positions",
+                                                     slice.size() );
     auto view_copy = KOKKOS_LAMBDA( const int i )
     {
-        for ( std::size_t d = 0; d < 3; ++d )
+        for ( std::size_t d = 0; d < Dim; ++d )
             view( i, d ) = slice( i, d );
     };
     Kokkos::RangePolicy<TEST_EXECSPACE> policy( 0, slice.size() );

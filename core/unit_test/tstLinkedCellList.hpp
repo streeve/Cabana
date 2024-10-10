@@ -595,7 +595,7 @@ void testLinkedList()
     {
         auto begin = test_data.begin;
         auto end = test_data.end;
-        auto cell_list = Cabana::createLinkedCellList<Dim>(
+        auto cell_list = Cabana::createLinkedCellList(
             pos, begin, end, grid_delta, grid_min, grid_max,
             test_data.grid_delta[0], 1.0 );
         Cabana::permute( cell_list, test_data.aosoa );
@@ -608,7 +608,7 @@ void testLinkedList()
 
     // Now bin and permute all of the particles.
     {
-        auto cell_list = Cabana::createLinkedCellList<Dim>(
+        auto cell_list = Cabana::createLinkedCellList(
             pos, grid_delta, grid_min, grid_max, test_data.grid_delta[0] );
         Cabana::permute( cell_list, test_data.aosoa );
 
@@ -634,7 +634,7 @@ void testLinkedListSlice()
     {
         auto begin = test_data.begin;
         auto end = test_data.end;
-        auto cell_list = Cabana::createLinkedCellList<Dim>(
+        auto cell_list = Cabana::createLinkedCellList(
             pos, begin, end, grid_delta, grid_min, grid_max, grid_delta[0] );
         Cabana::permute( cell_list, pos );
 
@@ -645,7 +645,7 @@ void testLinkedListSlice()
     }
     // Now bin and permute all of the particles.
     {
-        auto cell_list = Cabana::createLinkedCellList<Dim>(
+        auto cell_list = Cabana::createLinkedCellList(
             pos, grid_delta, grid_min, grid_max, grid_delta[0] );
         Cabana::permute( cell_list, pos );
 
@@ -901,7 +901,7 @@ void testLinkedCellNeighborInterface()
     double grid_delta[Dim];
     for ( std::size_t d = 0; d < Dim; ++d )
         grid_delta[d] = grid_size;
-    auto nlist = Cabana::createLinkedCellList<Dim>(
+    auto nlist = Cabana::createLinkedCellList(
         positions, test_data.begin, test_data.end, grid_delta,
         test_data.grid_min, test_data.grid_max, test_data.test_radius,
         test_data.cell_size_ratio );
@@ -929,7 +929,7 @@ void testLinkedCellParallel()
     double grid_delta[Dim];
     for ( std::size_t d = 0; d < Dim; ++d )
         grid_delta[d] = grid_size;
-    auto nlist = Cabana::createLinkedCellList<Dim>(
+    auto nlist = Cabana::createLinkedCellList(
         positions, test_data.begin, test_data.end, grid_delta,
         test_data.grid_min, test_data.grid_max, test_data.test_radius,
         test_data.cell_size_ratio );
@@ -957,7 +957,7 @@ void testLinkedCellReduce()
     double grid_delta[Dim];
     for ( std::size_t d = 0; d < Dim; ++d )
         grid_delta[d] = grid_size;
-    auto nlist = Cabana::createLinkedCellList<Dim>(
+    auto nlist = Cabana::createLinkedCellList(
         positions, test_data.begin, test_data.end, grid_delta,
         test_data.grid_min, test_data.grid_max, test_data.test_radius,
         test_data.cell_size_ratio );
@@ -984,8 +984,8 @@ void testLinkedListView()
     auto slice = Cabana::slice<LCLTestData<Dim>::Position>( test_data.aosoa );
 
     // Copy manually into a View.
-    Kokkos::View<double**, TEST_MEMSPACE> view( "positions", slice.size(),
-                                                Dim );
+    Kokkos::View<double* [Dim], TEST_MEMSPACE> view( "positions",
+                                                     slice.size() );
     copySliceToView( view, slice, 0, slice.size() );
 
     // Bin the particles in the grid and permute only the position slice.
@@ -993,7 +993,7 @@ void testLinkedListView()
     {
         auto begin = test_data.begin;
         auto end = test_data.end;
-        auto cell_list = Cabana::createLinkedCellList<Dim>(
+        auto cell_list = Cabana::createLinkedCellList(
             view, begin, end, grid_delta, grid_min, grid_max );
         Cabana::permute( cell_list, view );
 
@@ -1007,8 +1007,8 @@ void testLinkedListView()
     }
     // Now bin and permute all of the particles.
     {
-        auto cell_list = Cabana::createLinkedCellList<Dim>(
-            view, grid_delta, grid_min, grid_max );
+        auto cell_list = Cabana::createLinkedCellList( view, grid_delta,
+                                                       grid_min, grid_max );
 
         // Copy manually into a View.
         Kokkos::View<double**, TEST_MEMSPACE> view( "positions", slice.size(),
