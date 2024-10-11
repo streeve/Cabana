@@ -665,7 +665,8 @@ void testLinkedListSlice()
     }
 }
 
-template <class ListType, class TestListType, class PositionType>
+template <std::size_t Dim, class ListType, class TestListType,
+          class PositionType>
 void checkLinkedCellNeighborInterface( const ListType& nlist,
                                        const TestListType& N2_list_copy,
                                        const std::size_t begin,
@@ -673,10 +674,8 @@ void checkLinkedCellNeighborInterface( const ListType& nlist,
                                        const PositionType positions,
                                        const double cutoff )
 {
-    using memory_space = typename TEST_MEMSPACE::memory_space;
-
     // Purposely using zero-init.
-    Kokkos::View<std::size_t*, memory_space> num_n2_neighbors(
+    Kokkos::View<std::size_t*, TEST_MEMSPACE> num_n2_neighbors(
         "num_n2_neighbors", positions.size() );
     Kokkos::View<std::size_t*, Kokkos::HostSpace> N2_copy_neighbors(
         "num_n2_neighbors", positions.size() );
@@ -718,11 +717,12 @@ void checkLinkedCellNeighborInterface( const ListType& nlist,
                 std::size_t np = Cabana::NeighborList<ListType>::getNeighbor(
                     nlist, pid, i );
 
-                const double dx = positions( pid, 0 ) - positions( np, 0 );
-                const double dy = positions( pid, 1 ) - positions( np, 1 );
-                const double dz = positions( pid, 2 ) - positions( np, 2 );
-                const double r2 = dx * dx + dy * dy + dz * dz;
-
+                double r2 = 0.0;
+                for ( std::size_t d = 0; d < Dim; ++d )
+                {
+                    const double dx = positions( pid, d ) - positions( np, d );
+                    r2 += dx * dx;
+                }
                 if ( r2 <= c2 &&
                      _discriminator.isValid( pid, 0, 0, 0, np, 0, 0, 0 ) )
                 {
@@ -772,11 +772,10 @@ void checkLinkedCellNeighborParallel( const ListType& nlist,
                                       const double cutoff )
 {
     // Create Kokkos views for the write operation.
-    using memory_space = typename TEST_MEMSPACE::memory_space;
-    Kokkos::View<int*, memory_space> serial_result( "serial_result",
-                                                    positions.size() );
-    Kokkos::View<int*, memory_space> team_result( "team_result",
-                                                  positions.size() );
+    Kokkos::View<int*, TEST_MEMSPACE> serial_result( "serial_result",
+                                                     positions.size() );
+    Kokkos::View<int*, TEST_MEMSPACE> team_result( "team_result",
+                                                   positions.size() );
 
     // Test the list parallel operation by adding a value from each neighbor
     // to the particle (within cutoff) and compare to counts.
@@ -906,15 +905,15 @@ void testLinkedCellNeighborInterface()
         test_data.grid_min, test_data.grid_max, test_data.test_radius,
         test_data.cell_size_ratio );
 
-    checkLinkedCellNeighborInterface( nlist, test_data.N2_list_copy,
-                                      test_data.begin, test_data.end, positions,
-                                      test_data.test_radius );
+    checkLinkedCellNeighborInterface<Dim>( nlist, test_data.N2_list_copy,
+                                           test_data.begin, test_data.end,
+                                           positions, test_data.test_radius );
 
     Cabana::permute( nlist, positions );
 
-    checkLinkedCellNeighborInterface( nlist, test_data.N2_list_copy,
-                                      test_data.begin, test_data.end, positions,
-                                      test_data.test_radius );
+    checkLinkedCellNeighborInterface<Dim>( nlist, test_data.N2_list_copy,
+                                           test_data.begin, test_data.end,
+                                           positions, test_data.test_radius );
 }
 
 //---------------------------------------------------------------------------//
