@@ -108,16 +108,35 @@ class NeighborDiscriminator<HalfNeighborTag>
       checked next and finally the z direction if the y coordinates are the
       same.
     */
-    template <std::size_t NumSpaceDim>
     KOKKOS_INLINE_FUNCTION static bool
-    isValid( const std::size_t p, const Kokkos::Array<double, NumSpaceDim> xp,
-             const std::size_t n, const Kokkos::Array<double, NumSpaceDim> xn )
+    isValid( const std::size_t p, const Kokkos::Array<double, 3> xp,
+             const std::size_t n, const Kokkos::Array<double, 3> xn )
     {
         return ( ( p != n ) &&
                  ( ( xn[0] > xp[0] ) ||
                    ( ( xn[0] == xp[0] ) &&
                      ( ( xn[1] > xp[1] ) ||
                        ( ( xn[1] == xp[1] ) && ( xn[2] > xp[2] ) ) ) ) ) );
+    }
+
+    /*!
+      \brief Check whether neighbor pair is valid.
+
+      Half neighbor lists only store half of the neighbors be eliminating
+      duplicate pairs such that the fact that particle "p" neighbors particle
+      "n" is stored in the list but "n" neighboring "p" is not stored but rather
+      implied. We discriminate by only storing neighbors whose coordinates are
+      greater in the x direction. If they are the same then the y direction is
+      checked next and finally the z direction if the y coordinates are the
+      same.
+    */
+    KOKKOS_INLINE_FUNCTION static bool
+    isValid( const std::size_t p, const Kokkos::Array<double, 2> xp,
+             const std::size_t n, const Kokkos::Array<double, 2> xn )
+    {
+        return ( ( p != n ) &&
+                 ( ( xn[0] > xp[0] ) ||
+                   ( ( xn[0] == xp[0] ) && ( ( xn[1] > xp[1] ) ) ) ) );
     }
 
     /*!
