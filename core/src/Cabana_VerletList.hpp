@@ -750,6 +750,52 @@ class VerletList
     }
 
     /*!
+      \brief VerletList constructor. Given a list of particle positions and
+      a neighborhood radius calculate the neighbor list.
+
+      \param x The particle positions
+
+      \param neighborhood_radius The radius of the neighborhood. Particles
+      within this radius are considered neighbors. This is effectively the
+      grid cell size in each dimension.
+
+      \param cell_size_ratio The ratio of the cell size in the Cartesian grid
+      to the neighborhood radius. For example, if the cell size ratio is 0.5
+      then the cells will be half the size of the neighborhood radius in each
+      dimension.
+
+      \param grid_min The minimum value of the grid containing the particles
+      in each dimension.
+
+      \param grid_max The maximum value of the grid containing the particles
+      in each dimension.
+
+      \param max_neigh Optional maximum number of neighbors per particle to
+      pre-allocate the neighbor list. Potentially avoids recounting with 2D
+      layout only.
+
+      Particles outside of the neighborhood radius will not be considered
+      neighbors. Only compute the neighbors of those that are within the given
+      range. All particles are candidates for being a neighbor, regardless of
+      whether or not they are in the range.
+    */
+    template <class PositionType>
+    VerletList(
+        PositionType x,
+        const typename PositionType::value_type neighborhood_radius,
+        const typename PositionType::value_type cell_size_ratio,
+        const typename PositionType::value_type grid_min[num_space_dim],
+        const typename PositionType::value_type grid_max[num_space_dim],
+        const std::size_t max_neigh = 0,
+        typename std::enable_if<( is_slice<PositionType>::value ||
+                                  Kokkos::is_view<PositionType>::value ),
+                                int>::type* = 0 )
+    {
+        build( x, neighborhood_radius, cell_size_ratio, grid_min, grid_max,
+               max_neigh );
+    }
+
+    /*!
       \brief Given a list of particle positions and a neighborhood radius
       calculate the neighbor list.
     */
@@ -852,6 +898,47 @@ class VerletList
         _data.setNeighbor( particle_index, neighbor_index, new_index );
     }
 };
+
+//---------------------------------------------------------------------------//
+// VerletList creation functions.
+//---------------------------------------------------------------------------//
+template <class PositionType, class MinArrayType, class MaxArrayType,
+          class AlgorithmTag, class LayoutTag, class BuildTag = TeamVectorOpTag>
+auto createVerletList( PositionType positions, const std::size_t begin,
+                       const std::size_t end,
+                       const typename PositionType::value_type radius,
+                       const typename PositionType::value_type cell_size_ratio,
+                       const MinArrayType grid_min, const MaxArrayType grid_max,
+                       const std::size_t max_neigh = 0 )
+{
+    using memory_space = typename PositionType::memory_space;
+    using data_type = typename PositionType::data_type;
+    static constexpr std::size_t num_space_dim =
+        Cabana::arraySize( data_type{} );
+
+    return Cabana::VerletList<memory_space, AlgorithmTag, LayoutTag, BuildTag,
+                              num_space_dim>( positions, begin, end, radius,
+                                              cell_size_ratio, grid_min,
+                                              grid_max, max_neigh );
+}
+
+template <class PositionType, class MinArrayType, class MaxArrayType,
+          class AlgorithmTag, class LayoutTag, class BuildTag = TeamVectorOpTag>
+auto createVerletList( PositionType positions,
+                       const typename PositionType::value_type radius,
+                       const typename PositionType::value_type cell_size_ratio,
+                       const MinArrayType grid_min, const MaxArrayType grid_max,
+                       const std::size_t max_neigh = 0 )
+{
+    using memory_space = typename PositionType::memory_space;
+    using data_type = typename PositionType::data_type;
+    static constexpr std::size_t num_space_dim =
+        Cabana::arraySize( data_type{} );
+
+    return Cabana::VerletList<memory_space, AlgorithmTag, LayoutTag, BuildTag,
+                              num_space_dim>(
+        positions, radius, cell_size_ratio, grid_min, grid_max, max_neigh );
+}
 
 //---------------------------------------------------------------------------//
 // Neighbor list interface implementation.
