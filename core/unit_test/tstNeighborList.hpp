@@ -149,11 +149,10 @@ void testNeighborParallelFor()
     auto position = Cabana::slice<0>( test_data.aosoa );
 
     // Create the neighbor list.
-    using ListType = Cabana::VerletList<TEST_MEMSPACE, Cabana::FullNeighborTag,
-                                        LayoutTag, Cabana::TeamOpTag, Dim>;
-    ListType nlist( position, 0, position.size(), test_data.test_radius,
-                    test_data.cell_size_ratio, test_data.grid_min,
-                    test_data.grid_max );
+    auto nlist = Cabana::createVerletList<Cabana::FullNeighborTag, LayoutTag,
+                                          Cabana::TeamOpTag>(
+        position, 0, position.size(), test_data.test_radius,
+        test_data.cell_size_ratio, test_data.grid_min, test_data.grid_max );
 
     checkFirstNeighborParallelForLambda( nlist, test_data.N2_list_copy,
                                          test_data.num_particle );

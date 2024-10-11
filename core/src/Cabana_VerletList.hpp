@@ -902,8 +902,8 @@ class VerletList
 //---------------------------------------------------------------------------//
 // VerletList creation functions.
 //---------------------------------------------------------------------------//
-template <class PositionType, class MinArrayType, class MaxArrayType,
-          class AlgorithmTag, class LayoutTag, class BuildTag = TeamVectorOpTag>
+template <class AlgorithmTag, class LayoutTag, class BuildTag,
+          class PositionType, class MinArrayType, class MaxArrayType>
 auto createVerletList( PositionType positions, const std::size_t begin,
                        const std::size_t end,
                        const typename PositionType::value_type radius,
@@ -922,8 +922,8 @@ auto createVerletList( PositionType positions, const std::size_t begin,
                                               grid_max, max_neigh );
 }
 
-template <class PositionType, class MinArrayType, class MaxArrayType,
-          class AlgorithmTag, class LayoutTag, class BuildTag = TeamVectorOpTag>
+template <class AlgorithmTag, class LayoutTag, class BuildTag,
+          class PositionType, class MinArrayType, class MaxArrayType>
 auto createVerletList( PositionType positions,
                        const typename PositionType::value_type radius,
                        const typename PositionType::value_type cell_size_ratio,
