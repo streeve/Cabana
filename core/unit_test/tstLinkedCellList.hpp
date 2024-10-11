@@ -763,7 +763,8 @@ void checkLinkedCellNeighborInterface( const ListType& nlist,
 //---------------------------------------------------------------------------//
 // linked_list_parallel
 //---------------------------------------------------------------------------//
-template <class ListType, class TestListType, class PositionType>
+template <std::size_t Dim, class ListType, class TestListType,
+          class PositionType>
 void checkLinkedCellNeighborParallel( const ListType& nlist,
                                       const TestListType& N2_list_copy,
                                       const std::size_t begin,
@@ -782,14 +783,17 @@ void checkLinkedCellNeighborParallel( const ListType& nlist,
     auto c2 = cutoff * cutoff;
 
     Cabana::NeighborDiscriminator<Cabana::FullNeighborTag> _discriminator;
+    Kokkos::Array<double, Dim> empty;
 
     auto serial_count_op = KOKKOS_LAMBDA( const int i, const int j )
     {
-        const double dx = positions( i, 0 ) - positions( j, 0 );
-        const double dy = positions( i, 1 ) - positions( j, 1 );
-        const double dz = positions( i, 2 ) - positions( j, 2 );
-        const double r2 = dx * dx + dy * dy + dz * dz;
-        if ( r2 <= c2 && _discriminator.isValid( i, 0, 0, 0, j, 0, 0, 0 ) )
+        double r2 = 0.0;
+        for ( std::size_t d = 0; d < Dim; ++d )
+        {
+            const double dx = positions( i, d ) - positions( j, d );
+            r2 += dx * dx;
+        }
+        if ( r2 <= c2 && _discriminator.isValid( i, empty, j, empty ) )
         {
             if ( nlist.sorted() )
             {
@@ -805,10 +809,12 @@ void checkLinkedCellNeighborParallel( const ListType& nlist,
     };
     auto team_count_op = KOKKOS_LAMBDA( const int i, const int j )
     {
-        const double dx = positions( i, 0 ) - positions( j, 0 );
-        const double dy = positions( i, 1 ) - positions( j, 1 );
-        const double dz = positions( i, 2 ) - positions( j, 2 );
-        const double r2 = dx * dx + dy * dy + dz * dz;
+        double r2 = 0.0;
+        for ( std::size_t d = 0; d < Dim; ++d )
+        {
+            const double dx = positions( i, d ) - positions( j, d );
+            r2 += dx * dx;
+        }
         if ( r2 <= c2 && _discriminator.isValid( i, 0, 0, 0, j, 0, 0, 0 ) )
         {
             if ( nlist.sorted() )
@@ -839,7 +845,7 @@ void checkLinkedCellNeighborParallel( const ListType& nlist,
 //---------------------------------------------------------------------------//
 // linked_list_parallel
 //---------------------------------------------------------------------------//
-template <class ListType, class TestListType, class AoSoAType>
+template <std::size_t Dim, class ListType, class TestListType, class AoSoAType>
 void checkLinkedCellNeighborReduce( const ListType& nlist,
                                     const TestListType& N2_list_copy,
                                     const AoSoAType aosoa,
@@ -856,10 +862,12 @@ void checkLinkedCellNeighborReduce( const ListType& nlist,
 
     auto sum_op = KOKKOS_LAMBDA( const int i, const int j, double& sum )
     {
-        const double dx = position( i, 0 ) - position( j, 0 );
-        const double dy = position( i, 1 ) - position( j, 1 );
-        const double dz = position( i, 2 ) - position( j, 2 );
-        const double r2 = dx * dx + dy * dy + dz * dz;
+        double r2 = 0.0;
+        for ( std::size_t d = 0; d < Dim; ++d )
+        {
+            const double dx = position( i, d ) - position( j, d );
+            r2 += dx * dx;
+        }
         if ( r2 <= c2 && _discriminator.isValid( i, 0, 0, 0, j, 0, 0, 0 ) )
         {
             if ( nlist.sorted() )
@@ -933,15 +941,15 @@ void testLinkedCellParallel()
         test_data.grid_min, test_data.grid_max, test_data.test_radius,
         test_data.cell_size_ratio );
 
-    checkLinkedCellNeighborParallel( nlist, test_data.N2_list_copy,
-                                     test_data.begin, test_data.end, positions,
-                                     test_data.test_radius );
+    checkLinkedCellNeighborParallel<Dim>( nlist, test_data.N2_list_copy,
+                                          test_data.begin, test_data.end,
+                                          positions, test_data.test_radius );
 
     Cabana::permute( nlist, positions );
 
-    checkLinkedCellNeighborParallel( nlist, test_data.N2_list_copy,
-                                     test_data.begin, test_data.end, positions,
-                                     test_data.test_radius );
+    checkLinkedCellNeighborParallel<Dim>( nlist, test_data.N2_list_copy,
+                                          test_data.begin, test_data.end,
+                                          positions, test_data.test_radius );
 }
 
 //---------------------------------------------------------------------------//
@@ -961,15 +969,15 @@ void testLinkedCellReduce()
         test_data.grid_min, test_data.grid_max, test_data.test_radius,
         test_data.cell_size_ratio );
 
-    checkLinkedCellNeighborReduce( nlist, test_data.N2_list_copy,
-                                   test_data.aosoa, test_data.begin,
-                                   test_data.end, test_data.test_radius );
+    checkLinkedCellNeighborReduce<Dim>( nlist, test_data.N2_list_copy,
+                                        test_data.aosoa, test_data.begin,
+                                        test_data.end, test_data.test_radius );
 
     Cabana::permute( nlist, positions );
 
-    checkLinkedCellNeighborReduce( nlist, test_data.N2_list_copy,
-                                   test_data.aosoa, test_data.begin,
-                                   test_data.end, test_data.test_radius );
+    checkLinkedCellNeighborReduce<Dim>( nlist, test_data.N2_list_copy,
+                                        test_data.aosoa, test_data.begin,
+                                        test_data.end, test_data.test_radius );
 }
 
 //---------------------------------------------------------------------------//
@@ -1046,9 +1054,9 @@ TEST( LinkedCellList, Slice3d ) { testLinkedListSlice<3>(); }
 
 TEST( LinkedCellList, Neighbor3d ) { testLinkedCellNeighborInterface<3>(); }
 
-TEST( LinkedCellList, ParallelFor ) { testLinkedCellParallel<3>(); }
+TEST( LinkedCellList, ParallelFor3d ) { testLinkedCellParallel<3>(); }
 
-TEST( LinkedCellList, ParallelReduce ) { testLinkedCellReduce<3>(); }
+TEST( LinkedCellList, ParallelReduce3d ) { testLinkedCellReduce<3>(); }
 
 TEST( LinkedCellList, View3d ) { testLinkedListView<3>(); }
 
@@ -1059,6 +1067,10 @@ TEST( LinkedCellList, AoSoA2d ) { testLinkedList<2>(); }
 TEST( LinkedCellList, Slice2d ) { testLinkedListSlice<2>(); }
 
 TEST( LinkedCellList, Neighbor2d ) { testLinkedCellNeighborInterface<2>(); }
+
+TEST( LinkedCellList, ParallelFor2d ) { testLinkedCellParallel<2>(); }
+
+TEST( LinkedCellList, ParallelReduce2d ) { testLinkedCellReduce<2>(); }
 
 TEST( LinkedCellList, View2d ) { testLinkedListView<2>(); }
 

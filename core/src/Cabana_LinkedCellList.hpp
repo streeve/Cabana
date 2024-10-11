@@ -322,8 +322,9 @@ class LinkedCellList
       Note that the Kokkos sort orders the bins such that the i index moves
       the slowest and the k index mvoes the fastest.
     */
-    KOKKOS_INLINE_FUNCTION
-    size_type cardinalBinIndex( const int i, const int j, const int k ) const
+    template <std::size_t NSD = num_space_dim>
+    KOKKOS_INLINE_FUNCTION std::enable_if_t<3 == NSD, size_type>
+    cardinalBinIndex( const int i, const int j, const int k ) const
     {
         return _grid.cardinalCellIndex( i, j, k );
     }
@@ -662,9 +663,10 @@ class LinkedCellList
     /*!
       \brief Get the cell indices for the stencil about cell
     */
-    KOKKOS_INLINE_FUNCTION
-    void getStencilCells( const int cell, int& imin, int& imax, int& jmin,
-                          int& jmax, int& kmin, int& kmax ) const
+    template <std::size_t NSD = num_space_dim>
+    KOKKOS_INLINE_FUNCTION std::enable_if_t<3 == NSD, void>
+    getStencilCells( const int cell, int& imin, int& imax, int& jmin, int& jmax,
+                     int& kmin, int& kmax ) const
     {
         _cell_stencil.getCells( cell, imin, imax, jmin, jmax, kmin, kmax );
     }
