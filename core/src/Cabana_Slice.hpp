@@ -873,6 +873,18 @@ constexpr std::size_t arraySize( const T ( & )[N] )
     return N;
 }
 
+//! Get std::array dimension
+template <typename T, std::size_t N>
+constexpr std::size_t arraySize( const std::array<T, N> )
+{
+    return N;
+}
+template <typename T, std::size_t N>
+constexpr std::size_t arraySize( const Kokkos::Array<T, N> )
+{
+    return N;
+}
+
 //---------------------------------------------------------------------------//
 // Copy to View.
 //---------------------------------------------------------------------------//

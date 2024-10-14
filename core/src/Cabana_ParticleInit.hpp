@@ -30,17 +30,50 @@ namespace Cabana
 
 namespace Impl
 {
-//! Copy array (std, c-array) into Kokkos::Array for potential device use.
-template <class ArrayType>
-auto copyArray( ArrayType corner )
+//! Copy std::array into Kokkos::Array for potential device use.
+template <std::size_t Dim, class Scalar>
+auto copyArray( const std::array<Scalar, Dim> corner )
 {
-    using value_type = std::remove_reference_t<decltype( corner[0] )>;
-    Kokkos::Array<value_type, 3> kokkos_corner;
-    for ( std::size_t d = 0; d < 3; ++d )
+    Kokkos::Array<Scalar, Dim> kokkos_corner;
+    for ( std::size_t d = 0; d < Dim; ++d )
         kokkos_corner[d] = corner[d];
 
     return kokkos_corner;
 }
+//! Return original Kokkos::Array.
+template <std::size_t Dim, class Scalar>
+auto copyArray( const Kokkos::Array<Scalar, Dim> corner )
+{
+    return corner;
+}
+//! Copy c-array into Kokkos::Array for potential device use.
+template <std::size_t Dim, class Scalar>
+auto copyArray( const Scalar corner[Dim] )
+{
+    using value_type = std::remove_reference_t<Scalar>;
+    Kokkos::Array<value_type, Dim> kokkos_corner;
+    for ( std::size_t d = 0; d < Dim; ++d )
+        kokkos_corner[d] = corner[d];
+
+    return kokkos_corner;
+}
+
+template <class T>
+struct is_not_array : std::false_type
+{
+};
+template <class T, std::size_t N>
+struct is_not_array<std::array<T, N>> : std::true_type
+{
+};
+template <class T>
+struct is_not_array<std::vector<T>> : std::true_type
+{
+};
+template <class T, std::size_t N>
+struct is_not_array<Kokkos::Array<T, N>> : std::true_type
+{
+};
 
 } // namespace Impl
 
@@ -109,18 +142,20 @@ int createParticles(
     auto count = Kokkos::View<int*, memory_space>( "particle_count", 1 );
     Kokkos::deep_copy( count, previous_num_particles );
 
+    constexpr std::size_t num_space_dim = arraySize( ArrayType{} );
+
     // Copy corners to device accessible arrays.
-    auto kokkos_min = Impl::copyArray( box_min );
-    auto kokkos_max = Impl::copyArray( box_max );
+    auto kokkos_min = Impl::copyArray<num_space_dim>( box_min );
+    auto kokkos_max = Impl::copyArray<num_space_dim>( box_max );
 
     auto random_coord_op = KOKKOS_LAMBDA( const int p )
     {
         // Particle coordinate.
-        double px[3];
+        double px[num_space_dim];
 
         auto gen = pool.get_state();
         auto particle = particle_list.getParticle( p );
-        for ( int d = 0; d < 3; ++d )
+        for ( std::size_t d = 0; d < num_space_dim; ++d )
             px[d] = Kokkos::rand<RandomType, double>::draw( gen, kokkos_min[d],
                                                             kokkos_max[d] );
         pool.free_state( gen );
@@ -159,7 +194,7 @@ int createParticles(
   position of a particle. This functor returns true if a particle was created
   and false if it was not giving the signature:
 
-      bool createFunctor( const double pid, const double px[3], const double pv,
+      bool createFunctor( const double pid, const double px[d], const double pv,
                           typename ParticleAoSoA::tuple_type& particle );
   \param particle_list The ParticleList to populate. This will be filled with
   particles and resized to a size equal to the number of particles created.
@@ -200,23 +235,24 @@ int createParticles( InitRandom tag, const InitFunctor& create_functor,
   already in the container (and should be unchanged).
   \param seed Optional random seed for generating particles.
 */
-template <std::size_t Dim, class ExecutionSpace, class PositionType,
-          class ArrayType>
-void create( InitRandom, ExecutionSpace exec_space, PositionType& positions,
-             const std::size_t num_particles, const ArrayType box_min,
-             const ArrayType box_max,
-             const std::size_t previous_num_particles = 0,
-             const uint64_t seed = 342343901,
-             typename std::enable_if<( is_slice<PositionType>::value ||
-                                       Kokkos::is_view<PositionType>::value ),
-                                     int>::type* = 0 )
+template <class ExecutionSpace, class PositionType, class ArrayType>
+void createParticles(
+    InitRandom, ExecutionSpace exec_space, PositionType& positions,
+    const std::size_t num_particles, const ArrayType box_min,
+    const ArrayType box_max, const std::size_t previous_num_particles = 0,
+    const uint64_t seed = 342343901,
+    typename std::enable_if<( is_slice<PositionType>::value ||
+                              Kokkos::is_view<PositionType>::value ),
+                            int>::type* = 0 )
 {
     // Ensure correct space for the particles (View or Slice).
     checkSize( positions, num_particles + previous_num_particles );
 
+    constexpr std::size_t num_space_dim = arraySize( ArrayType{} );
+
     // Copy corners to device accessible arrays.
-    auto kokkos_min = Impl::copyArray( box_min );
-    auto kokkos_max = Impl::copyArray( box_max );
+    auto kokkos_min = Impl::copyArray<num_space_dim>( box_min );
+    auto kokkos_max = Impl::copyArray<num_space_dim>( box_max );
 
     using PoolType = Kokkos::Random_XorShift64_Pool<ExecutionSpace>;
     using RandomType = Kokkos::Random_XorShift64<ExecutionSpace>;
@@ -224,7 +260,7 @@ void create( InitRandom, ExecutionSpace exec_space, PositionType& positions,
     auto random_coord_op = KOKKOS_LAMBDA( const int p )
     {
         auto gen = pool.get_state();
-        for ( std::size_t d = 0; d < Dim; ++d )
+        for ( std::size_t d = 0; d < num_space_dim; ++d )
             positions( p, d ) = Kokkos::rand<RandomType, double>::draw(
                 gen, kokkos_min[d], kokkos_max[d] );
         pool.free_state( gen );
@@ -237,25 +273,9 @@ void create( InitRandom, ExecutionSpace exec_space, PositionType& positions,
     Kokkos::fence();
 }
 
-// for existing 3d createParticles function
-template <class ExecutionSpace, class PositionType, class ArrayType>
-void createParticles(
-    InitRandom tag, ExecutionSpace exec_space, PositionType& positions,
-    const std::size_t num_particles, const ArrayType box_min,
-    const ArrayType box_max, const std::size_t previous_num_particles = 0,
-    const uint64_t seed = 342343901,
-    typename std::enable_if<( is_slice<PositionType>::value ||
-                              Kokkos::is_view<PositionType>::value ),
-                            int>::type* = 0 )
-{
-    create<3>( tag, exec_space, positions, num_particles, box_min, box_max,
-               previous_num_particles, seed );
-}
-
 /*!
   \brief Initialize random particles.
 
-  \param tag Initialization type tag.
   \param positions Particle positions slice.
   \param num_particles The number of particles to create.
   \param box_min Array specifying lower corner to create particles within.
@@ -264,35 +284,68 @@ void createParticles(
   already in the container (and should be unchanged).
   \param seed Optional random seed for generating particles.
 */
-template <std::size_t Dim, class PositionType, class ArrayType>
-void create( InitRandom tag, PositionType& positions,
-             const std::size_t num_particles, const ArrayType box_min,
-             const ArrayType box_max,
-             const std::size_t previous_num_particles = 0,
-             const uint64_t seed = 342343901,
-             typename std::enable_if<( is_slice<PositionType>::value ||
-                                       Kokkos::is_view<PositionType>::value ),
-                                     int>::type* = 0 )
-{
-    using exec_space = typename PositionType::execution_space;
-    create<Dim>( tag, exec_space{}, positions, num_particles, box_min, box_max,
-                 previous_num_particles, seed );
-}
-
-// for existing 3d createParticles function
 template <class PositionType, class ArrayType>
 void createParticles(
     InitRandom tag, PositionType& positions, const std::size_t num_particles,
     const ArrayType box_min, const ArrayType box_max,
     const std::size_t previous_num_particles = 0,
     const uint64_t seed = 342343901,
-    typename std::enable_if<( is_slice<PositionType>::value ||
-                              Kokkos::is_view<PositionType>::value ),
+    typename std::enable_if<( ( is_slice<PositionType>::value ||
+                                Kokkos::is_view<PositionType>::value ) &&
+                              Impl::is_not_array<ArrayType>::value ),
                             int>::type* = 0 )
 {
     using exec_space = typename PositionType::execution_space;
-    create<3>( tag, exec_space{}, positions, num_particles, box_min, box_max,
-               previous_num_particles, seed );
+    createParticles( tag, exec_space{}, positions, num_particles, box_min,
+                     box_max, previous_num_particles, seed );
+}
+
+/*!
+  \brief Initialize random particles.
+
+  \param exec_space Kokkos execution space.
+  \param positions Particle positions slice.
+  \param num_particles The number of particles to create.
+  \param box_min Array specifying lower corner to create particles within.
+  \param box_max Array specifying upper corner to create particles within.
+  \param previous_num_particles Optionally specify how many particles are
+  already in the container (and should be unchanged).
+  \param seed Optional random seed for generating particles.
+*/
+template <class ExecutionSpace, class PositionType, class Scalar>
+void createParticles( InitRandom tag, ExecutionSpace exec_space,
+                      PositionType& positions, const std::size_t num_particles,
+                      const Scalar box_min[3], const Scalar box_max[3],
+                      const std::size_t previous_num_particles = 0,
+                      const uint64_t seed = 342343901 )
+{
+    auto kokkos_min = Impl::copyArray<3>( box_min );
+    auto kokkos_max = Impl::copyArray<3>( box_max );
+    createParticles( tag, exec_space, positions, num_particles, kokkos_min,
+                     kokkos_max, previous_num_particles, seed );
+}
+
+/*!
+  \brief Initialize random particles.
+
+  \param positions Particle positions slice.
+  \param num_particles The number of particles to create.
+  \param box_min C-array specifying lower corner to create particles within.
+  \param box_max C-array specifying upper corner to create particles within.
+  \param previous_num_particles Optionally specify how many particles are
+  already in the container (and should be unchanged).
+  \param seed Optional random seed for generating particles.
+*/
+template <class PositionType, class Scalar>
+void createParticles( InitRandom tag, PositionType& positions,
+                      const std::size_t num_particles, const Scalar box_min[3],
+                      const Scalar box_max[3],
+                      const std::size_t previous_num_particles = 0,
+                      const uint64_t seed = 342343901 )
+{
+    using exec_space = typename PositionType::memory_space::execution_space;
+    createParticles( tag, exec_space{}, positions, num_particles, box_min,
+                     box_max, previous_num_particles, seed );
 }
 
 //---------------------------------------------------------------------------//
@@ -308,7 +361,7 @@ void createParticles(
   position of a particle. This functor returns true if a particle was created
   and false if it was not giving the signature:
 
-      bool createFunctor( const double pid, const double px[3], const double pv,
+      bool createFunctor( const double pid, const double px[d], const double pv,
                           typename ParticleAoSoA::tuple_type& particle );
   \param particle_list The ParticleList to populate. This will be filled with
   particles and resized to a size equal to the number of particles created.
@@ -347,19 +400,23 @@ int createParticles(
 
     auto positions = particle_list.slice( position_tag );
 
+    constexpr std::size_t num_space_dim = arraySize( ArrayType{} );
+
     // Create the functor which ignores particles within the radius of another.
-    auto min_distance_op =
-        KOKKOS_LAMBDA( const int id, const double px[3], const double,
-                       typename ParticleListType::particle_type& particle )
+    auto min_distance_op = KOKKOS_LAMBDA(
+        const int id, const double px[num_space_dim], const double,
+        typename ParticleListType::particle_type& particle )
     {
         // Ensure this particle is not within the minimum distance of any other
         // existing particle.
         for ( int n = 0; n < id; n++ )
         {
-            double dx = positions( n, 0 ) - px[0];
-            double dy = positions( n, 1 ) - px[1];
-            double dz = positions( n, 2 ) - px[2];
-            double dist = dx * dx + dy * dy + dz * dz;
+            double dist = 0.0;
+            for ( std::size_t d = 0; d < num_space_dim; ++d )
+            {
+                double dx = positions( n, d ) - px[d];
+                dist += dx * dx;
+            }
             if ( dist < min_dist_sqr )
                 return false;
         }

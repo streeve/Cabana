@@ -1073,8 +1073,8 @@ struct NeighborListTestData<2>
         auto positions = Cabana::slice<0>( aosoa );
 #endif
 
-        Cabana::create<2>( Cabana::InitRandom(), positions, positions.size(),
-                           grid_min, grid_max );
+        Cabana::createParticles( Cabana::InitRandom(), positions,
+                                 positions.size(), grid_min, grid_max );
 
 #ifdef KOKKOS_ENABLE_OPENMPTARGET // FIXME_OPENMPTARGET
         Cabana::deep_copy( aosoa, aosoa_copy );

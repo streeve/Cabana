@@ -989,7 +989,7 @@ auto createVerletList( PositionType positions, const std::size_t begin,
 */
 template <class AlgorithmTag, class LayoutTag, class BuildTag,
           class PositionType, class MinArrayType, class MaxArrayType>
-auto createVerletList( PositionType positions,
+auto createVerletList( const PositionType& positions,
                        const typename PositionType::value_type radius,
                        const typename PositionType::value_type cell_size_ratio,
                        const MinArrayType grid_min, const MaxArrayType grid_max,
@@ -997,8 +997,7 @@ auto createVerletList( PositionType positions,
 {
     using memory_space = typename PositionType::memory_space;
     using data_type = typename PositionType::data_type;
-    static constexpr std::size_t num_space_dim =
-        Cabana::arraySize( data_type{} );
+    constexpr std::size_t num_space_dim = Cabana::arraySize( data_type{} );
 
     return Cabana::VerletList<memory_space, AlgorithmTag, LayoutTag, BuildTag,
                               num_space_dim>(
