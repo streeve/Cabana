@@ -680,7 +680,7 @@ void checkLinkedCellNeighborInterface( const ListType& nlist,
     Kokkos::View<std::size_t*, Kokkos::HostSpace> N2_copy_neighbors(
         "num_n2_neighbors", positions.size() );
 
-    Cabana::NeighborDiscriminator<Cabana::FullNeighborTag> _discriminator;
+    Cabana::NeighborDiscriminator<Cabana::SelfNeighborTag> _discriminator;
 
     std::size_t max_n2_neighbors = 0;
     std::size_t sum_n2_neighbors = 0;
@@ -723,8 +723,7 @@ void checkLinkedCellNeighborInterface( const ListType& nlist,
                     const double dx = positions( pid, d ) - positions( np, d );
                     r2 += dx * dx;
                 }
-                if ( r2 <= c2 &&
-                     _discriminator.isValid( pid, 0, 0, 0, np, 0, 0, 0 ) )
+                if ( r2 <= c2 && _discriminator.isValid( pid, np ) )
                 {
                     if ( nlist.sorted() )
                         Kokkos::atomic_add(
@@ -782,8 +781,7 @@ void checkLinkedCellNeighborParallel( const ListType& nlist,
     // to the particle (within cutoff) and compare to counts.
     auto c2 = cutoff * cutoff;
 
-    Cabana::NeighborDiscriminator<Cabana::FullNeighborTag> _discriminator;
-    Kokkos::Array<double, Dim> empty;
+    Cabana::NeighborDiscriminator<Cabana::SelfNeighborTag> _discriminator;
 
     auto serial_count_op = KOKKOS_LAMBDA( const int i, const int j )
     {
@@ -793,7 +791,7 @@ void checkLinkedCellNeighborParallel( const ListType& nlist,
             const double dx = positions( i, d ) - positions( j, d );
             r2 += dx * dx;
         }
-        if ( r2 <= c2 && _discriminator.isValid( i, empty, j, empty ) )
+        if ( r2 <= c2 && _discriminator.isValid( i, j ) )
         {
             if ( nlist.sorted() )
             {
@@ -815,7 +813,7 @@ void checkLinkedCellNeighborParallel( const ListType& nlist,
             const double dx = positions( i, d ) - positions( j, d );
             r2 += dx * dx;
         }
-        if ( r2 <= c2 && _discriminator.isValid( i, 0, 0, 0, j, 0, 0, 0 ) )
+        if ( r2 <= c2 && _discriminator.isValid( i, j ) )
         {
             if ( nlist.sorted() )
             {
@@ -858,7 +856,7 @@ void checkLinkedCellNeighborReduce( const ListType& nlist,
     // to the particle (within cutoff) and compare to counts.
     auto c2 = cutoff * cutoff;
 
-    Cabana::NeighborDiscriminator<Cabana::FullNeighborTag> _discriminator;
+    Cabana::NeighborDiscriminator<Cabana::SelfNeighborTag> _discriminator;
 
     auto sum_op = KOKKOS_LAMBDA( const int i, const int j, double& sum )
     {
@@ -868,7 +866,7 @@ void checkLinkedCellNeighborReduce( const ListType& nlist,
             const double dx = position( i, d ) - position( j, d );
             r2 += dx * dx;
         }
-        if ( r2 <= c2 && _discriminator.isValid( i, 0, 0, 0, j, 0, 0, 0 ) )
+        if ( r2 <= c2 && _discriminator.isValid( i, j ) )
         {
             if ( nlist.sorted() )
             {

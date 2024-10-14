@@ -26,7 +26,7 @@ namespace Cabana
 // Neighbor List Interface
 //---------------------------------------------------------------------------//
 /*!
-  \brief Tag for full neighbor lists.
+  \brief Tag for building full neighbor lists.
 
   In this case every particle has its neighbors stored in the list. So, if
   particle "i" neighbors particle "j" then "j" will be in the neighbor list
@@ -38,7 +38,7 @@ class FullNeighborTag
 
 //---------------------------------------------------------------------------//
 /*!
-  \brief Tag for half neighbor lists.
+  \brief Tag for building half neighbor lists.
 
   In this case only half of the neighbors are stored and the inverse
   relationship is implied. So, if particle "i" neighbors particle "j" then "j"
@@ -50,9 +50,37 @@ class HalfNeighborTag
 };
 
 //---------------------------------------------------------------------------//
+/*!
+  \brief Tag for neighbor list iteration, ignoring only self neighbors.
+*/
+class SelfNeighborTag
+{
+};
+
+//---------------------------------------------------------------------------//
 //! Neighborhood discriminator.
 template <class Tag>
 class NeighborDiscriminator;
+
+//! Self neighbor discriminator specialization.
+//! \note This is not sufficient for building both full and half neighbor lists
+//! and is intended for neighbor iteration.
+template <>
+class NeighborDiscriminator<SelfNeighborTag>
+{
+  public:
+    /*!
+      \brief Check whether neighbor pair is valid.
+
+      This check only considers self neighbors (i.e. the particle index "p" is
+      not the same as the neighbor index "n").
+    */
+    KOKKOS_INLINE_FUNCTION
+    static bool isValid( const std::size_t p, const std::size_t n )
+    {
+        return ( p != n );
+    }
+};
 
 //! Full list discriminator specialization.
 template <>

@@ -1134,13 +1134,12 @@ struct LinkedCellParallelFor
     LinkedCellType _list;
     //! Spatial dimension
     static constexpr std::size_t num_space_dim = LinkedCellType::num_space_dim;
-    Kokkos::Array<double, num_space_dim> empty;
 
     //! beginning index of the loop
     index_type _begin;
 
     //! discriminator for whether a particle is a neighbor or not
-    NeighborDiscriminator<FullNeighborTag> _discriminator;
+    NeighborDiscriminator<SelfNeighborTag> _discriminator;
 
     //! Constructor
     LinkedCellParallelFor( std::string label, Policy exec_policy,
@@ -1151,9 +1150,6 @@ struct LinkedCellParallelFor
         , _list( list )
         , _begin( begin )
     {
-        for ( int d = 0; d < num_space_dim; ++d )
-            empty[d] = 0.0;
-
         if ( label.empty() )
             Kokkos::parallel_for( dynamic_cast<const Policy&>( exec_policy ),
                                   *this );
@@ -1217,7 +1213,7 @@ struct LinkedCellParallelFor
             auto j = _list.getParticle( n );
 
             // Avoid self interactions (dummy position args).
-            if ( _discriminator.isValid( i, empty, j, empty ) )
+            if ( _discriminator.isValid( i, j ) )
             {
                 Impl::functorTagDispatch<WorkTag>( _functor, i, j );
             }
@@ -1285,7 +1281,7 @@ struct LinkedCellParallelFor
                 auto j = _list.getParticle( n );
 
                 // Avoid self interactions (dummy position args).
-                if ( _discriminator.isValid( i, empty, j, empty ) )
+                if ( _discriminator.isValid( i, j ) )
                 {
                     Impl::functorTagDispatch<WorkTag>( _functor, i, j );
                 }
@@ -1312,13 +1308,12 @@ struct LinkedCellParallelReduce
     LinkedCellType _list;
     //! Spatial dimension
     static constexpr std::size_t num_space_dim = LinkedCellType::num_space_dim;
-    Kokkos::Array<double, num_space_dim> empty;
 
     //! beginning index of the loop
     index_type _begin;
 
     //! discriminator for whether a particle is a neighbor or not
-    NeighborDiscriminator<FullNeighborTag> _discriminator;
+    NeighborDiscriminator<SelfNeighborTag> _discriminator;
 
     //! Constructor
     LinkedCellParallelReduce( std::string label, Policy exec_policy,
@@ -1395,7 +1390,7 @@ struct LinkedCellParallelReduce
             auto j = _list.getParticle( n );
 
             // Avoid self interactions (dummy position args).
-            if ( _discriminator.isValid( i, empty, j, empty ) )
+            if ( _discriminator.isValid( i, j ) )
             {
                 Impl::functorTagDispatch<WorkTag>( _functor, i, j, ival );
             }
@@ -1464,7 +1459,7 @@ struct LinkedCellParallelReduce
                 auto j = _list.getParticle( n );
 
                 // Avoid self interactions (dummy position args).
-                if ( _discriminator.isValid( i, empty, j, empty ) )
+                if ( _discriminator.isValid( i, j ) )
                 {
                     Impl::functorTagDispatch<WorkTag>( _functor, i, j, ival );
                 }
