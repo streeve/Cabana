@@ -1151,6 +1151,9 @@ struct LinkedCellParallelFor
         , _list( list )
         , _begin( begin )
     {
+        for ( int d = 0; d < num_space_dim; ++d )
+            empty[d] = 0.0;
+
         if ( label.empty() )
             Kokkos::parallel_for( dynamic_cast<const Policy&>( exec_policy ),
                                   *this );
