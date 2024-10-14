@@ -902,6 +902,41 @@ class VerletList
 //---------------------------------------------------------------------------//
 // VerletList creation functions.
 //---------------------------------------------------------------------------//
+
+/*!
+    \brief VerletList constructor. Given a list of particle positions and
+    a neighborhood radius calculate the neighbor list.
+
+    \param positions The particle positions
+
+    \param begin The beginning particle index to compute neighbors for.
+
+    \param end The end particle index to compute neighbors for.
+
+    \param radius The radius of the neighborhood. Particles
+    within this radius are considered neighbors. This is effectively the
+    grid cell size in each dimension.
+
+    \param cell_size_ratio The ratio of the cell size in the Cartesian grid
+    to the neighborhood radius. For example, if the cell size ratio is 0.5
+    then the cells will be half the size of the neighborhood radius in each
+    dimension.
+
+    \param grid_min The minimum value of the grid containing the particles
+    in each dimension.
+
+    \param grid_max The maximum value of the grid containing the particles
+    in each dimension.
+
+    \param max_neigh Optional maximum number of neighbors per particle to
+    pre-allocate the neighbor list. Potentially avoids recounting with 2D
+    layout only.
+
+    Particles outside of the neighborhood radius will not be considered
+    neighbors. Only compute the neighbors of those that are within the given
+    range. All particles are candidates for being a neighbor, regardless of
+    whether or not they are in the range.
+*/
 template <class AlgorithmTag, class LayoutTag, class BuildTag,
           class PositionType, class MinArrayType, class MaxArrayType>
 auto createVerletList( PositionType positions, const std::size_t begin,
@@ -922,6 +957,36 @@ auto createVerletList( PositionType positions, const std::size_t begin,
                                               grid_max, max_neigh );
 }
 
+/*!
+    \brief VerletList constructor. Given a list of particle positions and
+    a neighborhood radius calculate the neighbor list.
+
+    \param positions The particle positions
+
+    \param radius The radius of the neighborhood. Particles
+    within this radius are considered neighbors. This is effectively the
+    grid cell size in each dimension.
+
+    \param cell_size_ratio The ratio of the cell size in the Cartesian grid
+    to the neighborhood radius. For example, if the cell size ratio is 0.5
+    then the cells will be half the size of the neighborhood radius in each
+    dimension.
+
+    \param grid_min The minimum value of the grid containing the particles
+    in each dimension.
+
+    \param grid_max The maximum value of the grid containing the particles
+    in each dimension.
+
+    \param max_neigh Optional maximum number of neighbors per particle to
+    pre-allocate the neighbor list. Potentially avoids recounting with 2D
+    layout only.
+
+    Particles outside of the neighborhood radius will not be considered
+    neighbors. Only compute the neighbors of those that are within the given
+    range. All particles are candidates for being a neighbor, regardless of
+    whether or not they are in the range.
+*/
 template <class AlgorithmTag, class LayoutTag, class BuildTag,
           class PositionType, class MinArrayType, class MaxArrayType>
 auto createVerletList( PositionType positions,
