@@ -139,7 +139,7 @@ class LinkedCellList
     //! Offset view type.
     using OffsetView = Kokkos::View<size_type*, memory_space>;
     //! Stencil type.
-    using stencil_type = Cabana::LinkedCellStencil<Scalar, NumSpaceDim>;
+    using stencil_type = LinkedCellStencil<Scalar, NumSpaceDim>;
 
     //! Spatial dimension.
     static constexpr std::size_t num_space_dim = NumSpaceDim;
@@ -748,8 +748,7 @@ auto createLinkedCellList( PositionType positions,
     using memory_space = typename PositionType::memory_space;
     using scalar_type = typename PositionType::value_type;
     using data_type = typename PositionType::data_type;
-    static constexpr std::size_t num_space_dim =
-        Cabana::arraySize( data_type{} );
+    static constexpr std::size_t num_space_dim = arraySize( data_type{} );
     return LinkedCellList<memory_space, scalar_type, num_space_dim>(
         positions, grid_delta, grid_min, grid_max );
 }
@@ -769,8 +768,7 @@ auto createLinkedCellList( PositionType positions, const std::size_t begin,
     using memory_space = typename PositionType::memory_space;
     using scalar_type = typename PositionType::value_type;
     using data_type = typename PositionType::data_type;
-    static constexpr std::size_t num_space_dim =
-        Cabana::arraySize( data_type{} );
+    static constexpr std::size_t num_space_dim = arraySize( data_type{} );
     return LinkedCellList<memory_space, scalar_type, num_space_dim>(
         positions, begin, end, grid_delta, grid_min, grid_max );
 }
@@ -791,8 +789,7 @@ auto createLinkedCellList(
     using memory_space = typename PositionType::memory_space;
     using scalar_type = typename PositionType::value_type;
     using data_type = typename PositionType::data_type;
-    static constexpr std::size_t num_space_dim =
-        Cabana::arraySize( data_type{} );
+    static constexpr std::size_t num_space_dim = arraySize( data_type{} );
     return LinkedCellList<memory_space, scalar_type, num_space_dim>(
         positions, grid_delta, grid_min, grid_max, neighborhood_radius,
         cell_size_ratio );
@@ -815,8 +812,7 @@ auto createLinkedCellList(
     using memory_space = typename PositionType::memory_space;
     using scalar_type = typename PositionType::value_type;
     using data_type = typename PositionType::data_type;
-    static constexpr std::size_t num_space_dim =
-        Cabana::arraySize( data_type{} );
+    static constexpr std::size_t num_space_dim = arraySize( data_type{} );
     return LinkedCellList<memory_space, scalar_type, num_space_dim>(
         positions, begin, end, grid_delta, grid_min, grid_max,
         neighborhood_radius, cell_size_ratio );
