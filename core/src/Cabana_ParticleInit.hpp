@@ -40,6 +40,17 @@ auto copyArray( const std::array<Scalar, Dim> corner )
 
     return kokkos_corner;
 }
+//! Copy std::array into Kokkos::Array for potential device use.
+template <std::size_t Dim, class Scalar>
+auto copyArray( const std::vector<Scalar> corner )
+{
+    assert( corner.size() == Dim );
+    Kokkos::Array<Scalar, Dim> kokkos_corner;
+    for ( std::size_t d = 0; d < Dim; ++d )
+        kokkos_corner[d] = corner[d];
+
+    return kokkos_corner;
+}
 //! Return original Kokkos::Array.
 template <std::size_t Dim, class Scalar>
 auto copyArray( const Kokkos::Array<Scalar, Dim> corner )

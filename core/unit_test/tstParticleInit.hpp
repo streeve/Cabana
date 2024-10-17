@@ -199,6 +199,11 @@ TEST( ParticleInit, RandomSlice )
         testRandomCreationSlice<3>( box_min, box_max );
     }
     {
+        std::vector<double, 3> box_min = { -9.5, -4.7, 0.5 };
+        std::vector<double, 3> box_max = { 7.6, -1.5, 5.5 };
+        testRandomCreationSlice<3>( box_min, box_max );
+    }
+    {
         double box_min[3] = { -9.5, -4.7, 0.5 };
         double box_max[3] = { 7.6, -1.5, 5.5 };
         testRandomCreationSlice<3>( box_min, box_max );
