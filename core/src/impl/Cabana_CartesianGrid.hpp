@@ -110,6 +110,10 @@ class CartesianGrid
     void locatePoint( const Real xp, const Real yp, const Real zp, int& ic,
                       int& jc, int& kc ) const
     {
+        assert( xp >= _min_x && xp <= _max_x );
+        assert( yp >= _min_y && yp <= _max_y );
+        assert( zp >= _min_z && zp <= _max_z );
+
         // Since we use a floor function a point on the outer boundary
         // will be found in the next cell, causing an out of bounds error
         ic = cellsBetween( xp, _min_x, _rdx );
