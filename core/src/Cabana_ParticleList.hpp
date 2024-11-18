@@ -213,8 +213,10 @@ class ParticleList
     }
 
     //! Get the allocated space in the list.
+    KOKKOS_FUNCTION
     std::size_t capacity() const { return _aosoa.capacity(); }
     //! Get the number of particles in the list.
+    KOKKOS_FUNCTION
     std::size_t size() const { return _aosoa.size(); }
     //! Update the number of particles in the list.
     void resize( const std::size_t n ) { _aosoa.resize( n ); }
