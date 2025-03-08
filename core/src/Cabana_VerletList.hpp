@@ -155,15 +155,14 @@ struct VerletListBuilder
     std::size_t alloc_n;
 
     // Constructor.
-    VerletListBuilder( PositionType positions, const std::size_t begin,
+    VerletListBuilder( LinkedCellList<memory_space, PositionValueType> lcl,
+                       PositionType positions, const std::size_t begin,
                        const std::size_t end,
                        const PositionValueType neighborhood_radius,
-                       const PositionValueType cell_size_ratio,
-                       const PositionValueType grid_min[3],
-                       const PositionValueType grid_max[3],
                        const std::size_t max_neigh )
         : pid_begin( begin )
         , pid_end( end )
+        , linked_cell_list( lcl )
         , alloc_n( max_neigh )
     {
         count = true;
@@ -179,15 +178,6 @@ struct VerletListBuilder
         // Shallow copy for random access read-only memory.
         _position = positions;
 
-        // Bin the particles in the grid. Don't actually sort them but make a
-        // permutation vector. Note that we are binning all particles here and
-        // not just the requested range. This is because all particles are
-        // treated as candidates for neighbors.
-        double grid_size = cell_size_ratio * neighborhood_radius;
-        PositionValueType grid_delta[3] = { grid_size, grid_size, grid_size };
-        linked_cell_list = createLinkedCellList<memory_space>(
-            _position, grid_delta, grid_min, grid_max, neighborhood_radius,
-            cell_size_ratio );
         bin_data_1d = linked_cell_list.binningData();
 
         // We will use the square of the distance for neighbor determination.
@@ -543,29 +533,25 @@ struct VerletListBuilder
 template <class DeviceType, class PositionType, class AlgorithmTag,
           class LayoutTag, class BuildOpTag>
 auto createVerletListBuilder(
+    const LinkedCellList<typename PositionType::memory_space,
+                         typename PositionType::value_type>& lcl,
     PositionType x, const std::size_t begin, const std::size_t end,
-    const typename PositionType::value_type radius,
-    const typename PositionType::value_type cell_size_ratio,
-    const typename PositionType::value_type grid_min[3],
-    const typename PositionType::value_type grid_max[3],
-    const std::size_t max_neigh,
+    const typename PositionType::value_type radius, const std::size_t max_neigh,
     typename std::enable_if<( is_slice<PositionType>::value ), int>::type* = 0 )
 {
     using RandomAccessPositionType = typename PositionType::random_access_slice;
     return VerletListBuilder<DeviceType, PositionType, RandomAccessPositionType,
                              AlgorithmTag, LayoutTag, BuildOpTag>(
-        x, begin, end, radius, cell_size_ratio, grid_min, grid_max, max_neigh );
+        lcl, x, begin, end, radius, max_neigh );
 }
 
 template <class DeviceType, class PositionType, class AlgorithmTag,
           class LayoutTag, class BuildOpTag>
 auto createVerletListBuilder(
+    const LinkedCellList<typename PositionType::memory_space,
+                         typename PositionType::value_type>& lcl,
     PositionType x, const std::size_t begin, const std::size_t end,
-    const typename PositionType::value_type radius,
-    const typename PositionType::value_type cell_size_ratio,
-    const typename PositionType::value_type grid_min[3],
-    const typename PositionType::value_type grid_max[3],
-    const std::size_t max_neigh,
+    const typename PositionType::value_type radius, const std::size_t max_neigh,
     typename std::enable_if<( Kokkos::is_view<PositionType>::value ),
                             int>::type* = 0 )
 {
@@ -574,7 +560,7 @@ auto createVerletListBuilder(
                      Kokkos::MemoryTraits<Kokkos::RandomAccess>>;
     return VerletListBuilder<DeviceType, PositionType, RandomAccessPositionType,
                              AlgorithmTag, LayoutTag, BuildOpTag>(
-        x, begin, end, radius, cell_size_ratio, grid_min, grid_max, max_neigh );
+        lcl, x, begin, end, radius, max_neigh );
 }
 
 //---------------------------------------------------------------------------//
@@ -601,7 +587,7 @@ auto createVerletListBuilder(
   distributed particles due to the use of a Cartesian grid.
 */
 template <class MemorySpace, class AlgorithmTag, class LayoutTag,
-          class BuildTag = TeamVectorOpTag>
+          class BuildTag = TeamVectorOpTag, class ScalarType = double>
 class VerletList
 {
   public:
@@ -615,6 +601,8 @@ class VerletList
 
     //! Verlet list data.
     VerletListData<memory_space, LayoutTag> _data;
+    //! Background binning for neighbor search.
+    LinkedCellList<memory_space, ScalarType> linked_cell_list;
 
     /*!
       \brief Default constructor.
@@ -667,6 +655,16 @@ class VerletList
                                   Kokkos::is_view<PositionType>::value ),
                                 int>::type* = 0 )
     {
+        // Bin the particles in the grid. Don't actually sort them but make a
+        // permutation vector. Note that we are binning all particles here and
+        // not just the requested range. This is because all particles are
+        // treated as candidates for neighbors.
+        double grid_size = cell_size_ratio * neighborhood_radius;
+        ScalarType grid_delta[3] = { grid_size, grid_size, grid_size };
+        linked_cell_list = createLinkedCellList<memory_space>(
+            x, grid_delta, grid_min, grid_max, neighborhood_radius,
+            cell_size_ratio );
+
         build( x, begin, end, neighborhood_radius, cell_size_ratio, grid_min,
                grid_max, max_neigh );
     }
@@ -715,14 +713,19 @@ class VerletList
         assert( end >= begin );
         assert( end <= size( x ) );
 
+        // Bin the particles in the grid. Note again that we are binning all
+        // particles here and not just the requested range to ensure all
+        // particles are treated as candidates for neighbors.
+        linked_cell_list.build( x );
+
         using device_type = Kokkos::Device<ExecutionSpace, memory_space>;
 
         // Create a builder functor.
         auto builder =
             Impl::createVerletListBuilder<device_type, PositionType,
                                           AlgorithmTag, LayoutTag, BuildTag>(
-                x, begin, end, neighborhood_radius, cell_size_ratio, grid_min,
-                grid_max, max_neigh );
+                linked_cell_list, x, begin, end, neighborhood_radius,
+                max_neigh );
 
         // For each particle in the range check each neighboring bin for
         // neighbor particles. Bins are at least the size of the neighborhood
