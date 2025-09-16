@@ -702,13 +702,15 @@ void writeTimeStep( HDF5Config h5_config, const std::string& prefix,
     }
     std::vector<int>().swap( all_offsets );
 
+    const std::size_t dim = coords_view.extent( 1 );
+    std::cout << dim << "\n";
     dimsf[0] = n_global;
-    dimsf[1] = 3;
+    dimsf[1] = dim;
 
     filespace_id = H5Screate_simple( 2, dimsf, nullptr );
 
     count[0] = n_local;
-    count[1] = 3;
+    count[1] = dim;
 
     memspace_id = H5Screate_simple( 2, count, nullptr );
 
